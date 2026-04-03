@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('practice')) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const data = getMockData();
+        const practice = Auth.getCurrentUser();
+        const pageContent = initAppLayout('practice', 'dashboard', 'Dashboard');
+
+        // Compute stats
+        const practiceShifts = data.shifts.filter(s => s.practiceId === session.id);
+        const openShifts = practiceShifts.filter(s => s.status === 'open');
+        const pendingOffers = data.offers.filter(o => o.practiceId === session.id && o.status === 'pending');
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const filledThisMonth = data.offers.filter(o =>
+            o.practiceId === session.id &&
+            (o.status === 'accepted' || o.status === 'completed') &&
+            new Date(o.shiftDate) >= monthStart && new Date(o.shiftDate) <= monthEnd
+        );
+        const monthlySpend = filledThisMonth.reduce((sum, o) => {
+            if (o.sessionType === 'Full Day') return sum + (o.rateFullDay || 820);
+            return sum + (o.rateAM || 430);
+        }, 0);
+
+        // Coverage data for Mon-Fri
+        const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
+
+        const coverageData = weekDays.map((day, i) => {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            const dateStr = d.toISOString().split('T')[0];
+            const totalShifts = practiceShifts.filter(s => s.date === dateStr).length;
+            const filledShifts = data.offers.filter(o =>
+                o.practiceId === session.id &&
+                o.shiftDate === dateStr &&
+                (o.status === 'accepted' || o.status === 'completed')
+            ).length;
+            const pct = totalShifts > 0 ? Math.round((filledShifts / totalShifts) * 100) : (i < 3 ? [80, 60, 100, 40, 0][i] : 0);
+            return { day, pct: Math.min(pct || [80, 60, 100, 40, 20][i], 100) };
+        });
+
+        // Pending application mock data
+        const pendingApps = [];
+        const locums = data.locums;
+        for (let i = 0; i < Math.min(3, locums.length); i++) {
+            const loc = locums[i];
+            const futureDate = new Date(today);
+            futureDate.setDate(today.getDate() + (i + 2) * 2);
+            pendingApps.push({
+                locumName: `${loc.title} ${loc.firstName} ${loc.lastName}`,
+                locumId: loc.id,
+                shiftDate: futureDate.toISOString().split('T')[0],
+                rate: loc.rates.am,
+                reliability: loc.bookingReliability
+            });
+        }
+
+        let html = `
+            <div style="margin-bottom: 32px;">
+                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">
+                    ${getGreeting()}, Welcome
+                </h1>
+                <p style="color: var(--dark-600); font-size: 0.95rem;">${session.name}</p>
+            </div>
+
+            <div class="dash-stats-row">
+                ${renderStatCard('search', 'Open Shifts', openShifts.length, null, null)}
+                ${renderStatCard('file-text', 'Pending Applications', pendingApps.length, null, null)}
+                ${renderStatCard('check', 'Filled This Month', filledThisMonth.length, null, null)}
+                ${renderStatCard('pound', 'Monthly Spend', formatCurrency(monthlySpend), null, null)}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2>Shift Coverage This Week</h2>
+                    </div>
+                    <div class="content-card-body">
+                        ${coverageData.map(c => {
+                            const colorClass = c.pct >= 80 ? '' : (c.pct >= 50 ? 'warn' : 'danger');
+                            const fillClass = c.pct < 50 ? 'warning' : '';
+                            return `
+                                <div class="coverage-bar-container">
+                                    <div class="coverage-label">
+                                        <span>${c.day}</span>
+                                        <span class="coverage-pct ${colorClass}">${c.pct}%</span>
+                                    </div>
+                                    <div class="coverage-bar">
+                                        <div class="coverage-fill ${fillClass}" style="width: ${c.pct}%"></div>
+                                    </div>
+                                </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2>Pending Applications</h2>
+                    </div>
+                    <div class="content-card-body">
+                        ${pendingApps.length === 0 ? `
+                            <div class="empty-state" style="padding: 30px 10px;">
+                                <p style="color: var(--dark-600);">No pending applications</p>
+                            </div>
+                        ` : pendingApps.map(app => `
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--gray-100);">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="header-avatar" style="width: 40px; height: 40px; font-size: 0.8rem;">${getInitials(app.locumName)}</div>
+                                    <div>
+                                        <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${app.locumName}</strong>
+                                        <span style="font-size: 0.82rem; color: var(--dark-600);">${DateUtils.format(app.shiftDate, 'medium')} &bull; ${formatCurrency(app.rate)}/session</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-primary btn-small" onclick="acceptApp('${app.locumId}', '${app.shiftDate}')">Accept</button>
+                                    <button class="btn btn-ghost btn-small" onclick="declineApp('${app.locumId}', '${app.shiftDate}')">Decline</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; padding: 20px 0;">
+                <a href="post-shift.html" class="btn btn-primary btn-large">
+                    ${getIcon('plus-circle')} Post a Shift
+                </a>
+            </div>
+        `;
+
+        pageContent.innerHTML = html;
+
+        function acceptApp(locumId, shiftDate) {
+            Toast.show('Application accepted! Locum has been notified.', 'success');
+            const card = event.target.closest('[style*="border-bottom"]');
+            if (card) card.style.opacity = '0.5';
+        }
+
+        function declineApp(locumId, shiftDate) {
+            Toast.show('Application declined.', 'info');
+            const card = event.target.closest('[style*="border-bottom"]');
+            if (card) card.style.opacity = '0.5';
+        }
+    </script>
+</body>
+</html>

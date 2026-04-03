@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shift Detail - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('locum')) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const user = Auth.getCurrentUser();
+        const data = getMockData();
+        const pageContent = initAppLayout('locum', 'shifts', 'Shift Detail', [
+            { label: 'Available Shifts', href: 'available-shifts.html' },
+            { label: 'Shift Detail' }
+        ]);
+
+        const shiftId = new URLSearchParams(window.location.search).get('id');
+        const shift = data.shifts.find(s => s.id === shiftId);
+
+        if (!shift) {
+            pageContent.innerHTML = renderEmptyState('search', 'Shift Not Found', 'This shift could not be found. It may have been removed or filled.', 'Back to Shifts', 'available-shifts.html');
+        } else {
+            const practice = data.practices.find(p => p.id === shift.practiceId);
+            const rates = user ? user.rates : { am: 0, pm: 0, fullDay: 0, housecall: 0 };
+
+            // Nearby practices with open shifts (different practice, same health board)
+            const nearbyShifts = data.shifts
+                .filter(s => s.status === 'open' && s.healthBoard === shift.healthBoard && s.practiceId !== shift.practiceId)
+                .reduce((acc, s) => {
+                    if (!acc.find(x => x.practiceId === s.practiceId)) acc.push(s);
+                    return acc;
+                }, [])
+                .slice(0, 6);
+
+            pageContent.innerHTML = `
+                <a href="available-shifts.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; color: var(--primary); margin-bottom: 20px;">
+                    ${getIcon('arrow-left')} Back to Available Shifts
+                </a>
+
+                <div class="grid-2-1">
+                    <!-- Left Column -->
+                    <div>
+                        <!-- Practice Header -->
+                        <div class="content-card">
+                            <div class="content-card-body" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                                <div>
+                                    <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">${shift.practiceName}</h2>
+                                    <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 8px;">${shift.city}</p>
+                                    <span class="badge badge-primary">${shift.healthBoard}</span>
+                                    ${shift.urgent ? '<span class="badge badge-danger" style="margin-left: 6px;">Urgent</span>' : ''}
+                                    <span class="badge badge-info" style="margin-left: 6px;">${shift.sessionType}</span>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 1rem; font-weight: 700; color: var(--dark);">${DateUtils.format(shift.date, 'full')}</div>
+                                    <div style="font-size: 0.88rem; color: var(--dark-600);">${shift.startTime} - ${shift.endTime}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location Card -->
+                        <div class="content-card">
+                            <div class="content-card-header">
+                                <h2>${getIcon('map-pin')} Location</h2>
+                            </div>
+                            <div class="content-card-body">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                    <div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Address</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${practice ? practice.address : 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Postcode</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${practice ? practice.postcode : 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">City</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.city}</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Estimated Travel</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">~19 mins from home</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Work Details Card -->
+                        <div class="content-card">
+                            <div class="content-card-header">
+                                <h2>${getIcon('monitor')} Work Details</h2>
+                            </div>
+                            <div class="content-card-body">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                    <div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Computer System</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.computerSystem}</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Shift Type</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.shiftType}</div>
+                                    </div>
+                                    ${shift.morningPatients > 0 ? `
+                                    <div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Morning Patients</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.morningPatients}</div>
+                                    </div>` : ''}
+                                    ${shift.afternoonPatients > 0 ? `
+                                    <div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Afternoon Patients</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.afternoonPatients}</div>
+                                    </div>` : ''}
+                                    <div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Housecalls</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.housecalls ? 'Yes - may be required' : 'No housecalls'}</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Applicants</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.applicants} so far</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Comments -->
+                        ${shift.comment ? `
+                        <div class="content-card">
+                            <div class="content-card-header">
+                                <h2>Practice Comments</h2>
+                            </div>
+                            <div class="content-card-body">
+                                <p style="font-size: 0.9rem; color: var(--dark-600); line-height: 1.7;">${shift.comment}</p>
+                            </div>
+                        </div>` : ''}
+                    </div>
+
+                    <!-- Right Column (Sticky) -->
+                    <div>
+                        <div class="content-card" style="position: sticky; top: 80px;">
+                            <div class="content-card-header">
+                                <h2>Make an Offer</h2>
+                            </div>
+                            <div class="content-card-body">
+                                <div class="form-group">
+                                    <label class="form-label">Session Type</label>
+                                    <select class="form-select" id="offerSessionType">
+                                        <option value="">-- No Offer --</option>
+                                        <option value="AM" ${shift.sessionType === 'AM' ? 'selected' : ''}>AM Session</option>
+                                        <option value="PM" ${shift.sessionType === 'PM' ? 'selected' : ''}>PM Session</option>
+                                        <option value="Full Day" ${shift.sessionType === 'Full Day' ? 'selected' : ''}>Full Day</option>
+                                    </select>
+                                </div>
+
+                                <div style="background: var(--gray-50); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                                    <div style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 12px;">Your Current Rates</div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span style="font-size: 0.85rem; color: var(--dark-600);">AM Rate</span>
+                                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--dark);">${formatCurrency(rates.am)}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span style="font-size: 0.85rem; color: var(--dark-600);">PM Rate</span>
+                                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--dark);">${formatCurrency(rates.pm)}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span style="font-size: 0.85rem; color: var(--dark-600);">Full Day Rate</span>
+                                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--dark);">${formatCurrency(rates.fullDay)}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="font-size: 0.85rem; color: var(--dark-600);">Housecall</span>
+                                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--dark);">${rates.housecall > 0 ? formatCurrency(rates.housecall) : 'Included'}</span>
+                                    </div>
+                                </div>
+
+                                ${shift.housecalls ? `
+                                <div style="padding: 10px 14px; background: rgba(245,158,11,0.08); border-radius: 8px; margin-bottom: 16px; font-size: 0.82rem; color: var(--warning); font-weight: 500;">
+                                    ${getIcon('activity')} This shift may include housecalls.
+                                </div>` : ''}
+
+                                <button class="btn btn-primary" style="width: 100%;" id="submitOfferBtn">Submit Offer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nearby Practices -->
+                ${nearbyShifts.length > 0 ? `
+                <div class="content-card" style="margin-top: 24px;">
+                    <div class="content-card-header">
+                        <h2>Nearby Practices with Open Shifts</h2>
+                    </div>
+                    <div class="content-card-body">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            ${nearbyShifts.map(s => `
+                                <a href="shift-detail.html?id=${s.id}" class="filter-chip" style="text-decoration: none;">
+                                    ${s.practiceName}
+                                </a>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>` : ''}
+            `;
+
+            // Submit Offer handler
+            document.getElementById('submitOfferBtn').addEventListener('click', function() {
+                const sessionType = document.getElementById('offerSessionType').value;
+                if (!sessionType) {
+                    Toast.show('Please select a session type to make an offer.', 'warning');
+                    return;
+                }
+
+                const newOffer = {
+                    id: 'offer-' + String(Date.now()).slice(-6),
+                    locumId: session.id,
+                    practiceId: shift.practiceId,
+                    practiceName: shift.practiceName,
+                    healthBoard: shift.healthBoard,
+                    shiftDate: shift.date,
+                    startTime: shift.startTime,
+                    endTime: shift.endTime,
+                    sessionType: sessionType,
+                    rateAM: rates.am,
+                    ratePM: rates.pm,
+                    rateFullDay: rates.fullDay,
+                    rateHousecall: rates.housecall || 0,
+                    status: 'pending',
+                    offerDate: DateUtils.toISO(new Date()),
+                    comment: '',
+                    housecalls: shift.housecalls
+                };
+
+                const currentData = getMockData();
+                currentData.offers.push(newOffer);
+                saveMockData(currentData);
+
+                Toast.show('Your offer has been submitted successfully!', 'success');
+
+                setTimeout(() => {
+                    window.location.href = 'my-offers.html';
+                }, 1500);
+            });
+        }
+    </script>
+</body>
+</html>

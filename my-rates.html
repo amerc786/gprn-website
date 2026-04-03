@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Rates - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('locum')) throw new Error('Auth required');
+
+        const pageContent = initAppLayout('locum', 'rates', 'My Rates');
+
+        function renderRates() {
+            const user = Auth.getCurrentUser();
+            const rates = user.rates || {};
+            const practiceRates = user.practiceRates || {};
+            const practiceRateKeys = Object.keys(practiceRates);
+
+            pageContent.innerHTML = `
+                <!-- Default Rates -->
+                <div class="content-card">
+                    <div class="content-card-header"><h2>Default Rates</h2></div>
+                    <div class="content-card-body">
+                        <form id="ratesForm" onsubmit="saveRates(event)">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">AM Session</label>
+                                    <div style="position: relative;">
+                                        <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
+                                        <input type="number" class="form-input" id="rateAm" value="${rates.am || ''}" step="1" min="0" style="padding-left: 30px;">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">PM Session</label>
+                                    <div style="position: relative;">
+                                        <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
+                                        <input type="number" class="form-input" id="ratePm" value="${rates.pm || ''}" step="1" min="0" style="padding-left: 30px;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Full Day</label>
+                                    <div style="position: relative;">
+                                        <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
+                                        <input type="number" class="form-input" id="rateFullDay" value="${rates.fullDay || ''}" step="1" min="0" style="padding-left: 30px;">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">On-Call Supplement</label>
+                                    <div style="position: relative;">
+                                        <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
+                                        <input type="number" class="form-input" id="rateOnCall" value="${rates.onCall || ''}" step="1" min="0" style="padding-left: 30px;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Fee per Housecall</label>
+                                    <div style="position: relative;">
+                                        <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
+                                        <input type="number" class="form-input" id="rateHousecall" value="${rates.housecall || ''}" step="1" min="0" style="padding-left: 30px;">
+                                    </div>
+                                </div>
+                                <div></div>
+                            </div>
+                            <p class="form-hint" style="margin-bottom: 20px;">These are your default rates that will be pre-filled when you make an offer on a shift. You can adjust rates on a per-offer basis.</p>
+                            <button type="submit" class="btn btn-primary">Save Rates</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Practice-Specific Rates -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2>Practice-Specific Rates</h2>
+                        <button class="btn btn-small btn-secondary" onclick="openAddPracticeRate()">${getIcon('plus-circle')} Add Practice Rate</button>
+                    </div>
+                    <div class="content-card-body">
+                        ${practiceRateKeys.length > 0 ? `
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Practice</th>
+                                        <th>AM</th>
+                                        <th>PM</th>
+                                        <th>Full Day</th>
+                                        <th>On-Call</th>
+                                        <th>Housecall</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${practiceRateKeys.map(key => {
+                                        const pr = practiceRates[key];
+                                        const data = getMockData();
+                                        const practice = data.practices.find(p => p.id === key);
+                                        return `<tr>
+                                            <td style="font-weight: 600;">${practice ? practice.practiceName : key}</td>
+                                            <td>${formatCurrency(pr.am)}</td>
+                                            <td>${formatCurrency(pr.pm)}</td>
+                                            <td>${formatCurrency(pr.fullDay)}</td>
+                                            <td>${formatCurrency(pr.onCall)}</td>
+                                            <td>${formatCurrency(pr.housecall)}</td>
+                                            <td><button class="btn btn-small btn-ghost" onclick="removePracticeRate('${key}')">Remove</button></td>
+                                        </tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        ` : `
+                            <div class="empty-state" style="padding: 40px 20px;">
+                                <div class="empty-state-icon">${getIcon('pound')}</div>
+                                <h3>No practice-specific rates set</h3>
+                                <p>Add custom rates for specific practices if your rates differ from your defaults.</p>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveRates(e) {
+            e.preventDefault();
+            const data = getMockData();
+            const session = Auth.getSession();
+            const user = data.locums.find(l => l.id === session.id);
+
+            user.rates = {
+                am: parseInt(document.getElementById('rateAm').value) || 0,
+                pm: parseInt(document.getElementById('ratePm').value) || 0,
+                fullDay: parseInt(document.getElementById('rateFullDay').value) || 0,
+                onCall: parseInt(document.getElementById('rateOnCall').value) || 0,
+                housecall: parseInt(document.getElementById('rateHousecall').value) || 0
+            };
+
+            saveMockData(data);
+            Toast.show('Rates saved successfully', 'success');
+        }
+
+        function openAddPracticeRate() {
+            const data = getMockData();
+            const practices = data.practices;
+            Modal.show({
+                title: 'Add Practice-Specific Rate',
+                size: 'medium',
+                body: `
+                    <div class="form-group">
+                        <label class="form-label">Practice</label>
+                        <select class="form-select" id="prPractice">
+                            <option value="">Select a practice...</option>
+                            ${practices.map(p => `<option value="${p.id}">${p.practiceName} - ${p.healthBoard}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">AM Session (&pound;)</label>
+                            <input type="number" class="form-input" id="prAm" value="${Auth.getCurrentUser().rates.am}" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">PM Session (&pound;)</label>
+                            <input type="number" class="form-input" id="prPm" value="${Auth.getCurrentUser().rates.pm}" min="0">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Full Day (&pound;)</label>
+                            <input type="number" class="form-input" id="prFullDay" value="${Auth.getCurrentUser().rates.fullDay}" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">On-Call (&pound;)</label>
+                            <input type="number" class="form-input" id="prOnCall" value="${Auth.getCurrentUser().rates.onCall}" min="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Housecall (&pound;)</label>
+                        <input type="number" class="form-input" id="prHousecall" value="${Auth.getCurrentUser().rates.housecall}" min="0">
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" onclick="savePracticeRate()">Save</button>
+                `
+            });
+        }
+
+        function savePracticeRate() {
+            const practiceId = document.getElementById('prPractice').value;
+            if (!practiceId) {
+                Toast.show('Please select a practice', 'error');
+                return;
+            }
+
+            const data = getMockData();
+            const session = Auth.getSession();
+            const user = data.locums.find(l => l.id === session.id);
+            if (!user.practiceRates) user.practiceRates = {};
+
+            user.practiceRates[practiceId] = {
+                am: parseInt(document.getElementById('prAm').value) || 0,
+                pm: parseInt(document.getElementById('prPm').value) || 0,
+                fullDay: parseInt(document.getElementById('prFullDay').value) || 0,
+                onCall: parseInt(document.getElementById('prOnCall').value) || 0,
+                housecall: parseInt(document.getElementById('prHousecall').value) || 0
+            };
+
+            saveMockData(data);
+            Modal.close();
+            Toast.show('Practice rate added', 'success');
+            renderRates();
+        }
+
+        function removePracticeRate(practiceId) {
+            const data = getMockData();
+            const session = Auth.getSession();
+            const user = data.locums.find(l => l.id === session.id);
+            delete user.practiceRates[practiceId];
+            saveMockData(data);
+            Toast.show('Practice rate removed', 'success');
+            renderRates();
+        }
+
+        renderRates();
+    </script>
+</body>
+</html>

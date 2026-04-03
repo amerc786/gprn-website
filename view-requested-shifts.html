@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Shifts - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('practice')) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const data = getMockData();
+        const pageContent = initAppLayout('practice', 'view-shifts', 'View Shifts');
+
+        function renderShiftsList(statusFilter, dateFrom, dateTo) {
+            const currentData = getMockData();
+            let shifts = currentData.shifts.filter(s => s.practiceId === session.id);
+
+            if (statusFilter && statusFilter !== 'all') {
+                shifts = shifts.filter(s => s.status === statusFilter);
+            }
+            if (dateFrom) {
+                shifts = shifts.filter(s => s.date >= dateFrom);
+            }
+            if (dateTo) {
+                shifts = shifts.filter(s => s.date <= dateTo);
+            }
+
+            shifts.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Build mock applicants for each shift
+            const locums = currentData.locums;
+
+            if (shifts.length === 0) {
+                return renderEmptyState('list', 'No Shifts Found', 'No shifts match your current filters.', 'Post a Shift', 'post-shift.html');
+            }
+
+            return shifts.map(shift => {
+                const applicantCount = shift.applicants || Math.floor(Math.random() * 3);
+                const shiftApplicants = locums.slice(0, applicantCount);
+
+                return `
+                    <div class="shift-card-full" data-shift-id="${shift.id}">
+                        <div class="shift-card-header">
+                            <div>
+                                <h3 class="shift-card-title">${DateUtils.format(shift.date, 'full')}</h3>
+                                <p class="shift-card-location">${shift.startTime} - ${shift.endTime} &bull; ${shift.sessionType}</p>
+                            </div>
+                            <div class="shift-card-badges">
+                                <span class="badge ${getStatusBadge(shift.status)}">${shift.status.charAt(0).toUpperCase() + shift.status.slice(1)}</span>
+                                <span class="badge badge-neutral">${applicantCount} applicant${applicantCount !== 1 ? 's' : ''}</span>
+                            </div>
+                        </div>
+                        <div class="shift-card-details">
+                            <div class="shift-card-detail">
+                                ${getIcon('monitor')}
+                                <span>${shift.computerSystem}</span>
+                            </div>
+                            <div class="shift-card-detail">
+                                ${getIcon('tag')}
+                                <span>${shift.shiftType}</span>
+                            </div>
+                            ${!shift.housecalls ? `<span class="badge badge-neutral">No Housecalls</span>` : `<span class="badge badge-info">Housecalls</span>`}
+                        </div>
+
+                        ${applicantCount > 0 ? `
+                        <div id="applicants-${shift.id}" style="display: none; padding-top: 12px; border-top: 1px solid var(--gray-100);">
+                            <h4 style="font-size: 0.88rem; font-weight: 600; color: var(--dark-700); margin-bottom: 12px;">Applicants</h4>
+                            ${shiftApplicants.map(loc => `
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gray-50); border-radius: 8px; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.7rem;">${getInitials(loc.firstName + ' ' + loc.lastName)}</div>
+                                        <div>
+                                            <strong style="font-size: 0.88rem; color: var(--dark);">${loc.title} ${loc.firstName} ${loc.lastName}</strong>
+                                            <div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
+                                                <span style="font-size: 0.8rem; color: var(--dark-600);">Reliability: <strong style="color: ${loc.bookingReliability >= 95 ? 'var(--success)' : 'var(--warning)'};">${loc.bookingReliability}%</strong></span>
+                                                <span style="font-size: 0.8rem; color: var(--dark-600);">Rate: ${formatCurrency(loc.rates.am)}/session</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <a href="locum-profile-view.html?id=${loc.id}" class="btn btn-ghost btn-small">View Profile</a>
+                                        <button class="btn btn-primary btn-small" onclick="acceptApplicant('${shift.id}', '${loc.id}')">Accept</button>
+                                        <button class="btn btn-ghost btn-small" onclick="declineApplicant('${shift.id}', '${loc.id}', this)">Decline</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        ` : ''}
+
+                        <div class="shift-card-footer">
+                            <span style="font-size: 0.82rem; color: var(--gray-400);">Posted ${DateUtils.relative(shift.date)}</span>
+                            ${applicantCount > 0 ? `
+                                <button class="btn btn-ghost btn-small" onclick="toggleApplicants('${shift.id}', this)">
+                                    ${getIcon('chevron-down')} Show Applicants
+                                </button>
+                            ` : `
+                                <span style="font-size: 0.82rem; color: var(--gray-400);">No applicants yet</span>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function render() {
+            const statusFilter = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : 'all';
+            const dateFrom = document.getElementById('filterDateFrom') ? document.getElementById('filterDateFrom').value : '';
+            const dateTo = document.getElementById('filterDateTo') ? document.getElementById('filterDateTo').value : '';
+
+            pageContent.innerHTML = `
+                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
+                    Your Posted Shifts
+                </h1>
+
+                <div class="filter-bar">
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select id="filterStatus" class="form-select" onchange="render()">
+                            <option value="all" ${statusFilter === 'all' ? 'selected' : ''}>All Statuses</option>
+                            <option value="open" ${statusFilter === 'open' ? 'selected' : ''}>Open</option>
+                            <option value="filled" ${statusFilter === 'filled' ? 'selected' : ''}>Filled</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">From</label>
+                        <input type="date" id="filterDateFrom" class="form-input" value="${dateFrom}" onchange="render()">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">To</label>
+                        <input type="date" id="filterDateTo" class="form-input" value="${dateTo}" onchange="render()">
+                    </div>
+                </div>
+
+                <div id="shiftsList">
+                    ${renderShiftsList(statusFilter, dateFrom, dateTo)}
+                </div>
+            `;
+        }
+
+        render();
+
+        function toggleApplicants(shiftId, btn) {
+            const el = document.getElementById('applicants-' + shiftId);
+            if (el) {
+                const isHidden = el.style.display === 'none';
+                el.style.display = isHidden ? 'block' : 'none';
+                btn.innerHTML = isHidden
+                    ? getIcon('chevron-down') + ' Hide Applicants'
+                    : getIcon('chevron-down') + ' Show Applicants';
+            }
+        }
+
+        function acceptApplicant(shiftId, locumId) {
+            const d = getMockData();
+            const shift = d.shifts.find(s => s.id === shiftId);
+            if (shift) {
+                shift.status = 'filled';
+                saveMockData(d);
+            }
+            Toast.show('Applicant accepted! Shift marked as filled.', 'success');
+            setTimeout(() => render(), 500);
+        }
+
+        function declineApplicant(shiftId, locumId, btn) {
+            Toast.show('Applicant declined.', 'info');
+            const row = btn.closest('[style*="background: var(--gray-50)"]');
+            if (row) row.style.opacity = '0.4';
+        }
+    </script>
+</body>
+</html>

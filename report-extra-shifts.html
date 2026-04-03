@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Extra Shifts - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('locum')) throw new Error('Auth required');
+
+        const pageContent = initAppLayout('locum', 'report', 'Report Extra Shifts');
+
+        function getReportedShifts() {
+            const raw = localStorage.getItem('gprn_reported_shifts');
+            return raw ? JSON.parse(raw) : [];
+        }
+
+        function saveReportedShifts(shifts) {
+            localStorage.setItem('gprn_reported_shifts', JSON.stringify(shifts));
+        }
+
+        function renderPage() {
+            const data = getMockData();
+            const practices = data.practices;
+            const reported = getReportedShifts();
+
+            pageContent.innerHTML = `
+                <p style="font-size: 0.92rem; color: var(--dark-700); line-height: 1.7; margin-bottom: 16px;">
+                    Use this form to report shifts you have worked directly with a practice outside of the GPRN booking system. This helps us keep an accurate record of your activity and ensures your booking reliability and shift history remain up to date.
+                </p>
+
+                <div style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 28px; display: flex; align-items: flex-start; gap: 12px; font-size: 0.88rem; color: var(--dark-700);">
+                    <span style="color: var(--warning); flex-shrink: 0; margin-top: 2px;">${getIcon('help-circle')}</span>
+                    <span><strong>Important:</strong> Do not use this page to record shifts if you have previously done ad hoc work that was already booked and confirmed through the GPRN platform. Only report shifts arranged directly with a practice outside this system.</span>
+                </div>
+
+                <!-- Report Form -->
+                <div class="content-card">
+                    <div class="content-card-header"><h2>Report a Shift</h2></div>
+                    <div class="content-card-body">
+                        <form id="reportForm" onsubmit="submitReport(event)">
+                            <div class="form-group">
+                                <label class="form-label">Practice</label>
+                                <select class="form-select" id="reportPractice" required>
+                                    <option value="">Select a practice...</option>
+                                    ${practices.map(p => `<option value="${p.id}">${p.practiceName} - ${p.healthBoard}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Date</label>
+                                    <input type="date" class="form-input" id="reportDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Session Type</label>
+                                    <div style="display: flex; gap: 20px; padding-top: 8px;">
+                                        <label class="form-radio">
+                                            <input type="radio" name="reportSession" value="AM" checked> AM Only
+                                        </label>
+                                        <label class="form-radio">
+                                            <input type="radio" name="reportSession" value="Full Day"> Full Day
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Submit Report</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- History -->
+                <div class="content-card">
+                    <div class="content-card-header"><h2>Previously Reported Shifts</h2></div>
+                    <div class="content-card-body" style="${reported.length === 0 ? '' : 'padding: 0;'}">
+                        ${reported.length > 0 ? `
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Practice</th>
+                                        <th>Date</th>
+                                        <th>Session</th>
+                                        <th>Reported On</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${reported.map(r => `
+                                        <tr>
+                                            <td style="font-weight: 600;">${r.practiceName}</td>
+                                            <td>${DateUtils.format(r.date, 'medium')}</td>
+                                            <td><span class="badge badge-primary">${r.sessionType}</span></td>
+                                            <td>${DateUtils.format(r.reportedOn, 'medium')}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        ` : `
+                            <div class="empty-state" style="padding: 40px 20px;">
+                                <div class="empty-state-icon">${getIcon('file-text')}</div>
+                                <h3>No reported shifts</h3>
+                                <p>Shifts you report outside of the GPRN platform will appear here.</p>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        function submitReport(e) {
+            e.preventDefault();
+            const practiceId = document.getElementById('reportPractice').value;
+            const date = document.getElementById('reportDate').value;
+            const sessionType = document.querySelector('input[name="reportSession"]:checked').value;
+
+            if (!practiceId || !date) {
+                Toast.show('Please fill in all fields', 'error');
+                return;
+            }
+
+            const data = getMockData();
+            const practice = data.practices.find(p => p.id === practiceId);
+
+            const reported = getReportedShifts();
+            reported.unshift({
+                id: 'rep-' + Date.now(),
+                practiceId: practiceId,
+                practiceName: practice ? practice.practiceName : 'Unknown',
+                date: date,
+                sessionType: sessionType,
+                reportedOn: new Date().toISOString().split('T')[0]
+            });
+            saveReportedShifts(reported);
+
+            Toast.show('Shift reported successfully', 'success');
+            document.getElementById('reportForm').reset();
+            renderPage();
+        }
+
+        renderPage();
+    </script>
+</body>
+</html>

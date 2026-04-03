@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post a Shift - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('practice')) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const practice = Auth.getCurrentUser();
+        const pageContent = initAppLayout('practice', 'post-shift', 'Post a Shift');
+
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const minDate = tomorrow.toISOString().split('T')[0];
+
+        pageContent.innerHTML = `
+            <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
+                Post a New Shift
+            </h1>
+
+            <div class="content-card">
+                <div class="content-card-body">
+                    <form id="postShiftForm" novalidate>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="shiftDate">Date</label>
+                                <input type="date" id="shiftDate" class="form-input" min="${minDate}" required>
+                                <div class="form-error"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="sessionType">Session Type</label>
+                                <select id="sessionType" class="form-select" required>
+                                    <option value="">Select session type</option>
+                                    <option value="AM">AM (Morning)</option>
+                                    <option value="PM">PM (Afternoon)</option>
+                                    <option value="Full Day">Full Day</option>
+                                </select>
+                                <div class="form-error"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="startTime">Start Time</label>
+                                <input type="time" id="startTime" class="form-input" value="08:30" required>
+                                <div class="form-error"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="endTime">End Time</label>
+                                <input type="time" id="endTime" class="form-input" value="17:00" required>
+                                <div class="form-error"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="shiftType">Shift Type</label>
+                                <select id="shiftType" class="form-select" required>
+                                    <option value="GP Only">GP Only</option>
+                                    <option value="Any Qualified">Any Qualified</option>
+                                </select>
+                                <div class="form-error"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="computerSystem">Computer System</label>
+                                <input type="text" id="computerSystem" class="form-input" value="${practice.computerSystem || ''}" readonly>
+                                <div class="form-hint">Pre-filled from practice settings</div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Housecalls Required</label>
+                                <div style="display: flex; align-items: center; gap: 12px; padding-top: 4px;">
+                                    <div class="toggle-switch" id="housecallsToggle" onclick="this.classList.toggle('active')"></div>
+                                    <span id="housecallsLabel" style="font-size: 0.88rem; color: var(--dark-600);">No</span>
+                                </div>
+                            </div>
+                            <div></div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="morningPatients">Expected Morning Patients</label>
+                                <input type="number" id="morningPatients" class="form-input" placeholder="e.g. 15" min="0" max="50">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="afternoonPatients">Expected Afternoon Patients</label>
+                                <input type="number" id="afternoonPatients" class="form-input" placeholder="e.g. 12" min="0" max="50">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="comments">Comments / Description</label>
+                            <textarea id="comments" class="form-textarea" rows="4" placeholder="Provide any additional information about this shift, e.g. parking, access details, expected caseload..."></textarea>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; padding-top: 12px;">
+                            <button type="submit" class="btn btn-primary btn-large">
+                                ${getIcon('plus-circle')} Post Shift
+                            </button>
+                            <a href="view-requested-shifts.html" class="btn btn-secondary btn-large">View My Shifts</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+
+        // Session type auto-fill times
+        document.getElementById('sessionType').addEventListener('change', function() {
+            const start = document.getElementById('startTime');
+            const end = document.getElementById('endTime');
+            switch (this.value) {
+                case 'AM':
+                    start.value = '08:30';
+                    end.value = '12:30';
+                    break;
+                case 'PM':
+                    start.value = '13:00';
+                    end.value = '17:00';
+                    break;
+                case 'Full Day':
+                    start.value = '08:30';
+                    end.value = '17:00';
+                    break;
+            }
+        });
+
+        // Housecalls toggle label
+        document.getElementById('housecallsToggle').addEventListener('click', function() {
+            document.getElementById('housecallsLabel').textContent = this.classList.contains('active') ? 'Yes' : 'No';
+        });
+
+        // Form submit
+        document.getElementById('postShiftForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const date = document.getElementById('shiftDate').value;
+            const sessionType = document.getElementById('sessionType').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const shiftType = document.getElementById('shiftType').value;
+
+            if (!date || !sessionType || !startTime || !endTime) {
+                Toast.show('Please fill in all required fields.', 'error');
+                return;
+            }
+
+            const housecalls = document.getElementById('housecallsToggle').classList.contains('active');
+            const morningPatients = parseInt(document.getElementById('morningPatients').value) || 0;
+            const afternoonPatients = parseInt(document.getElementById('afternoonPatients').value) || 0;
+            const comments = document.getElementById('comments').value;
+
+            const newShift = {
+                id: 'shift-' + Date.now(),
+                practiceId: session.id,
+                practiceName: practice.practiceName,
+                healthBoard: practice.healthBoard,
+                city: practice.city,
+                date: date,
+                startTime: startTime,
+                endTime: endTime,
+                sessionType: sessionType,
+                shiftType: shiftType,
+                housecalls: housecalls,
+                computerSystem: practice.computerSystem,
+                morningPatients: morningPatients,
+                afternoonPatients: afternoonPatients,
+                comment: comments,
+                applicants: 0,
+                urgent: false,
+                status: 'open'
+            };
+
+            const data = getMockData();
+            data.shifts.push(newShift);
+            saveMockData(data);
+
+            Toast.show('Shift posted successfully!', 'success');
+
+            Modal.show({
+                title: 'Shift Posted',
+                body: `<p style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 8px;">Your shift for <strong>${DateUtils.format(date, 'full')}</strong> (${sessionType}) has been posted.</p><p style="font-size: 0.9rem; color: var(--dark-600);">Matching locums will be notified.</p>`,
+                footer: `
+                    <button class="btn btn-secondary" onclick="Modal.close(); document.getElementById('postShiftForm').reset();">Post Another</button>
+                    <a href="view-requested-shifts.html" class="btn btn-primary">View My Shifts</a>
+                `
+            });
+        });
+    </script>
+</body>
+</html>

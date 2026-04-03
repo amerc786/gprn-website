@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Practice - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="auth-page">
+        <div class="hero-bg-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+        </div>
+
+        <div class="auth-card wide">
+            <div class="auth-logo">
+                <a href="index.html" class="logo">
+                    <span class="logo-icon">GP</span><span class="logo-text">RN</span>
+                </a>
+                <p>Register Your Practice</p>
+            </div>
+
+            <!-- Stepper -->
+            <div class="stepper" id="stepper">
+                <div class="step active" data-step="1">
+                    <div class="step-circle">1</div>
+                    <span class="step-label">Practice Details</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step" data-step="2">
+                    <div class="step-circle">2</div>
+                    <span class="step-label">Contact Person</span>
+                </div>
+            </div>
+
+            <form id="registerForm" novalidate>
+                <!-- Step 1: Practice Details -->
+                <div class="form-step" id="step1">
+                    <div class="form-group">
+                        <label class="form-label" for="practiceName">Practice Name</label>
+                        <input type="text" id="practiceName" class="form-input" placeholder="e.g. Ringland Medical Practice" required>
+                        <div class="form-error"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="healthBoard">Health Board</label>
+                            <select id="healthBoard" class="form-select" required>
+                                <option value="">Select health board...</option>
+                                <option value="Aneurin Bevan">Aneurin Bevan</option>
+                                <option value="Betsi Cadwaladr">Betsi Cadwaladr</option>
+                                <option value="Cardiff and Vale">Cardiff and Vale</option>
+                                <option value="Cwm Taf Morgannwg">Cwm Taf Morgannwg</option>
+                                <option value="Hywel Dda">Hywel Dda</option>
+                                <option value="Powys">Powys</option>
+                                <option value="Swansea Bay">Swansea Bay</option>
+                            </select>
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="computerSystem">Computer System</label>
+                            <select id="computerSystem" class="form-select" required>
+                                <option value="">Select system...</option>
+                                <option value="EMIS">EMIS</option>
+                                <option value="Vision">Vision</option>
+                                <option value="TPP">TPP</option>
+                            </select>
+                            <div class="form-error"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="address">Address</label>
+                        <input type="text" id="address" class="form-input" placeholder="Street address" required>
+                        <div class="form-error"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="city">City / Town</label>
+                            <input type="text" id="city" class="form-input" placeholder="City" required>
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="postcode">Postcode</label>
+                            <input type="text" id="postcode" class="form-input" placeholder="e.g. NP9 9PS" required>
+                            <div class="form-error"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="practicePhone">Phone Number</label>
+                        <input type="tel" id="practicePhone" class="form-input" placeholder="01633 274000" required data-validate="tel">
+                        <div class="form-error"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="partners">Number of Partners</label>
+                            <input type="number" id="partners" class="form-input" placeholder="e.g. 4" min="1" max="20" required>
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="patientListSize">Patient List Size</label>
+                            <input type="number" id="patientListSize" class="form-input" placeholder="e.g. 8500" min="100" required>
+                            <div class="form-error"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Contact Person -->
+                <div class="form-step" id="step2" style="display:none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="contactName">Contact Name</label>
+                            <input type="text" id="contactName" class="form-input" placeholder="Full name" required>
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="contactRole">Role</label>
+                            <input type="text" id="contactRole" class="form-input" placeholder="e.g. Practice Manager" required>
+                            <div class="form-error"></div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="contactEmail">Email Address</label>
+                            <input type="email" id="contactEmail" class="form-input" placeholder="manager@practice.wales" required data-validate="email">
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="contactPhone">Phone Number</label>
+                            <input type="tel" id="contactPhone" class="form-input" placeholder="01633 274001" required data-validate="tel">
+                            <div class="form-error"></div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="password">Password</label>
+                            <div class="password-wrapper">
+                                <input type="password" id="password" class="form-input" placeholder="Min 6 characters" required data-validate="password">
+                                <button type="button" class="password-toggle" onclick="togglePw('password', this)" aria-label="Show password">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="confirmPassword">Confirm Password</label>
+                            <div class="password-wrapper">
+                                <input type="password" id="confirmPassword" class="form-input" placeholder="Confirm password" required data-validate="password-confirm">
+                                <button type="button" class="password-toggle" onclick="togglePw('confirmPassword', this)" aria-label="Show password">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                            <div class="form-error"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div style="display:flex; justify-content:space-between; margin-top:32px;">
+                    <button type="button" class="btn btn-ghost" id="btnBack" style="display:none;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                        Back
+                    </button>
+                    <div style="flex:1;"></div>
+                    <button type="button" class="btn btn-primary" id="btnNext">Next Step</button>
+                </div>
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="login.html">Log In</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        (function() {
+            initMockData();
+
+            let currentStep = 1;
+            const totalSteps = 2;
+
+            const btnNext = document.getElementById('btnNext');
+            const btnBack = document.getElementById('btnBack');
+            const stepper = document.getElementById('stepper');
+
+            function showStep(step) {
+                for (let i = 1; i <= totalSteps; i++) {
+                    document.getElementById('step' + i).style.display = i === step ? 'block' : 'none';
+                }
+
+                const steps = stepper.querySelectorAll('.step');
+                const lines = stepper.querySelectorAll('.step-line');
+                steps.forEach((s, idx) => {
+                    const num = idx + 1;
+                    s.classList.remove('active', 'completed');
+                    if (num < step) s.classList.add('completed');
+                    else if (num === step) s.classList.add('active');
+                });
+                lines.forEach((l, idx) => {
+                    l.classList.toggle('completed', idx + 1 < step);
+                });
+
+                btnBack.style.display = step > 1 ? 'inline-flex' : 'none';
+                btnNext.textContent = step === totalSteps ? 'Create Account' : 'Next Step';
+            }
+
+            function validateCurrentStep() {
+                const stepEl = document.getElementById('step' + currentStep);
+                const fields = stepEl.querySelectorAll('[required], [data-validate]');
+                let valid = true;
+                fields.forEach(field => {
+                    const error = FormValidator.validateField(field);
+                    const errorEl = field.closest('.form-group')?.querySelector('.form-error');
+                    if (error) {
+                        valid = false;
+                        field.classList.add('error');
+                        if (errorEl) errorEl.textContent = error;
+                    } else {
+                        field.classList.remove('error');
+                        if (errorEl) errorEl.textContent = '';
+                    }
+                });
+                return valid;
+            }
+
+            btnNext.addEventListener('click', function() {
+                if (!validateCurrentStep()) return;
+
+                if (currentStep < totalSteps) {
+                    currentStep++;
+                    showStep(currentStep);
+                } else {
+                    // Final submit
+                    const data = getMockData();
+                    const newId = 'prac-' + String(data.practices.length + 1).padStart(3, '0');
+                    const email = document.getElementById('contactEmail').value.trim();
+
+                    const newPractice = {
+                        id: newId,
+                        email: email,
+                        password: document.getElementById('password').value,
+                        role: 'practice',
+                        practiceName: document.getElementById('practiceName').value.trim(),
+                        healthBoard: document.getElementById('healthBoard').value,
+                        address: document.getElementById('address').value.trim(),
+                        city: document.getElementById('city').value.trim(),
+                        postcode: document.getElementById('postcode').value.trim(),
+                        phone: document.getElementById('practicePhone').value.trim(),
+                        website: '',
+                        computerSystem: document.getElementById('computerSystem').value,
+                        partners: parseInt(document.getElementById('partners').value),
+                        patientListSize: parseInt(document.getElementById('patientListSize').value),
+                        contactName: document.getElementById('contactName').value.trim(),
+                        contactRole: document.getElementById('contactRole').value.trim(),
+                        contactEmail: email,
+                        contactPhone: document.getElementById('contactPhone').value.trim()
+                    };
+
+                    data.practices.push(newPractice);
+                    saveMockData(data);
+
+                    // Log in automatically
+                    const session = Auth.login(newPractice.email, newPractice.password);
+                    if (session) {
+                        Toast.show('Practice registered successfully! Welcome to GPRN.', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'practice-dashboard.html';
+                        }, 800);
+                    }
+                }
+            });
+
+            btnBack.addEventListener('click', function() {
+                if (currentStep > 1) {
+                    currentStep--;
+                    showStep(currentStep);
+                }
+            });
+
+            showStep(1);
+        })();
+
+        function togglePw(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            btn.innerHTML = isPassword
+                ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+                : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Links & Resources - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage()) throw new Error('Auth required');
+
+        const role = Auth.getRole();
+        const pageContent = initAppLayout(role, 'links', 'Links & Resources');
+
+        function linkCard(href, icon, title, desc) {
+            return `
+            <a href="${href}" target="_blank" rel="noopener noreferrer" class="link-card">
+                <div class="link-card-icon">${getIcon(icon)}</div>
+                <div>
+                    <div class="link-card-title">${title}</div>
+                    <div class="link-card-desc">${desc}</div>
+                </div>
+            </a>`;
+        }
+
+        const html = `
+        <h2 style="font-size: 1.25rem; margin-bottom: 24px;">Useful Links and Resources</h2>
+
+        <!-- Locum Specific -->
+        <div class="content-card" style="margin-bottom: 24px;">
+            <div class="content-card-header">
+                <h2>Locum Specific</h2>
+            </div>
+            <div class="content-card-body" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
+                ${linkCard('https://www.nasgp.org.uk', 'users', 'NASGP', 'National Association of Sessional GPs - advocacy, resources and community for sessional and locum GPs across the UK.')}
+                ${linkCard('https://www.locumorganiser.co.uk', 'briefcase', 'Locum Organiser', 'Manage your bookings, invoices, pension contributions and tax returns in one place. Essential tool for locum GPs.')}
+            </div>
+        </div>
+
+        <!-- Welsh GPs -->
+        <div class="content-card" style="margin-bottom: 24px;">
+            <div class="content-card-header">
+                <h2>Welsh GPs</h2>
+            </div>
+            <div class="content-card-body" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
+                ${linkCard('https://gpone.wales.nhs.uk', 'home', 'GP One', 'Central hub for Welsh GP information, including guidance, updates and resources for primary care in Wales.')}
+                ${linkCard('https://abuhb.nhs.wales', 'activity', 'Aneurin Bevan UHB', 'Aneurin Bevan University Health Board covering Gwent, Newport and surrounding areas.')}
+                ${linkCard('https://bcuhb.nhs.wales', 'activity', 'Betsi Cadwaladr UHB', 'Betsi Cadwaladr University Health Board covering North Wales.')}
+                ${linkCard('https://cavuhb.nhs.wales', 'activity', 'Cardiff and Vale UHB', 'Cardiff and Vale University Health Board covering Cardiff and the Vale of Glamorgan.')}
+                ${linkCard('https://ctmuhb.nhs.wales', 'activity', 'Cwm Taf Morgannwg UHB', 'Cwm Taf Morgannwg University Health Board covering the Valleys and Bridgend.')}
+                ${linkCard('https://hduhb.nhs.wales', 'activity', 'Hywel Dda UHB', 'Hywel Dda University Health Board covering West Wales including Carmarthenshire, Ceredigion and Pembrokeshire.')}
+                ${linkCard('https://pthb.nhs.wales', 'activity', 'Powys THB', 'Powys Teaching Health Board covering Mid Wales.')}
+                ${linkCard('https://sbuhb.nhs.wales', 'activity', 'Swansea Bay UHB', 'Swansea Bay University Health Board covering Swansea and Neath Port Talbot.')}
+            </div>
+        </div>
+
+        <!-- Resources -->
+        <div class="content-card">
+            <div class="content-card-header">
+                <h2>Resources</h2>
+            </div>
+            <div class="content-card-body" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
+                ${linkCard('https://www.nhs.wales', 'award', 'NHS Wales', 'Official NHS Wales website with health services information, policies, and resources for healthcare professionals.')}
+                ${linkCard('https://heiw.nhs.wales', 'award', 'HEIW', 'Health Education and Improvement Wales - education, training and workforce development for NHS Wales.')}
+                ${linkCard('https://www.bma.org.uk/pay-and-contracts/locum-and-freelance-gps', 'file-text', 'BMA Locum GP Guidance', 'British Medical Association guidance for locum GPs on contracts, rates, rights and best practice.')}
+            </div>
+        </div>`;
+
+        pageContent.innerHTML = html;
+    </script>
+</body>
+</html>

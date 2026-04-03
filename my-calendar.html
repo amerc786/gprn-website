@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Calendar - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('locum')) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const data = getMockData();
+        const pageContent = initAppLayout('locum', 'calendar', 'My Calendar');
+
+        const today = new Date();
+        let viewYear = today.getFullYear();
+        let viewMonth = today.getMonth();
+        let selectedDate = null;
+
+        const myOffers = data.offers.filter(o => o.locumId === session.id);
+        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+        function getEventsForDate(dateStr) {
+            const events = [];
+            // Accepted/booked offers
+            myOffers.filter(o => o.shiftDate === dateStr && o.status === 'accepted').forEach(o => {
+                events.push({ type: 'booked', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
+            });
+            // Pending offers
+            myOffers.filter(o => o.shiftDate === dateStr && o.status === 'pending').forEach(o => {
+                events.push({ type: 'pending', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
+            });
+            // Available shifts (not already offered on)
+            const offeredShiftDates = myOffers.map(o => o.shiftDate + '|' + o.practiceName);
+            data.shifts.filter(s => s.date === dateStr && s.status === 'open').forEach(s => {
+                const key = s.date + '|' + s.practiceName;
+                if (!offeredShiftDates.includes(key)) {
+                    events.push({ type: 'available', label: s.practiceName, sessionType: s.sessionType, time: s.startTime + ' - ' + s.endTime, data: s });
+                }
+            });
+            return events;
+        }
+
+        function renderCalendar() {
+            const daysInMonth = DateUtils.getDaysInMonth(viewYear, viewMonth);
+            const firstDay = DateUtils.getFirstDayOfMonth(viewYear, viewMonth); // Monday = 0
+            const todayStr = DateUtils.toISO(today);
+
+            // Previous month days to fill
+            const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
+            const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
+            const daysInPrevMonth = DateUtils.getDaysInMonth(prevYear, prevMonth);
+
+            let cells = '';
+
+            // Previous month trailing days
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const day = daysInPrevMonth - i;
+                const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const events = getEventsForDate(dateStr);
+                cells += `
+                    <div class="calendar-day-cell other-month" data-date="${dateStr}">
+                        <div class="cal-date">${day}</div>
+                        ${events.slice(0, 2).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('')}
+                    </div>`;
+            }
+
+            // Current month days
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDate;
+                const events = getEventsForDate(dateStr);
+                cells += `
+                    <div class="calendar-day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-date="${dateStr}" style="${isSelected ? 'background: rgba(79,70,229,0.1); outline: 2px solid var(--primary); outline-offset: -2px;' : ''}">
+                        <div class="cal-date">${d}</div>
+                        ${events.slice(0, 3).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('')}
+                        ${events.length > 3 ? `<div style="font-size: 0.65rem; color: var(--dark-600);">+${events.length - 3} more</div>` : ''}
+                    </div>`;
+            }
+
+            // Next month fill to complete the grid
+            const totalCells = firstDay + daysInMonth;
+            const remainder = totalCells % 7;
+            if (remainder > 0) {
+                const nextMonth = viewMonth === 11 ? 0 : viewMonth + 1;
+                const nextYear = viewMonth === 11 ? viewYear + 1 : viewYear;
+                for (let d = 1; d <= (7 - remainder); d++) {
+                    const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const events = getEventsForDate(dateStr);
+                    cells += `
+                        <div class="calendar-day-cell other-month" data-date="${dateStr}">
+                            <div class="cal-date">${d}</div>
+                            ${events.slice(0, 2).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('')}
+                        </div>`;
+                }
+            }
+
+            // Day detail section
+            let dayDetail = '';
+            if (selectedDate) {
+                const selEvents = getEventsForDate(selectedDate);
+                dayDetail = `
+                    <div class="content-card" style="margin-top: 24px;">
+                        <div class="content-card-header">
+                            <h2>Shifts for ${DateUtils.format(selectedDate, 'full')}</h2>
+                        </div>
+                        <div class="content-card-body">
+                            ${selEvents.length === 0
+                                ? '<p style="font-size: 0.88rem; color: var(--dark-600);">No shifts on this day.</p>'
+                                : selEvents.map(e => `
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <div class="cal-event cal-event-${e.type}" style="display: inline-block; margin: 0; padding: 4px 10px; font-size: 0.75rem;">${e.type === 'booked' ? 'Booked' : e.type === 'pending' ? 'Pending' : 'Available'}</div>
+                                            <div>
+                                                <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${e.label}</div>
+                                                <div style="font-size: 0.82rem; color: var(--dark-600);">${e.sessionType} &bull; ${e.time}</div>
+                                            </div>
+                                        </div>
+                                        ${e.type === 'available' && e.data.id ? `<a href="shift-detail.html?id=${e.data.id}" class="btn btn-primary btn-small">View</a>` : ''}
+                                    </div>
+                                `).join('')
+                            }
+                        </div>
+                    </div>`;
+            }
+
+            pageContent.innerHTML = `
+                <div class="calendar-container">
+                    <div class="calendar-header-bar">
+                        <div class="calendar-nav">
+                            <button id="calPrev">${getIcon('chevron-left')}</button>
+                            <span class="calendar-title">${monthNames[viewMonth]} ${viewYear}</span>
+                            <button id="calNext">${getIcon('chevron-right')}</button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <button class="btn btn-secondary btn-small" id="calToday">Today</button>
+                            <div style="display: flex; align-items: center; gap: 16px; font-size: 0.78rem;">
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="width: 10px; height: 10px; border-radius: 3px; background: var(--primary);"></span> Booked
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(16,185,129,0.5);"></span> Available
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(245,158,11,0.5);"></span> Pending
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="calendar-grid-full">
+                        ${dayNames.map(d => `<div class="calendar-day-header">${d}</div>`).join('')}
+                        ${cells}
+                    </div>
+                </div>
+                ${dayDetail}
+            `;
+
+            // Bind navigation
+            document.getElementById('calPrev').addEventListener('click', function() {
+                viewMonth--;
+                if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+                renderCalendar();
+            });
+            document.getElementById('calNext').addEventListener('click', function() {
+                viewMonth++;
+                if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+                renderCalendar();
+            });
+            document.getElementById('calToday').addEventListener('click', function() {
+                viewYear = today.getFullYear();
+                viewMonth = today.getMonth();
+                selectedDate = todayStr;
+                renderCalendar();
+            });
+
+            // Bind day click
+            document.querySelectorAll('.calendar-day-cell').forEach(cell => {
+                cell.addEventListener('click', function() {
+                    selectedDate = this.dataset.date;
+                    renderCalendar();
+                });
+            });
+        }
+
+        renderCalendar();
+    </script>
+</body>
+</html>

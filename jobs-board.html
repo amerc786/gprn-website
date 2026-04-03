@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jobs Board - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage()) throw new Error('Auth required');
+
+        const role = Auth.getRole();
+        const pageContent = initAppLayout(role, 'jobs', 'Jobs Board');
+        const data = getMockData();
+
+        function renderJobs(filterBoard) {
+            const jobs = filterBoard
+                ? data.jobs.filter(j => j.healthBoard === filterBoard)
+                : data.jobs;
+
+            // Group by health board
+            const grouped = {};
+            jobs.forEach(job => {
+                if (!grouped[job.healthBoard]) grouped[job.healthBoard] = [];
+                grouped[job.healthBoard].push(job);
+            });
+
+            // Get all health boards for filter
+            const allBoards = [...new Set(data.jobs.map(j => j.healthBoard))].sort();
+
+            let html = `
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
+                <h2 style="font-size: 1.25rem;">Permanent & Salaried Positions</h2>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    ${getIcon('filter')}
+                    <select id="boardFilter" class="form-input" style="width: auto; min-width: 200px; padding: 8px 12px; font-size: 0.88rem;">
+                        <option value="">All Health Boards</option>
+                        ${allBoards.map(b => `<option value="${b}" ${filterBoard === b ? 'selected' : ''}>${b}</option>`).join('')}
+                    </select>
+                </div>
+            </div>`;
+
+            const sortedBoards = Object.keys(grouped).sort();
+
+            if (sortedBoards.length === 0) {
+                html += renderEmptyState('briefcase', 'No Jobs Found', 'No positions match the selected health board filter.', null, null);
+            } else {
+                sortedBoards.forEach(board => {
+                    html += `<h3 style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 12px; margin-top: 20px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100);">
+                        <span class="badge badge-primary" style="margin-right: 8px;">${board}</span>
+                    </h3>`;
+
+                    grouped[board].forEach(job => {
+                        const typeBadgeClass = job.type === 'Partnership' ? 'badge-coral' :
+                                               job.type === 'Permanent' ? 'badge-success' :
+                                               job.type === 'Maternity Cover' ? 'badge-warning' : 'badge-info';
+                        html += `
+                        <div class="shift-card-full" style="margin-bottom: 16px;">
+                            <div class="shift-card-header">
+                                <div>
+                                    <h3 class="shift-card-title">${job.practiceName}</h3>
+                                    <p class="shift-card-location">${job.healthBoard}</p>
+                                </div>
+                                <div class="shift-card-badges">
+                                    <span class="badge ${typeBadgeClass}">${job.type}</span>
+                                </div>
+                            </div>
+                            <h4 style="font-size: 1rem; margin: 8px 0 4px; padding: 0 4px;">${job.title}</h4>
+                            <div class="shift-card-details">
+                                <div class="shift-card-detail">
+                                    ${getIcon('calendar')}
+                                    <span>${job.sessions}</span>
+                                </div>
+                                <div class="shift-card-detail">
+                                    ${getIcon('clock')}
+                                    <span>${job.duration}</span>
+                                </div>
+                                <div class="shift-card-detail">
+                                    ${getIcon('pound')}
+                                    <span>${job.salary}</span>
+                                </div>
+                                <div class="shift-card-detail">
+                                    ${getIcon('file-text')}
+                                    <span>Closes: ${DateUtils.format(job.closingDate, 'medium')}</span>
+                                </div>
+                            </div>
+                            <p style="font-size: 0.88rem; color: var(--dark-600); line-height: 1.6; margin-top: 12px; padding: 0 4px;">${job.description}</p>
+                            <div class="shift-card-footer" style="margin-top: 12px;">
+                                <a href="mailto:${job.contactEmail}" style="font-size: 0.85rem; color: var(--primary); display: flex; align-items: center; gap: 6px;">
+                                    ${getIcon('mail')}
+                                    ${job.contactEmail}
+                                </a>
+                                <button class="btn btn-primary btn-small" onclick="Toast.show('Job advert download simulated for ${job.title}', 'info')">
+                                    ${getIcon('download')}
+                                    Download Job Advert
+                                </button>
+                            </div>
+                        </div>`;
+                    });
+                });
+            }
+
+            pageContent.innerHTML = html;
+
+            // Attach filter listener
+            document.getElementById('boardFilter').addEventListener('change', function() {
+                renderJobs(this.value || null);
+            });
+        }
+
+        renderJobs(null);
+    </script>
+</body>
+</html>

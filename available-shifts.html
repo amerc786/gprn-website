@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Shifts - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('locum')) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const data = getMockData();
+        const pageContent = initAppLayout('locum', 'shifts', 'Available Shifts');
+
+        const SHIFTS_PER_PAGE = 10;
+        let currentPage = 1;
+        let filteredShifts = [...data.shifts].filter(s => s.status === 'open');
+
+        const healthBoards = [
+            'All Health Boards',
+            'Aneurin Bevan',
+            'Betsi Cadwaladr',
+            'Cardiff and Vale',
+            'Cwm Taf Morgannwg',
+            'Hywel Dda',
+            'Powys',
+            'Swansea Bay'
+        ];
+
+        function renderPage() {
+            const totalPages = Math.ceil(filteredShifts.length / SHIFTS_PER_PAGE);
+            const startIdx = (currentPage - 1) * SHIFTS_PER_PAGE;
+            const pageShifts = filteredShifts.slice(startIdx, startIdx + SHIFTS_PER_PAGE);
+
+            pageContent.innerHTML = `
+                <div class="filter-bar">
+                    <div class="form-group">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-input" id="filterDate">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Health Board</label>
+                        <select class="form-select" id="filterHealthBoard">
+                            ${healthBoards.map(hb => `<option value="${hb === 'All Health Boards' ? '' : hb}">${hb}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Shift Type</label>
+                        <select class="form-select" id="filterShiftType">
+                            <option value="">Any</option>
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                            <option value="Full Day">Full Day</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-input" id="filterSearch" placeholder="Practice name, city...">
+                    </div>
+                    <div class="form-group" style="flex: 0;">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-primary btn-small" id="filterBtn">${getIcon('filter')} Filter</button>
+                    </div>
+                </div>
+
+                <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 16px;">
+                    <strong>${filteredShifts.length}</strong> shift${filteredShifts.length !== 1 ? 's' : ''} available for you to apply
+                </p>
+
+                <div id="shiftsList">
+                    ${pageShifts.length === 0
+                        ? renderEmptyState('search', 'No shifts found', 'No shifts match your current filters. Try adjusting your search criteria.')
+                        : pageShifts.map(shift => renderShiftCard(shift)).join('')
+                    }
+                </div>
+
+                <div id="paginationContainer">
+                    ${renderPagination(currentPage, totalPages)}
+                </div>
+            `;
+
+            // Bind filter button
+            document.getElementById('filterBtn').addEventListener('click', applyFilters);
+
+            // Bind Enter key on search
+            document.getElementById('filterSearch').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') applyFilters();
+            });
+
+            // Bind pagination
+            document.querySelectorAll('.page-btn[data-page]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const page = parseInt(this.dataset.page);
+                    if (page !== currentPage && page >= 1 && page <= totalPages) {
+                        currentPage = page;
+                        renderPage();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                });
+            });
+        }
+
+        function applyFilters() {
+            const dateVal = document.getElementById('filterDate').value;
+            const hbVal = document.getElementById('filterHealthBoard').value;
+            const typeVal = document.getElementById('filterShiftType').value;
+            const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
+
+            filteredShifts = data.shifts.filter(s => {
+                if (s.status !== 'open') return false;
+                if (dateVal && s.date !== dateVal) return false;
+                if (hbVal && s.healthBoard !== hbVal) return false;
+                if (typeVal && s.sessionType !== typeVal) return false;
+                if (searchVal) {
+                    const haystack = (s.practiceName + ' ' + s.city + ' ' + s.healthBoard).toLowerCase();
+                    if (!haystack.includes(searchVal)) return false;
+                }
+                return true;
+            });
+
+            currentPage = 1;
+            renderPage();
+        }
+
+        renderPage();
+    </script>
+</body>
+</html>

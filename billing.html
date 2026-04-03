@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('practice')) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const data = getMockData();
+        const pageContent = initAppLayout('practice', 'billing', 'Billing');
+
+        // Generate mock invoices from completed offers
+        const locums = data.locums;
+        const invoiceStatuses = ['Paid', 'Pending', 'Paid', 'Paid', 'Overdue', 'Paid', 'Pending', 'Paid', 'Paid', 'Paid', 'Pending', 'Paid'];
+        const today = new Date();
+
+        const invoices = [];
+        for (let i = 0; i < 12; i++) {
+            const loc = locums[i % locums.length];
+            const invoiceDate = new Date(today);
+            invoiceDate.setDate(today.getDate() - (i * 5 + 2));
+            const shiftDate = new Date(invoiceDate);
+            shiftDate.setDate(invoiceDate.getDate() - 1);
+
+            const sessionTypes = ['AM', 'PM', 'Full Day'];
+            const sType = sessionTypes[i % 3];
+            let amount;
+            if (sType === 'Full Day') amount = loc.rates.fullDay;
+            else if (sType === 'AM') amount = loc.rates.am;
+            else amount = loc.rates.pm;
+
+            invoices.push({
+                id: `INV-${String(2026000 + i + 1)}`,
+                date: invoiceDate.toISOString().split('T')[0],
+                locumName: `${loc.title} ${loc.firstName} ${loc.lastName}`,
+                locumId: loc.id,
+                shiftDate: shiftDate.toISOString().split('T')[0],
+                sessionType: sType,
+                amount: amount,
+                status: invoiceStatuses[i],
+                month: invoiceDate.getMonth()
+            });
+        }
+
+        // Compute summaries
+        const currentMonth = today.getMonth();
+        const thisMonthInvoices = invoices.filter(inv => new Date(inv.date).getMonth() === currentMonth);
+        const totalThisMonth = thisMonthInvoices.reduce((s, inv) => s + inv.amount, 0);
+        const outstanding = invoices.filter(inv => inv.status === 'Pending' || inv.status === 'Overdue').reduce((s, inv) => s + inv.amount, 0);
+        const paid = invoices.filter(inv => inv.status === 'Paid').reduce((s, inv) => s + inv.amount, 0);
+
+        let filterMonth = '';
+        let filterStatus = '';
+
+        function getFilteredInvoices() {
+            let filtered = [...invoices];
+            if (filterMonth !== '') {
+                filtered = filtered.filter(inv => new Date(inv.date).getMonth() === parseInt(filterMonth));
+            }
+            if (filterStatus) {
+                filtered = filtered.filter(inv => inv.status === filterStatus);
+            }
+            return filtered;
+        }
+
+        function getStatusBadgeClass(status) {
+            switch (status) {
+                case 'Paid': return 'badge-success';
+                case 'Pending': return 'badge-warning';
+                case 'Overdue': return 'badge-danger';
+                default: return 'badge-neutral';
+            }
+        }
+
+        function render() {
+            filterMonth = document.getElementById('filterMonth') ? document.getElementById('filterMonth').value : filterMonth;
+            filterStatus = document.getElementById('filterInvStatus') ? document.getElementById('filterInvStatus').value : filterStatus;
+
+            const filtered = getFilteredInvoices();
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+            pageContent.innerHTML = `
+                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
+                    Billing
+                </h1>
+
+                <div class="dash-stats-row" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 32px;">
+                    ${renderStatCard('pound', 'Total This Month', formatCurrency(totalThisMonth), null, null)}
+                    ${renderStatCard('clock', 'Outstanding', formatCurrency(outstanding), null, null)}
+                    ${renderStatCard('check', 'Paid', formatCurrency(paid), null, null)}
+                </div>
+
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2>Invoices</h2>
+                    </div>
+                    <div style="padding: 16px 24px; border-bottom: 1px solid var(--gray-100);">
+                        <div class="filter-bar" style="margin-bottom: 0;">
+                            <div class="form-group">
+                                <label class="form-label">Month</label>
+                                <select id="filterMonth" class="form-select" onchange="render()">
+                                    <option value="">All Months</option>
+                                    ${months.map((m, i) => `<option value="${i}" ${filterMonth === String(i) ? 'selected' : ''}>${m}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Status</label>
+                                <select id="filterInvStatus" class="form-select" onchange="render()">
+                                    <option value="" ${filterStatus === '' ? 'selected' : ''}>All Statuses</option>
+                                    <option value="Paid" ${filterStatus === 'Paid' ? 'selected' : ''}>Paid</option>
+                                    <option value="Pending" ${filterStatus === 'Pending' ? 'selected' : ''}>Pending</option>
+                                    <option value="Overdue" ${filterStatus === 'Overdue' ? 'selected' : ''}>Overdue</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="content-card-body" style="padding: 0; overflow-x: auto;">
+                        ${filtered.length === 0 ? `
+                            <div class="empty-state" style="padding: 40px;">
+                                <p style="color: var(--dark-600);">No invoices match your filters.</p>
+                            </div>
+                        ` : `
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Date</th>
+                                    <th>Locum</th>
+                                    <th>Shift Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filtered.map(inv => `
+                                    <tr>
+                                        <td><strong style="color: var(--dark);">${inv.id}</strong></td>
+                                        <td>${DateUtils.format(inv.date, 'short')}</td>
+                                        <td>
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <div class="header-avatar" style="width: 28px; height: 28px; font-size: 0.6rem;">${getInitials(inv.locumName)}</div>
+                                                ${inv.locumName}
+                                            </div>
+                                        </td>
+                                        <td>${DateUtils.format(inv.shiftDate, 'medium')}</td>
+                                        <td><strong style="color: var(--dark);">${formatCurrency(inv.amount)}</strong></td>
+                                        <td><span class="badge ${getStatusBadgeClass(inv.status)}">${inv.status}</span></td>
+                                        <td>
+                                            <button class="btn btn-ghost btn-small" onclick="downloadInvoice('${inv.id}')">
+                                                ${getIcon('download')}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        render();
+
+        function downloadInvoice(invoiceId) {
+            Toast.show('Downloading ' + invoiceId + '...', 'info');
+            setTimeout(() => {
+                Toast.show('Invoice downloaded successfully.', 'success');
+            }, 1500);
+        }
+    </script>
+</body>
+</html>

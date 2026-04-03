@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="auth-page">
+        <div class="hero-bg-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+        </div>
+
+        <div class="auth-card">
+            <div class="auth-logo">
+                <a href="index.html" class="logo">
+                    <span class="logo-icon">GP</span><span class="logo-text">RN</span>
+                </a>
+                <p>The Right GP, Right Now</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="locum" id="tabLocum">Locum GP</button>
+                <button class="auth-tab" data-tab="practice" id="tabPractice">Practice Manager</button>
+            </div>
+
+            <form id="loginForm" novalidate>
+                <div class="form-group">
+                    <label class="form-label" for="email">Email Address</label>
+                    <input type="email" id="email" class="form-input" placeholder="you@example.com" required data-validate="email">
+                    <div class="form-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+                        <button type="button" class="password-toggle" id="pwToggle" aria-label="Show password">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                    <div class="form-error"></div>
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                    <label class="form-checkbox">
+                        <input type="checkbox" id="remember"> Remember me
+                    </label>
+                    <a href="forgot-password.html" style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">Forgot Password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">Log In</button>
+            </form>
+
+            <div class="auth-footer">
+                Don't have an account? <a href="register-locum.html" id="registerLink">Register</a>
+            </div>
+
+            <div class="demo-credentials">
+                <strong>Demo Credentials</strong><br>
+                <span style="display:inline-block; margin-top:4px;">Locum: <code>sarah.williams@gprn.wales</code> / <code>password</code></span><br>
+                <span>Practice: <code>manager@ringland.wales</code> / <code>password</code></span>
+            </div>
+        </div>
+    </div>
+
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        (function() {
+            // If already logged in, redirect
+            if (Auth.isLoggedIn()) {
+                const role = Auth.getRole();
+                window.location.href = role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html';
+                return;
+            }
+
+            initMockData();
+
+            let activeTab = 'locum';
+
+            const tabLocum = document.getElementById('tabLocum');
+            const tabPractice = document.getElementById('tabPractice');
+            const registerLink = document.getElementById('registerLink');
+            const loginForm = document.getElementById('loginForm');
+            const pwToggle = document.getElementById('pwToggle');
+            const passwordInput = document.getElementById('password');
+
+            // Tab switching
+            function setTab(tab) {
+                activeTab = tab;
+                tabLocum.classList.toggle('active', tab === 'locum');
+                tabPractice.classList.toggle('active', tab === 'practice');
+                registerLink.href = tab === 'locum' ? 'register-locum.html' : 'register-practice.html';
+            }
+
+            tabLocum.addEventListener('click', () => setTab('locum'));
+            tabPractice.addEventListener('click', () => setTab('practice'));
+
+            // Password toggle
+            pwToggle.addEventListener('click', function() {
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                this.innerHTML = isPassword
+                    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+                    : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+            });
+
+            // Form submit
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (!FormValidator.validate(this)) return;
+
+                const email = document.getElementById('email').value.trim();
+                const pw = document.getElementById('password').value;
+
+                const session = Auth.login(email, pw);
+                if (session) {
+                    Toast.show('Welcome back, ' + session.firstName + '!', 'success');
+                    setTimeout(() => {
+                        window.location.href = session.role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html';
+                    }, 600);
+                } else {
+                    Toast.show('Invalid email or password. Please try again.', 'error');
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

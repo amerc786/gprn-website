@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Locums - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('practice')) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const data = getMockData();
+        const pageContent = initAppLayout('practice', 'find-locums', 'Find Locums');
+
+        let sortBy = 'reliability';
+
+        function getHealthBoards() {
+            return [...new Set(data.locums.flatMap(l => l.healthBoards))].sort();
+        }
+
+        function getComputerSystems() {
+            return [...new Set(data.locums.flatMap(l => l.computerSystems))].sort();
+        }
+
+        function renderLocums() {
+            const nameSearch = document.getElementById('searchName') ? document.getElementById('searchName').value.toLowerCase() : '';
+            const hbFilter = document.getElementById('filterHB') ? document.getElementById('filterHB').value : '';
+            const csFilter = document.getElementById('filterCS') ? document.getElementById('filterCS').value : '';
+            sortBy = document.getElementById('sortBy') ? document.getElementById('sortBy').value : sortBy;
+
+            let locums = [...data.locums];
+
+            if (nameSearch) {
+                locums = locums.filter(l =>
+                    `${l.firstName} ${l.lastName}`.toLowerCase().includes(nameSearch) ||
+                    `${l.title} ${l.firstName} ${l.lastName}`.toLowerCase().includes(nameSearch)
+                );
+            }
+            if (hbFilter) {
+                locums = locums.filter(l => l.healthBoards.includes(hbFilter));
+            }
+            if (csFilter) {
+                locums = locums.filter(l => l.computerSystems.includes(csFilter));
+            }
+
+            switch (sortBy) {
+                case 'reliability':
+                    locums.sort((a, b) => b.bookingReliability - a.bookingReliability);
+                    break;
+                case 'name':
+                    locums.sort((a, b) => a.lastName.localeCompare(b.lastName));
+                    break;
+                case 'experience':
+                    locums.sort((a, b) => b.totalShifts - a.totalShifts);
+                    break;
+            }
+
+            if (locums.length === 0) {
+                return renderEmptyState('search', 'No Locums Found', 'Try adjusting your search filters.');
+            }
+
+            return `
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+                    ${locums.map(loc => {
+                        const reliabilityColor = loc.bookingReliability >= 95 ? 'var(--success)' : (loc.bookingReliability >= 85 ? 'var(--warning)' : 'var(--danger)');
+                        return `
+                        <div class="content-card" style="margin-bottom: 0;">
+                            <div class="content-card-body" style="padding: 20px;">
+                                <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+                                    <div class="header-avatar" style="width: 48px; height: 48px; font-size: 0.9rem; flex-shrink: 0;">${getInitials(loc.firstName + ' ' + loc.lastName)}</div>
+                                    <div>
+                                        <h3 style="font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: 2px;">${loc.title} ${loc.firstName} ${loc.lastName}</h3>
+                                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                            ${loc.computerSystems.map(cs => `<span class="badge badge-primary">${cs}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="margin-bottom: 12px;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
+                                        <span style="color: var(--dark-600);">Reliability</span>
+                                        <span style="font-weight: 700; color: ${reliabilityColor};">${loc.bookingReliability}%</span>
+                                    </div>
+                                    <div class="coverage-bar">
+                                        <div class="coverage-fill" style="width: ${loc.bookingReliability}%; background: ${reliabilityColor};"></div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 16px; margin-bottom: 16px; font-size: 0.82rem; color: var(--dark-600);">
+                                    <div style="display: flex; align-items: center; gap: 4px;">
+                                        ${getIcon('clock')}
+                                        <span>${loc.responseTime}</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 4px;">
+                                        ${getIcon('activity')}
+                                        <span>${loc.totalShifts} shifts</span>
+                                    </div>
+                                </div>
+
+                                <a href="locum-profile-view.html?id=${loc.id}" class="btn btn-primary btn-small" style="width: 100%; justify-content: center;">
+                                    View Profile
+                                </a>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>`;
+        }
+
+        function render() {
+            const nameVal = document.getElementById('searchName') ? document.getElementById('searchName').value : '';
+            const hbVal = document.getElementById('filterHB') ? document.getElementById('filterHB').value : '';
+            const csVal = document.getElementById('filterCS') ? document.getElementById('filterCS').value : '';
+            const sortVal = document.getElementById('sortBy') ? document.getElementById('sortBy').value : sortBy;
+
+            pageContent.innerHTML = `
+                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
+                    Find Locums
+                </h1>
+
+                <div class="filter-bar">
+                    <div class="form-group" style="flex: 2;">
+                        <label class="form-label">Search by Name</label>
+                        <input type="text" id="searchName" class="form-input" placeholder="Search locum name..." value="${nameVal}" oninput="render()">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Health Board</label>
+                        <select id="filterHB" class="form-select" onchange="render()">
+                            <option value="">All Health Boards</option>
+                            ${getHealthBoards().map(hb => `<option value="${hb}" ${hbVal === hb ? 'selected' : ''}>${hb}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Computer System</label>
+                        <select id="filterCS" class="form-select" onchange="render()">
+                            <option value="">All Systems</option>
+                            ${getComputerSystems().map(cs => `<option value="${cs}" ${csVal === cs ? 'selected' : ''}>${cs}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Sort By</label>
+                        <select id="sortBy" class="form-select" onchange="render()">
+                            <option value="reliability" ${sortVal === 'reliability' ? 'selected' : ''}>Reliability</option>
+                            <option value="name" ${sortVal === 'name' ? 'selected' : ''}>Name</option>
+                            <option value="experience" ${sortVal === 'experience' ? 'selected' : ''}>Experience</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="locumsGrid">
+                    ${renderLocums()}
+                </div>
+            `;
+        }
+
+        render();
+    </script>
+</body>
+</html>

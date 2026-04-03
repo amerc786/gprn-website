@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPD Events - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage()) throw new Error('Auth required');
+
+        const role = Auth.getRole();
+        const pageContent = initAppLayout(role, 'cpd', 'CPD Events');
+        const data = getMockData();
+
+        // Separate web-based CPD from events
+        const webCpd = data.cpdEvents.filter(e => e.type === 'web');
+        const events = data.cpdEvents.filter(e => e.type === 'event');
+
+        // Group events by health board
+        const grouped = {};
+        events.forEach(evt => {
+            const hb = evt.healthBoard || 'General';
+            if (!grouped[hb]) grouped[hb] = [];
+            grouped[hb].push(evt);
+        });
+
+        let html = '';
+
+        // Web-based CPD card
+        html += `
+        <div class="content-card" style="margin-bottom: 24px;">
+            <div class="content-card-header">
+                <h2>Web-based CPD</h2>
+            </div>
+            <div class="content-card-body">
+                ${webCpd.map(item => `
+                <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <h3 style="font-size: 1.05rem; margin-bottom: 4px;">${item.title}</h3>
+                        <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 4px;">${item.provider}</p>
+                        <p style="font-size: 0.85rem; color: var(--dark-600); line-height: 1.6;">${item.description}</p>
+                    </div>
+                    <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-small">
+                        ${getIcon('external-link')}
+                        Visit HEIW Portal
+                    </a>
+                </div>
+                `).join('')}
+            </div>
+        </div>`;
+
+        // Upcoming Events card
+        html += `
+        <div class="content-card">
+            <div class="content-card-header">
+                <h2>Upcoming Events</h2>
+            </div>
+            <div class="content-card-body">`;
+
+        const sortedBoards = Object.keys(grouped).sort();
+        sortedBoards.forEach(board => {
+            html += `<h3 style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 12px; margin-top: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100);">
+                <span class="badge badge-primary" style="margin-right: 8px;">${board}</span>
+            </h3>`;
+
+            grouped[board].forEach(evt => {
+                html += `
+                <div class="shift-card-full" style="margin-bottom: 16px;">
+                    <div class="shift-card-header">
+                        <div>
+                            <h3 class="shift-card-title">${evt.title}</h3>
+                            <p class="shift-card-location">${evt.provider}</p>
+                        </div>
+                        <div class="shift-card-badges">
+                            <span class="badge badge-primary">${evt.healthBoard}</span>
+                        </div>
+                    </div>
+                    <div class="shift-card-details">
+                        <div class="shift-card-detail">
+                            ${getIcon('calendar')}
+                            <span>${DateUtils.format(evt.date, 'full')}</span>
+                        </div>
+                        <div class="shift-card-detail">
+                            ${getIcon('clock')}
+                            <span>${evt.time}</span>
+                        </div>
+                        <div class="shift-card-detail">
+                            ${getIcon('map-pin')}
+                            <span>${evt.location}</span>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.88rem; color: var(--dark-600); line-height: 1.6; margin-top: 12px; padding: 0 4px;">${evt.description}</p>
+                    <div class="shift-card-footer" style="margin-top: 12px;">
+                        <div></div>
+                        <button class="btn btn-primary btn-small" onclick="Toast.show('Registration interest submitted for ${evt.title}', 'success')">Register Interest</button>
+                    </div>
+                </div>`;
+            });
+        });
+
+        html += `</div></div>`;
+
+        pageContent.innerHTML = html;
+    </script>
+</body>
+</html>

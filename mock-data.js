@@ -1,0 +1,862 @@
+// ===== GPRN Mock Data =====
+// Realistic Welsh GP locum booking platform seed data
+
+const MOCK_DATA = {
+    locums: [
+        {
+            id: 'loc-001',
+            email: 'sarah.williams@gprn.wales',
+            password: 'password',
+            role: 'locum',
+            title: 'Dr',
+            firstName: 'Sarah',
+            lastName: 'Williams',
+            phone: '07700 900123',
+            gmcNumber: '7612345',
+            medicalSchool: 'Cardiff University',
+            yearQualified: 2015,
+            performerList: true,
+            nhsPension: true,
+            computerSystems: ['EMIS', 'Vision'],
+            signingScripts: 'Will sign scripts',
+            healthBoards: ['Cardiff and Vale', 'Cwm Taf Morgannwg', 'Aneurin Bevan'],
+            preferredShiftTypes: ['AM', 'PM', 'Full Day'],
+            travelDistance: 30,
+            bio: 'Experienced GP with over 8 years of locum experience across South Wales. Comfortable with all age groups and skilled in minor surgery. Flexible and reliable.',
+            avatar: null,
+            bookingReliability: 98,
+            responseTime: '1-2 days',
+            totalShifts: 156,
+            documents: {
+                indemnity: { uploaded: true, name: 'Indemnity_Certificate_2026.pdf' },
+                performerListStatus: { uploaded: true, name: 'Performer_List_Confirmation.pdf' },
+                dbs: { uploaded: true, name: 'DBS_Enhanced_Check.pdf' },
+                cv: { uploaded: true, name: 'Dr_Williams_CV.pdf' }
+            },
+            rates: {
+                am: 430,
+                pm: 430,
+                fullDay: 820,
+                onCall: 50,
+                housecall: 0
+            },
+            practiceRates: {}
+        },
+        {
+            id: 'loc-002',
+            email: 'rhys.parry@gprn.wales',
+            password: 'password',
+            role: 'locum',
+            title: 'Dr',
+            firstName: 'Rhys',
+            lastName: 'Parry',
+            phone: '07700 900456',
+            gmcNumber: '7623456',
+            medicalSchool: 'Swansea University',
+            yearQualified: 2012,
+            performerList: true,
+            nhsPension: false,
+            computerSystems: ['EMIS'],
+            signingScripts: 'Will sign scripts',
+            healthBoards: ['Swansea Bay', 'Hywel Dda', 'Cwm Taf Morgannwg'],
+            preferredShiftTypes: ['Full Day'],
+            travelDistance: 40,
+            bio: 'Senior locum GP with extensive experience in chronic disease management and geriatric care. Available for long-term placements.',
+            avatar: null,
+            bookingReliability: 95,
+            responseTime: '< 1 day',
+            totalShifts: 230,
+            documents: {
+                indemnity: { uploaded: true, name: 'Indemnity_2026.pdf' },
+                performerListStatus: { uploaded: true, name: 'PL_Status.pdf' },
+                dbs: { uploaded: true, name: 'DBS_Check.pdf' },
+                cv: { uploaded: true, name: 'CV_Dr_Parry.pdf' }
+            },
+            rates: {
+                am: 450,
+                pm: 450,
+                fullDay: 850,
+                onCall: 60,
+                housecall: 15
+            },
+            practiceRates: {}
+        },
+        {
+            id: 'loc-003',
+            email: 'megan.jones@gprn.wales',
+            password: 'password',
+            role: 'locum',
+            title: 'Dr',
+            firstName: 'Megan',
+            lastName: 'Jones',
+            phone: '07700 900789',
+            gmcNumber: '7634567',
+            medicalSchool: 'University of Bristol',
+            yearQualified: 2018,
+            performerList: true,
+            nhsPension: true,
+            computerSystems: ['Vision', 'TPP'],
+            signingScripts: 'Would negotiate a separate fee',
+            healthBoards: ['Betsi Cadwaladr', 'Powys'],
+            preferredShiftTypes: ['AM', 'PM'],
+            travelDistance: 25,
+            bio: 'Enthusiastic GP locum based in North Wales. Special interests in women\'s health and paediatrics.',
+            avatar: null,
+            bookingReliability: 100,
+            responseTime: '< 1 day',
+            totalShifts: 78,
+            documents: {
+                indemnity: { uploaded: true, name: 'Indemnity_MJ.pdf' },
+                performerListStatus: { uploaded: true, name: 'Performer_List.pdf' },
+                dbs: { uploaded: false, name: null },
+                cv: { uploaded: true, name: 'CV_Megan_Jones.pdf' }
+            },
+            rates: {
+                am: 400,
+                pm: 400,
+                fullDay: 780,
+                onCall: 40,
+                housecall: 0
+            },
+            practiceRates: {}
+        },
+        {
+            id: 'loc-004',
+            email: 'owen.davies@gprn.wales',
+            password: 'password',
+            role: 'locum',
+            title: 'Dr',
+            firstName: 'Owen',
+            lastName: 'Davies',
+            phone: '07700 900321',
+            gmcNumber: '7645678',
+            medicalSchool: 'Cardiff University',
+            yearQualified: 2010,
+            performerList: true,
+            nhsPension: true,
+            computerSystems: ['EMIS', 'Vision', 'TPP'],
+            signingScripts: 'Will sign scripts',
+            healthBoards: ['Cardiff and Vale', 'Aneurin Bevan', 'Cwm Taf Morgannwg', 'Swansea Bay'],
+            preferredShiftTypes: ['AM', 'PM', 'Full Day', 'On-Call'],
+            travelDistance: 50,
+            bio: 'Versatile and highly experienced locum GP covering all of South Wales. Over 300 locum sessions completed. Skilled in all clinical systems.',
+            avatar: null,
+            bookingReliability: 92,
+            responseTime: '1-2 days',
+            totalShifts: 312,
+            documents: {
+                indemnity: { uploaded: true, name: 'Indemnity_OD.pdf' },
+                performerListStatus: { uploaded: true, name: 'PL_OD.pdf' },
+                dbs: { uploaded: true, name: 'DBS_OD.pdf' },
+                cv: { uploaded: true, name: 'CV_Owen_Davies.pdf' }
+            },
+            rates: {
+                am: 420,
+                pm: 420,
+                fullDay: 800,
+                onCall: 55,
+                housecall: 10
+            },
+            practiceRates: {}
+        },
+        {
+            id: 'loc-005',
+            email: 'elin.morgan@gprn.wales',
+            password: 'password',
+            role: 'locum',
+            title: 'Dr',
+            firstName: 'Elin',
+            lastName: 'Morgan',
+            phone: '07700 900654',
+            gmcNumber: '7656789',
+            medicalSchool: 'University of Liverpool',
+            yearQualified: 2019,
+            performerList: true,
+            nhsPension: true,
+            computerSystems: ['EMIS'],
+            signingScripts: 'Will sign scripts',
+            healthBoards: ['Hywel Dda', 'Swansea Bay'],
+            preferredShiftTypes: ['AM', 'Full Day'],
+            travelDistance: 20,
+            bio: 'Welsh-speaking GP locum based in West Wales. Committed to providing bilingual healthcare services.',
+            avatar: null,
+            bookingReliability: 100,
+            responseTime: '< 1 day',
+            totalShifts: 45,
+            documents: {
+                indemnity: { uploaded: true, name: 'Indemnity_EM.pdf' },
+                performerListStatus: { uploaded: true, name: 'PL_EM.pdf' },
+                dbs: { uploaded: true, name: 'DBS_EM.pdf' },
+                cv: { uploaded: true, name: 'CV_Elin_Morgan.pdf' }
+            },
+            rates: {
+                am: 410,
+                pm: 410,
+                fullDay: 790,
+                onCall: 45,
+                housecall: 0
+            },
+            practiceRates: {}
+        },
+        {
+            id: 'loc-006',
+            email: 'james.evans@gprn.wales',
+            password: 'password',
+            role: 'locum',
+            title: 'Dr',
+            firstName: 'James',
+            lastName: 'Evans',
+            phone: '07700 900987',
+            gmcNumber: '7667890',
+            medicalSchool: 'Peninsula Medical School',
+            yearQualified: 2016,
+            performerList: true,
+            nhsPension: false,
+            computerSystems: ['Vision'],
+            signingScripts: 'Would negotiate a separate fee',
+            healthBoards: ['Aneurin Bevan', 'Cardiff and Vale'],
+            preferredShiftTypes: ['PM', 'Full Day'],
+            travelDistance: 35,
+            bio: 'Experienced GP with a focus on mental health and substance misuse. Happy to cover complex caseloads.',
+            avatar: null,
+            bookingReliability: 88,
+            responseTime: '2-3 days',
+            totalShifts: 189,
+            documents: {
+                indemnity: { uploaded: true, name: 'Indemnity_JE.pdf' },
+                performerListStatus: { uploaded: true, name: 'PL_JE.pdf' },
+                dbs: { uploaded: true, name: 'DBS_JE.pdf' },
+                cv: { uploaded: false, name: null }
+            },
+            rates: {
+                am: 440,
+                pm: 440,
+                fullDay: 840,
+                onCall: 60,
+                housecall: 12
+            },
+            practiceRates: {}
+        },
+        {
+            id: 'loc-007',
+            email: 'carys.thomas@gprn.wales',
+            password: 'password',
+            role: 'locum',
+            title: 'Dr',
+            firstName: 'Carys',
+            lastName: 'Thomas',
+            phone: '07700 900147',
+            gmcNumber: '7678901',
+            medicalSchool: 'Cardiff University',
+            yearQualified: 2020,
+            performerList: true,
+            nhsPension: true,
+            computerSystems: ['EMIS', 'Vision'],
+            signingScripts: 'Will sign scripts',
+            healthBoards: ['Cwm Taf Morgannwg', 'Cardiff and Vale', 'Swansea Bay'],
+            preferredShiftTypes: ['AM', 'PM'],
+            travelDistance: 20,
+            bio: 'Newly qualified GP eager to build locum experience. Strong interest in urgent care and minor injuries.',
+            avatar: null,
+            bookingReliability: 100,
+            responseTime: '< 1 day',
+            totalShifts: 23,
+            documents: {
+                indemnity: { uploaded: true, name: 'Indemnity_CT.pdf' },
+                performerListStatus: { uploaded: true, name: 'PL_CT.pdf' },
+                dbs: { uploaded: true, name: 'DBS_CT.pdf' },
+                cv: { uploaded: true, name: 'CV_Carys_Thomas.pdf' }
+            },
+            rates: {
+                am: 380,
+                pm: 380,
+                fullDay: 720,
+                onCall: 35,
+                housecall: 0
+            },
+            practiceRates: {}
+        },
+        {
+            id: 'loc-008',
+            email: 'gareth.hughes@gprn.wales',
+            password: 'password',
+            role: 'locum',
+            title: 'Dr',
+            firstName: 'Gareth',
+            lastName: 'Hughes',
+            phone: '07700 900258',
+            gmcNumber: '7689012',
+            medicalSchool: 'University of Manchester',
+            yearQualified: 2008,
+            performerList: true,
+            nhsPension: true,
+            computerSystems: ['EMIS', 'TPP'],
+            signingScripts: 'Will sign scripts',
+            healthBoards: ['Betsi Cadwaladr', 'Powys', 'Hywel Dda'],
+            preferredShiftTypes: ['Full Day', 'On-Call'],
+            travelDistance: 60,
+            bio: 'Senior GP covering North and Mid Wales. Extensive rural practice experience. Happy to travel and cover remote practices.',
+            avatar: null,
+            bookingReliability: 96,
+            responseTime: '1-2 days',
+            totalShifts: 410,
+            documents: {
+                indemnity: { uploaded: true, name: 'Indemnity_GH.pdf' },
+                performerListStatus: { uploaded: true, name: 'PL_GH.pdf' },
+                dbs: { uploaded: true, name: 'DBS_GH.pdf' },
+                cv: { uploaded: true, name: 'CV_Gareth_Hughes.pdf' }
+            },
+            rates: {
+                am: 460,
+                pm: 460,
+                fullDay: 880,
+                onCall: 70,
+                housecall: 20
+            },
+            practiceRates: {}
+        }
+    ],
+
+    practices: [
+        {
+            id: 'prac-001',
+            email: 'manager@ringland.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Ringland Medical Practice',
+            healthBoard: 'Aneurin Bevan',
+            address: 'TRHills Health & Wellbein, 282 Ringland Circle',
+            city: 'Newport',
+            postcode: 'NP9 9PS',
+            phone: '01633 274000',
+            website: '',
+            computerSystem: 'EMIS',
+            partners: 4,
+            patientListSize: 8500,
+            contactName: 'Jane Morgan',
+            contactRole: 'Practice Manager',
+            contactEmail: 'manager@ringland.wales',
+            contactPhone: '01633 274001'
+        },
+        {
+            id: 'prac-002',
+            email: 'admin@whitchurchroad.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Whitchurch Road Surgery',
+            healthBoard: 'Cardiff and Vale',
+            address: '145 Whitchurch Road',
+            city: 'Cardiff',
+            postcode: 'CF14 3JN',
+            phone: '029 2061 5000',
+            website: '',
+            computerSystem: 'Vision',
+            partners: 6,
+            patientListSize: 12000,
+            contactName: 'David Lloyd',
+            contactRole: 'Practice Manager',
+            contactEmail: 'admin@whitchurchroad.wales',
+            contactPhone: '029 2061 5001'
+        },
+        {
+            id: 'prac-003',
+            email: 'admin@radyrmedical.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Radyr Medical Centre',
+            healthBoard: 'Cardiff and Vale',
+            address: '34 Station Road',
+            city: 'Cardiff',
+            postcode: 'CF15 8AA',
+            phone: '029 2084 2000',
+            website: '',
+            computerSystem: 'EMIS',
+            partners: 3,
+            patientListSize: 6200,
+            contactName: 'Helen Price',
+            contactRole: 'Practice Manager',
+            contactEmail: 'admin@radyrmedical.wales',
+            contactPhone: '029 2084 2001'
+        },
+        {
+            id: 'prac-004',
+            email: 'admin@malpasbrook.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Malpas Brook Health Centre',
+            healthBoard: 'Aneurin Bevan',
+            address: 'Pilton Vale',
+            city: 'Newport',
+            postcode: 'NP20 6WB',
+            phone: '01633 855200',
+            website: '',
+            computerSystem: 'EMIS',
+            partners: 5,
+            patientListSize: 9800,
+            contactName: 'Karen Richards',
+            contactRole: 'Assistant Practice Manager',
+            contactEmail: 'admin@malpasbrook.wales',
+            contactPhone: '01633 855201'
+        },
+        {
+            id: 'prac-005',
+            email: 'admin@trosnant.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Trosnant Lodge',
+            healthBoard: 'Aneurin Bevan',
+            address: 'Trosnant Street',
+            city: 'Pontypool',
+            postcode: 'NP4 8AT',
+            phone: '01495 762200',
+            website: '',
+            computerSystem: 'Vision',
+            partners: 3,
+            patientListSize: 5400,
+            contactName: 'Susan Evans',
+            contactRole: 'Practice Manager',
+            contactEmail: 'admin@trosnant.wales',
+            contactPhone: '01495 762201'
+        },
+        {
+            id: 'prac-006',
+            email: 'admin@bridgmoresurgery.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Bridgmore Surgery',
+            healthBoard: 'Cardiff and Vale',
+            address: '12 Bridge Street',
+            city: 'Cardiff',
+            postcode: 'CF11 6NR',
+            phone: '029 2039 5000',
+            website: '',
+            computerSystem: 'EMIS',
+            partners: 4,
+            patientListSize: 7600,
+            contactName: 'Tom Jenkins',
+            contactRole: 'Practice Manager',
+            contactEmail: 'admin@bridgmore.wales',
+            contactPhone: '029 2039 5001'
+        },
+        {
+            id: 'prac-007',
+            email: 'admin@kingsroad.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Kings Road Surgery',
+            healthBoard: 'Cardiff and Vale',
+            address: '88 Kings Road',
+            city: 'Cardiff',
+            postcode: 'CF11 9DE',
+            phone: '029 2023 4000',
+            website: '',
+            computerSystem: 'EMIS',
+            partners: 2,
+            patientListSize: 4200,
+            contactName: 'Ann Thomas',
+            contactRole: 'Practice Manager',
+            contactEmail: 'admin@kingsroad.wales',
+            contactPhone: '029 2023 4001'
+        },
+        {
+            id: 'prac-008',
+            email: 'admin@clydach.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Clydach Primary Care Centre',
+            healthBoard: 'Swansea Bay',
+            address: 'Clydach Health Centre, Centenary Way',
+            city: 'Swansea',
+            postcode: 'SA6 5EY',
+            phone: '01792 843500',
+            website: '',
+            computerSystem: 'Vision',
+            partners: 4,
+            patientListSize: 8100,
+            contactName: 'Lowri Griffiths',
+            contactRole: 'Practice Manager',
+            contactEmail: 'admin@clydach.wales',
+            contactPhone: '01792 843501'
+        },
+        {
+            id: 'prac-009',
+            email: 'admin@porttalbot.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Port Talbot Medical Practice',
+            healthBoard: 'Swansea Bay',
+            address: '15 Commercial Road',
+            city: 'Port Talbot',
+            postcode: 'SA13 1LN',
+            phone: '01639 882400',
+            website: '',
+            computerSystem: 'EMIS',
+            partners: 3,
+            patientListSize: 5800,
+            contactName: 'Mark Edwards',
+            contactRole: 'Practice Manager',
+            contactEmail: 'admin@porttalbot.wales',
+            contactPhone: '01639 882401'
+        },
+        {
+            id: 'prac-010',
+            email: 'admin@wrexhamtown.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Wrexham Town Surgery',
+            healthBoard: 'Betsi Cadwaladr',
+            address: '22 Regent Street',
+            city: 'Wrexham',
+            postcode: 'LL11 1RY',
+            phone: '01978 291500',
+            website: '',
+            computerSystem: 'TPP',
+            partners: 5,
+            patientListSize: 11200,
+            contactName: 'Bethan Williams',
+            contactRole: 'Practice Manager',
+            contactEmail: 'admin@wrexhamtown.wales',
+            contactPhone: '01978 291501'
+        },
+        {
+            id: 'prac-011',
+            email: 'admin@aberystwyth.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Aberystwyth Medical Centre',
+            healthBoard: 'Hywel Dda',
+            address: 'Padarn Surgery, Llanbadarn Road',
+            city: 'Aberystwyth',
+            postcode: 'SY23 1EY',
+            phone: '01970 624500',
+            website: '',
+            computerSystem: 'EMIS',
+            partners: 3,
+            patientListSize: 6800,
+            contactName: 'Sian Roberts',
+            contactRole: 'Practice Manager',
+            contactEmail: 'admin@aberystwyth.wales',
+            contactPhone: '01970 624501'
+        },
+        {
+            id: 'prac-012',
+            email: 'admin@brecon.wales',
+            password: 'password',
+            role: 'practice',
+            practiceName: 'Brecon Medical Practice',
+            healthBoard: 'Powys',
+            address: 'Cerrigochion Road',
+            city: 'Brecon',
+            postcode: 'LD3 7AB',
+            phone: '01874 622131',
+            website: '',
+            computerSystem: 'Vision',
+            partners: 2,
+            patientListSize: 3900,
+            contactName: 'Gareth Rees',
+            contactRole: 'Practice Manager',
+            contactEmail: 'admin@brecon.wales',
+            contactPhone: '01874 622132'
+        }
+    ],
+
+    shifts: [],
+    offers: [],
+    notifications: [],
+
+    cpdEvents: [
+        {
+            id: 'cpd-001',
+            title: 'Revalidation Support Unit (RSU)',
+            provider: 'Health Education and Improvement Wales (HEIW)',
+            type: 'web',
+            description: 'For eLearning resources, webinars and events please register on Y Ty Dysgu.',
+            url: 'https://heiw.nhs.wales',
+            healthBoard: null
+        },
+        {
+            id: 'cpd-002',
+            title: 'Emergency Skills Workshop',
+            provider: 'Aneurin Bevan UHB',
+            type: 'event',
+            date: '2026-04-25',
+            time: '09:00 - 17:00',
+            location: 'Royal Gwent Hospital, Newport',
+            description: 'Hands-on workshop covering emergency procedures for primary care GPs. Includes BLS refresher and anaphylaxis management.',
+            healthBoard: 'Aneurin Bevan'
+        },
+        {
+            id: 'cpd-003',
+            title: 'Dermatology Masterclass',
+            provider: 'Cardiff and Vale UHB',
+            type: 'event',
+            date: '2026-05-10',
+            time: '13:00 - 17:00',
+            location: 'University Hospital of Wales, Cardiff',
+            description: 'Advanced dermatology session covering common and rare presentations in primary care.',
+            healthBoard: 'Cardiff and Vale'
+        },
+        {
+            id: 'cpd-004',
+            title: 'Mental Health in Primary Care',
+            provider: 'Swansea Bay UHB',
+            type: 'event',
+            date: '2026-05-22',
+            time: '09:30 - 16:30',
+            location: 'Singleton Hospital, Swansea',
+            description: 'Full day course on managing mental health conditions in GP settings. Includes CBT fundamentals and prescribing update.',
+            healthBoard: 'Swansea Bay'
+        },
+        {
+            id: 'cpd-005',
+            title: 'Safeguarding Level 3 Update',
+            provider: 'Betsi Cadwaladr UHB',
+            type: 'event',
+            date: '2026-06-05',
+            time: '09:00 - 13:00',
+            location: 'Wrexham Maelor Hospital',
+            description: 'Mandatory safeguarding training update for all GPs. Covers adults and children.',
+            healthBoard: 'Betsi Cadwaladr'
+        }
+    ],
+
+    jobs: [
+        {
+            id: 'job-001',
+            practiceName: 'Trosnant Lodge',
+            healthBoard: 'Aneurin Bevan',
+            title: 'Salaried GP - Maternity Cover',
+            type: 'Maternity Cover',
+            sessions: '4-6 sessions per week',
+            duration: 'From July 2026 for minimum 6 months',
+            salary: 'Competitive, dependent on experience',
+            closingDate: '2026-05-01',
+            description: 'We are looking for a reliable salaried GP to cover maternity leave starting July 2026. The practice has a friendly team and uses Vision clinical system.',
+            contactEmail: 'admin@trosnant.wales'
+        },
+        {
+            id: 'job-002',
+            practiceName: 'Wrexham Town Surgery',
+            healthBoard: 'Betsi Cadwaladr',
+            title: 'GP Partner',
+            type: 'Partnership',
+            sessions: '8 sessions per week',
+            duration: 'Permanent',
+            salary: 'Full PMS contract share',
+            closingDate: '2026-05-15',
+            description: 'Exciting opportunity to join a forward-thinking practice as a full partner. Large patient list with scope for development.',
+            contactEmail: 'admin@wrexhamtown.wales'
+        },
+        {
+            id: 'job-003',
+            practiceName: 'Radyr Medical Centre',
+            healthBoard: 'Cardiff and Vale',
+            title: 'Salaried GP',
+            type: 'Permanent',
+            sessions: '6 sessions per week',
+            duration: 'Permanent',
+            salary: '£70,000 - £80,000 pro rata',
+            closingDate: '2026-04-30',
+            description: 'Friendly semi-rural practice seeking a salaried GP to join our established team. Special interests welcome. EMIS clinical system.',
+            contactEmail: 'admin@radyrmedical.wales'
+        },
+        {
+            id: 'job-004',
+            practiceName: 'Aberystwyth Medical Centre',
+            healthBoard: 'Hywel Dda',
+            title: 'Locum GP - Long Term',
+            type: 'Long-Term Locum',
+            sessions: '5 sessions per week',
+            duration: '12 months initially',
+            salary: '£450 per session',
+            closingDate: '2026-04-20',
+            description: 'We need a reliable long-term locum to support the practice while we recruit a permanent GP. Beautiful coastal location.',
+            contactEmail: 'admin@aberystwyth.wales'
+        }
+    ],
+
+    healthBoards: [
+        { name: 'Aneurin Bevan', locumCount: 414 },
+        { name: 'Betsi Cadwaladr', locumCount: 266 },
+        { name: 'Cardiff and Vale', locumCount: 437 },
+        { name: 'Cwm Taf Morgannwg', locumCount: 425 },
+        { name: 'Hywel Dda', locumCount: 309 },
+        { name: 'Powys', locumCount: 276 },
+        { name: 'Swansea Bay', locumCount: 354 }
+    ]
+};
+
+// Generate dynamic shifts based on today's date
+function generateShifts() {
+    const today = new Date();
+    const shifts = [];
+    const practices = MOCK_DATA.practices;
+    const shiftTypes = ['GP Only', 'Any Qualified', 'GP Only', 'GP Only'];
+    const comments = [
+        'We are presently doing a daily assessment/triage whereby a lot of calls are over the telephone and patients brought in where needed.',
+        'AM session only. Straightforward surgery with experienced nursing team support.',
+        'The AM / PM surgery comprises of 15 emergency, book on the day visits.',
+        'Busy practice but well-supported. Full nursing team available.',
+        'Standard surgery day. Mix of telephone and face-to-face consultations.',
+        'Urgent cover needed. Practice will provide full orientation on arrival.',
+        'Routine surgery with some home visits in the afternoon if needed.'
+    ];
+
+    for (let i = 0; i < 40; i++) {
+        const dayOffset = Math.floor(i / 3) + 1;
+        const shiftDate = new Date(today);
+        shiftDate.setDate(today.getDate() + dayOffset);
+        if (shiftDate.getDay() === 0 || shiftDate.getDay() === 6) {
+            shiftDate.setDate(shiftDate.getDate() + (shiftDate.getDay() === 0 ? 1 : 2));
+        }
+
+        const practice = practices[i % practices.length];
+        const isAM = i % 3 === 0;
+        const isPM = i % 3 === 1;
+        const isFullDay = i % 3 === 2;
+
+        shifts.push({
+            id: `shift-${String(i + 1).padStart(3, '0')}`,
+            practiceId: practice.id,
+            practiceName: practice.practiceName,
+            healthBoard: practice.healthBoard,
+            city: practice.city,
+            date: shiftDate.toISOString().split('T')[0],
+            startTime: isAM || isFullDay ? '08:30' : '13:00',
+            endTime: isPM || isFullDay ? '17:00' : '12:30',
+            sessionType: isFullDay ? 'Full Day' : (isAM ? 'AM' : 'PM'),
+            shiftType: shiftTypes[i % shiftTypes.length],
+            housecalls: i % 4 !== 0,
+            computerSystem: practice.computerSystem,
+            morningPatients: isAM || isFullDay ? 15 + (i % 6) : 0,
+            afternoonPatients: isPM || isFullDay ? 12 + (i % 5) : 0,
+            comment: comments[i % comments.length],
+            applicants: Math.floor(Math.random() * 4),
+            urgent: i % 7 === 0,
+            status: 'open'
+        });
+    }
+    return shifts;
+}
+
+function generateOffers() {
+    const today = new Date();
+    const offers = [];
+    const statuses = ['pending', 'accepted', 'withdrawn', 'completed', 'pending', 'pending'];
+
+    for (let i = 0; i < 15; i++) {
+        const dayOffset = i < 5 ? (i + 1) * 2 : -(i * 3);
+        const offerDate = new Date(today);
+        offerDate.setDate(today.getDate() + dayOffset);
+
+        const shiftDate = new Date(offerDate);
+        shiftDate.setDate(offerDate.getDate() + (i < 5 ? 1 : -1));
+
+        const practice = MOCK_DATA.practices[i % MOCK_DATA.practices.length];
+        const status = i < 5 ? statuses[i] : (dayOffset < 0 ? 'completed' : 'pending');
+
+        offers.push({
+            id: `offer-${String(i + 1).padStart(3, '0')}`,
+            locumId: 'loc-001',
+            practiceId: practice.id,
+            practiceName: practice.practiceName,
+            healthBoard: practice.healthBoard,
+            shiftDate: shiftDate.toISOString().split('T')[0],
+            startTime: i % 2 === 0 ? '08:30' : '13:00',
+            endTime: i % 2 === 0 ? '16:00' : '17:00',
+            sessionType: i % 3 === 0 ? 'Full Day' : (i % 2 === 0 ? 'AM' : 'PM'),
+            rateAM: 430,
+            ratePM: 430,
+            rateFullDay: 820,
+            rateHousecall: 0,
+            status: status,
+            offerDate: offerDate.toISOString().split('T')[0],
+            comment: status === 'completed' ? 'Booked through Immediate Booking. Agreed morning: 12 patients starting at 09:00.' : '',
+            housecalls: i % 3 !== 0
+        });
+    }
+    return offers;
+}
+
+function generateNotifications() {
+    const today = new Date();
+    return [
+        {
+            id: 'notif-001',
+            type: 'shift_confirmed',
+            title: 'Shift Confirmed',
+            message: 'Your shift at Ringland Medical Practice on ' + formatDateShort(addDays(today, 2)) + ' has been confirmed.',
+            date: addDays(today, -1).toISOString(),
+            read: false
+        },
+        {
+            id: 'notif-002',
+            type: 'new_shifts',
+            title: 'New Shifts Available',
+            message: '5 new shifts matching your preferences have been posted in Cardiff and Vale.',
+            date: addDays(today, -1).toISOString(),
+            read: false
+        },
+        {
+            id: 'notif-003',
+            type: 'offer_accepted',
+            title: 'Offer Accepted',
+            message: 'Whitchurch Road Surgery has accepted your offer for ' + formatDateShort(addDays(today, 5)) + '.',
+            date: addDays(today, -2).toISOString(),
+            read: true
+        },
+        {
+            id: 'notif-004',
+            type: 'reliability_warning',
+            title: 'Booking Reliability',
+            message: 'Your booking reliability is 98%. Keep it above 95% to maintain priority access.',
+            date: addDays(today, -3).toISOString(),
+            read: true
+        },
+        {
+            id: 'notif-005',
+            type: 'cpd_event',
+            title: 'Upcoming CPD Event',
+            message: 'Emergency Skills Workshop at Royal Gwent Hospital on April 25th. Register now.',
+            date: addDays(today, -4).toISOString(),
+            read: true
+        }
+    ];
+}
+
+function addDays(date, days) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+}
+
+function formatDateShort(date) {
+    const d = new Date(date);
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// Initialize mock data
+function initMockData() {
+    MOCK_DATA.shifts = generateShifts();
+    MOCK_DATA.offers = generateOffers();
+    MOCK_DATA.notifications = generateNotifications();
+
+    if (!localStorage.getItem('gprn_data')) {
+        localStorage.setItem('gprn_data', JSON.stringify(MOCK_DATA));
+    }
+    return JSON.parse(localStorage.getItem('gprn_data'));
+}
+
+function getMockData() {
+    let data = localStorage.getItem('gprn_data');
+    if (!data) {
+        return initMockData();
+    }
+    return JSON.parse(data);
+}
+
+function saveMockData(data) {
+    localStorage.setItem('gprn_data', JSON.stringify(data));
+}

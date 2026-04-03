@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Offers - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('locum')) throw new Error('Auth required');
+
+        const pageContent = initAppLayout('locum', 'offers', 'My Offers');
+        let currentTab = 'future';
+
+        function getOffers() {
+            const data = getMockData();
+            const user = Auth.getCurrentUser();
+            return (data.offers || []).filter(o => o.locumId === user.id);
+        }
+
+        function renderOffers() {
+            const offers = getOffers();
+            const now = new Date();
+            const future = offers.filter(o => new Date(o.shiftDate) >= now);
+            const past = offers.filter(o => new Date(o.shiftDate) < now);
+
+            let filtered;
+            if (currentTab === 'future') filtered = future;
+            else if (currentTab === 'past') filtered = past;
+            else filtered = offers;
+
+            pageContent.innerHTML = `
+                <div class="tabs">
+                    <button class="tab-item ${currentTab === 'future' ? 'active' : ''}" onclick="switchTab('future')">Future Shifts</button>
+                    <button class="tab-item ${currentTab === 'past' ? 'active' : ''}" onclick="switchTab('past')">Past Shifts</button>
+                    <button class="tab-item ${currentTab === 'all' ? 'active' : ''}" onclick="switchTab('all')">All</button>
+                </div>
+                <div id="offersList">
+                    ${filtered.length > 0
+                        ? filtered.map(o => renderOfferCard(o)).join('')
+                        : renderEmptyState('file-text', 'No offers found', 'No pending offers or upcoming bookings', 'Browse Shifts', 'available-shifts.html')
+                    }
+                </div>
+            `;
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            renderOffers();
+        }
+
+        function withdrawOffer(offerId) {
+            const data = getMockData();
+            const offer = data.offers.find(o => o.id === offerId);
+            if (offer) {
+                offer.status = 'withdrawn';
+                saveMockData(data);
+                Toast.show('Offer withdrawn successfully', 'success');
+                renderOffers();
+            }
+        }
+
+        renderOffers();
+    </script>
+</body>
+</html>

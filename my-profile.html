@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('locum')) throw new Error('Auth required');
+
+        const pageContent = initAppLayout('locum', 'profile', 'My Profile');
+        const user = Auth.getCurrentUser();
+        const fullName = `${user.title} ${user.firstName} ${user.lastName}`;
+
+        pageContent.innerHTML = `
+            <div style="background: rgba(14,165,233,0.08); border: 1px solid rgba(14,165,233,0.2); border-radius: var(--radius); padding: 14px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: var(--secondary);">
+                ${getIcon('eye')}
+                <span>This is a preview of your profile as practice managers will see it. <a href="my-settings.html" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Edit in Settings</a></span>
+            </div>
+
+            <!-- Profile Header -->
+            <div class="content-card" style="margin-bottom: 24px;">
+                <div class="content-card-body" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                    <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--gradient); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.3rem; flex-shrink: 0;">
+                        ${getInitials(fullName)}
+                    </div>
+                    <div style="flex: 1;">
+                        <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 4px;">${fullName}</h2>
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <span class="badge badge-primary">General Practitioner</span>
+                            <span style="font-size: 0.85rem; color: var(--dark-600); display: flex; align-items: center; gap: 4px;">${getIcon('mail')} ${user.email}</span>
+                            <span style="font-size: 0.85rem; color: var(--dark-600);">GMC: ${user.gmcNumber}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About -->
+            <div class="content-card">
+                <div class="content-card-header"><h2>About</h2></div>
+                <div class="content-card-body">
+                    <p style="font-size: 0.92rem; color: var(--dark-700); line-height: 1.7;">${user.bio}</p>
+                </div>
+            </div>
+
+            <!-- Professional Details -->
+            <div class="content-card">
+                <div class="content-card-header"><h2>Professional Details</h2></div>
+                <div class="content-card-body">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <div>
+                            <p style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Computer Systems</p>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                ${user.computerSystems.map(s => `<span class="badge badge-info">${s}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div>
+                            <p style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">NHS Pension</p>
+                            <span class="badge ${user.nhsPension ? 'badge-success' : 'badge-neutral'}">${user.nhsPension ? 'Opted In' : 'Not Opted In'}</span>
+                        </div>
+                        <div>
+                            <p style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Signing Scripts</p>
+                            <span style="font-size: 0.9rem; color: var(--dark-700);">${user.signingScripts}</span>
+                        </div>
+                        <div>
+                            <p style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">ID Response Time</p>
+                            <span style="font-size: 0.9rem; color: var(--dark-700);">${user.responseTime}</span>
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <p style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Booking Reliability</p>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="flex: 1; max-width: 300px; height: 10px; background: var(--gray-200); border-radius: 100px; overflow: hidden;">
+                                    <div style="width: ${user.bookingReliability}%; height: 100%; background: ${user.bookingReliability >= 95 ? 'var(--success)' : user.bookingReliability >= 80 ? 'var(--warning)' : 'var(--danger)'}; border-radius: 100px;"></div>
+                                </div>
+                                <span style="font-weight: 700; font-size: 0.95rem; color: var(--dark);">${user.bookingReliability}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents -->
+            <div class="content-card">
+                <div class="content-card-header"><h2>Documents</h2></div>
+                <div class="content-card-body" style="padding: 0;">
+                    ${renderDocRow('Indemnity Certificate', user.documents.indemnity)}
+                    ${renderDocRow('Performer List Status', user.documents.performerListStatus)}
+                    ${renderDocRow('DBS Enhanced Check', user.documents.dbs)}
+                    ${renderDocRow('Curriculum Vitae (CV)', user.documents.cv)}
+                </div>
+            </div>
+        `;
+
+        function renderDocRow(label, doc) {
+            return `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--gray-100);">
+                    <div>
+                        <p style="font-size: 0.9rem; font-weight: 600; color: var(--dark-700);">${label}</p>
+                        ${doc.uploaded
+                            ? `<p style="font-size: 0.82rem; color: var(--success); margin-top: 2px;">${getIcon('check')} Uploaded: ${doc.name}</p>`
+                            : `<p style="font-size: 0.82rem; color: var(--warning); margin-top: 2px;">Not uploaded</p>`
+                        }
+                    </div>
+                    ${doc.uploaded
+                        ? `<button class="btn btn-small btn-secondary" onclick="Toast.show('Download simulated: ${doc.name}', 'info')">${getIcon('download')} Download</button>`
+                        : `<span class="badge badge-warning">Missing</span>`
+                    }
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

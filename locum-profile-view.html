@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Locum Profile - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('practice')) throw new Error('Auth required');
+
+        const params = new URLSearchParams(window.location.search);
+        const locumId = params.get('id');
+        const data = getMockData();
+        const locum = data.locums.find(l => l.id === locumId);
+
+        if (!locum) {
+            document.body.innerHTML = '<div style="padding: 60px; text-align: center;"><h2>Locum not found</h2><a href="find-locums.html" class="btn btn-primary" style="margin-top: 20px;">Back to Find Locums</a></div>';
+            throw new Error('Locum not found');
+        }
+
+        const pageContent = initAppLayout('practice', 'find-locums', `${locum.title} ${locum.firstName} ${locum.lastName}`, [
+            { label: 'Find Locums', href: 'find-locums.html' },
+            { label: `${locum.title} ${locum.firstName} ${locum.lastName}` }
+        ]);
+
+        const reliabilityColor = locum.bookingReliability >= 95 ? 'var(--success)' : (locum.bookingReliability >= 85 ? 'var(--warning)' : 'var(--danger)');
+
+        pageContent.innerHTML = `
+            <a href="find-locums.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
+                ${getIcon('arrow-left')} Back to Find Locums
+            </a>
+
+            <div class="content-card" style="margin-bottom: 24px;">
+                <div class="content-card-body" style="padding: 32px;">
+                    <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 24px;">
+                        <div class="header-avatar" style="width: 80px; height: 80px; font-size: 1.6rem; flex-shrink: 0;">
+                            ${getInitials(locum.firstName + ' ' + locum.lastName)}
+                        </div>
+                        <div>
+                            <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">
+                                ${locum.title} ${locum.firstName} ${locum.lastName}
+                            </h1>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <span class="badge badge-primary">GP</span>
+                                <span style="font-size: 0.88rem; color: var(--dark-600);">GMC: ${locum.gmcNumber}</span>
+                                ${locum.performerList ? '<span class="badge badge-success">On Performer List</span>' : ''}
+                            </div>
+                        </div>
+                        <div style="margin-left: auto;">
+                            <button class="btn btn-primary btn-large" onclick="requestLocum()">
+                                ${getIcon('mail')} Request This Locum
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                <div>
+                    <div class="content-card" style="margin-bottom: 24px;">
+                        <div class="content-card-header">
+                            <h2>About</h2>
+                        </div>
+                        <div class="content-card-body">
+                            <p style="font-size: 0.95rem; color: var(--dark-600); line-height: 1.7;">${locum.bio}</p>
+                        </div>
+                    </div>
+
+                    <div class="content-card" style="margin-bottom: 24px;">
+                        <div class="content-card-header">
+                            <h2>Professional Details</h2>
+                        </div>
+                        <div class="content-card-body">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                <div>
+                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Medical School</span>
+                                    <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.medicalSchool}</p>
+                                </div>
+                                <div>
+                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Year Qualified</span>
+                                    <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.yearQualified}</p>
+                                </div>
+                                <div>
+                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Computer Systems</span>
+                                    <div style="display: flex; gap: 6px; margin-top: 6px;">
+                                        ${locum.computerSystems.map(cs => `<span class="badge badge-primary">${cs}</span>`).join('')}
+                                    </div>
+                                </div>
+                                <div>
+                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Signing Scripts</span>
+                                    <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.signingScripts}</p>
+                                </div>
+                                <div>
+                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">NHS Pension</span>
+                                    <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.nhsPension ? 'Yes' : 'No'}</p>
+                                </div>
+                                <div>
+                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Preferred Shifts</span>
+                                    <div style="display: flex; gap: 6px; margin-top: 6px;">
+                                        ${locum.preferredShiftTypes.map(t => `<span class="badge badge-neutral">${t}</span>`).join('')}
+                                    </div>
+                                </div>
+                                <div style="grid-column: 1 / -1;">
+                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Health Boards Covered</span>
+                                    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
+                                        ${locum.healthBoards.map(hb => `<span class="badge badge-info">${hb}</span>`).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="content-card-header">
+                            <h2>Documents</h2>
+                        </div>
+                        <div class="content-card-body">
+                            ${Object.entries(locum.documents).map(([key, doc]) => {
+                                const labels = { indemnity: 'Indemnity Certificate', performerListStatus: 'Performer List Status', dbs: 'DBS Check', cv: 'CV / Resume' };
+                                return `
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            ${getIcon('file-text')}
+                                            <span style="font-size: 0.9rem; color: var(--dark);">${labels[key] || key}</span>
+                                        </div>
+                                        ${doc.uploaded
+                                            ? '<span class="badge badge-success">Uploaded</span>'
+                                            : '<span class="badge badge-warning">Not Uploaded</span>'}
+                                    </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="content-card" style="margin-bottom: 24px;">
+                        <div class="content-card-header">
+                            <h2>Booking Reliability</h2>
+                        </div>
+                        <div class="content-card-body">
+                            <div style="text-align: center; margin-bottom: 16px;">
+                                <span style="font-family: 'Space Grotesk', sans-serif; font-size: 2.5rem; font-weight: 800; color: ${reliabilityColor};">${locum.bookingReliability}%</span>
+                            </div>
+                            <div class="coverage-bar" style="height: 12px;">
+                                <div class="coverage-fill" style="width: ${locum.bookingReliability}%; background: ${reliabilityColor};"></div>
+                            </div>
+                            <p style="font-size: 0.82rem; color: var(--dark-600); margin-top: 12px; text-align: center;">
+                                Based on ${locum.totalShifts} completed shifts
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="content-card" style="margin-bottom: 24px;">
+                        <div class="content-card-header">
+                            <h2>Quick Stats</h2>
+                        </div>
+                        <div class="content-card-body">
+                            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
+                                ${getIcon('clock')}
+                                <div>
+                                    <span style="font-size: 0.82rem; color: var(--dark-600);">Response Time</span>
+                                    <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.responseTime}</strong>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
+                                ${getIcon('activity')}
+                                <div>
+                                    <span style="font-size: 0.82rem; color: var(--dark-600);">Total Shifts</span>
+                                    <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.totalShifts}</strong>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0;">
+                                ${getIcon('map-pin')}
+                                <div>
+                                    <span style="font-size: 0.82rem; color: var(--dark-600);">Travel Distance</span>
+                                    <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.travelDistance} miles</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="content-card-header">
+                            <h2>Rates</h2>
+                        </div>
+                        <div class="content-card-body">
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                <span style="font-size: 0.88rem; color: var(--dark-600);">AM Session</span>
+                                <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.am)}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                <span style="font-size: 0.88rem; color: var(--dark-600);">PM Session</span>
+                                <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.pm)}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                <span style="font-size: 0.88rem; color: var(--dark-600);">Full Day</span>
+                                <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.fullDay)}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                <span style="font-size: 0.88rem; color: var(--dark-600);">On-Call</span>
+                                <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.onCall)}/hr</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                                <span style="font-size: 0.88rem; color: var(--dark-600);">Housecall</span>
+                                <strong style="font-size: 0.88rem; color: var(--dark);">${locum.rates.housecall > 0 ? formatCurrency(locum.rates.housecall) : 'Included'}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        function requestLocum() {
+            Toast.show('Request sent to ' + locum.title + ' ' + locum.firstName + ' ' + locum.lastName + '. They will be notified.', 'success');
+        }
+    </script>
+</body>
+</html>

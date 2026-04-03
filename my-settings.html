@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('locum')) throw new Error('Auth required');
+
+        const pageContent = initAppLayout('locum', 'settings', 'Settings');
+        let currentTab = 'personal';
+
+        function getUser() {
+            return Auth.getCurrentUser();
+        }
+
+        function renderSettings() {
+            const user = getUser();
+
+            pageContent.innerHTML = `
+                <div class="tabs">
+                    <button class="tab-item ${currentTab === 'personal' ? 'active' : ''}" onclick="switchTab('personal')">Personal Info</button>
+                    <button class="tab-item ${currentTab === 'email' ? 'active' : ''}" onclick="switchTab('email')">Email Preferences</button>
+                    <button class="tab-item ${currentTab === 'notifications' ? 'active' : ''}" onclick="switchTab('notifications')">Notifications</button>
+                </div>
+
+                <div id="tabPersonal" class="tab-pane ${currentTab === 'personal' ? 'active' : ''}">
+                    <div class="content-card">
+                        <div class="content-card-header"><h2>Personal Information</h2></div>
+                        <div class="content-card-body">
+                            <form id="personalForm" onsubmit="savePersonalInfo(event)">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Title</label>
+                                        <select class="form-select" id="settTitle">
+                                            <option ${user.title === 'Dr' ? 'selected' : ''}>Dr</option>
+                                            <option ${user.title === 'Mr' ? 'selected' : ''}>Mr</option>
+                                            <option ${user.title === 'Mrs' ? 'selected' : ''}>Mrs</option>
+                                            <option ${user.title === 'Ms' ? 'selected' : ''}>Ms</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">GMC Number</label>
+                                        <input type="text" class="form-input" id="settGmc" value="${user.gmcNumber}">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">First Name</label>
+                                        <input type="text" class="form-input" id="settFirst" value="${user.firstName}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Last Name</label>
+                                        <input type="text" class="form-input" id="settLast" value="${user.lastName}" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Email</label>
+                                        <input type="email" class="form-input" id="settEmail" value="${user.email}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Phone</label>
+                                        <input type="tel" class="form-input" id="settPhone" value="${user.phone}">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Medical School</label>
+                                        <input type="text" class="form-input" id="settMedSchool" value="${user.medicalSchool}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Year Qualified</label>
+                                        <input type="number" class="form-input" id="settYear" value="${user.yearQualified}">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Bio</label>
+                                    <textarea class="form-textarea" id="settBio" rows="4">${user.bio}</textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Computer Systems</label>
+                                    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                                        ${['EMIS', 'Vision', 'TPP'].map(s => `
+                                            <label class="form-checkbox">
+                                                <input type="checkbox" name="computerSystems" value="${s}" ${user.computerSystems.includes(s) ? 'checked' : ''}>
+                                                ${s}
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Signing Scripts</label>
+                                        <select class="form-select" id="settScripts">
+                                            <option ${user.signingScripts === 'Will sign scripts' ? 'selected' : ''}>Will sign scripts</option>
+                                            <option ${user.signingScripts === 'Would negotiate a separate fee' ? 'selected' : ''}>Would negotiate a separate fee</option>
+                                            <option ${user.signingScripts === 'Will not sign scripts' ? 'selected' : ''}>Will not sign scripts</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Travel Distance (miles)</label>
+                                        <input type="number" class="form-input" id="settTravel" value="${user.travelDistance}">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Health Boards</label>
+                                    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                                        ${['Aneurin Bevan', 'Betsi Cadwaladr', 'Cardiff and Vale', 'Cwm Taf Morgannwg', 'Hywel Dda', 'Powys', 'Swansea Bay'].map(hb => `
+                                            <label class="form-checkbox">
+                                                <input type="checkbox" name="healthBoards" value="${hb}" ${user.healthBoards.includes(hb) ? 'checked' : ''}>
+                                                ${hb}
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Change Password -->
+                    <div class="content-card">
+                        <div class="content-card-header"><h2>Change Password</h2></div>
+                        <div class="content-card-body">
+                            <form id="passwordForm" onsubmit="changePassword(event)">
+                                <div class="form-group">
+                                    <label class="form-label">Current Password</label>
+                                    <input type="password" class="form-input" id="pwCurrent" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">New Password</label>
+                                        <input type="password" class="form-input" id="pwNew" required data-validate="password">
+                                        <span class="form-error"></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Confirm New Password</label>
+                                        <input type="password" class="form-input" id="pwConfirm" required>
+                                        <span class="form-error"></span>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-secondary">Update Password</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tabEmail" class="tab-pane ${currentTab === 'email' ? 'active' : ''}">
+                    <div class="content-card">
+                        <div class="content-card-header"><h2>Email Preferences</h2></div>
+                        <div class="content-card-body">
+                            <div class="form-toggle">
+                                <span class="form-toggle-label">New shift alerts matching my preferences</span>
+                                <div class="toggle-switch active" data-pref="emailShiftAlerts" onclick="toggleSwitch(this)"></div>
+                            </div>
+                            <div class="form-toggle">
+                                <span class="form-toggle-label">Offer status updates (accepted, withdrawn)</span>
+                                <div class="toggle-switch active" data-pref="emailOfferUpdates" onclick="toggleSwitch(this)"></div>
+                            </div>
+                            <div class="form-toggle">
+                                <span class="form-toggle-label">CPD event notifications</span>
+                                <div class="toggle-switch active" data-pref="emailCpd" onclick="toggleSwitch(this)"></div>
+                            </div>
+                            <div class="form-toggle" style="border-bottom: none;">
+                                <span class="form-toggle-label">GPRN newsletter and updates</span>
+                                <div class="toggle-switch" data-pref="emailNewsletter" onclick="toggleSwitch(this)"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tabNotifications" class="tab-pane ${currentTab === 'notifications' ? 'active' : ''}">
+                    <div class="content-card">
+                        <div class="content-card-header"><h2>Push Notifications</h2></div>
+                        <div class="content-card-body">
+                            <div class="form-toggle">
+                                <span class="form-toggle-label">New shifts in my area</span>
+                                <div class="toggle-switch active" data-pref="pushShifts" onclick="toggleSwitch(this)"></div>
+                            </div>
+                            <div class="form-toggle">
+                                <span class="form-toggle-label">Offer accepted or declined</span>
+                                <div class="toggle-switch active" data-pref="pushOffers" onclick="toggleSwitch(this)"></div>
+                            </div>
+                            <div class="form-toggle">
+                                <span class="form-toggle-label">Shift reminders (24 hours before)</span>
+                                <div class="toggle-switch active" data-pref="pushReminders" onclick="toggleSwitch(this)"></div>
+                            </div>
+                            <div class="form-toggle" style="border-bottom: none;">
+                                <span class="form-toggle-label">Urgent shift postings</span>
+                                <div class="toggle-switch active" data-pref="pushUrgent" onclick="toggleSwitch(this)"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            renderSettings();
+        }
+
+        function toggleSwitch(el) {
+            el.classList.toggle('active');
+            const state = el.classList.contains('active') ? 'enabled' : 'disabled';
+            Toast.show(`Preference ${state}`, 'info', 1500);
+        }
+
+        function savePersonalInfo(e) {
+            e.preventDefault();
+            const data = getMockData();
+            const session = Auth.getSession();
+            const user = data.locums.find(l => l.id === session.id);
+            if (!user) return;
+
+            user.title = document.getElementById('settTitle').value;
+            user.firstName = document.getElementById('settFirst').value;
+            user.lastName = document.getElementById('settLast').value;
+            user.email = document.getElementById('settEmail').value;
+            user.phone = document.getElementById('settPhone').value;
+            user.gmcNumber = document.getElementById('settGmc').value;
+            user.medicalSchool = document.getElementById('settMedSchool').value;
+            user.yearQualified = parseInt(document.getElementById('settYear').value);
+            user.bio = document.getElementById('settBio').value;
+            user.signingScripts = document.getElementById('settScripts').value;
+            user.travelDistance = parseInt(document.getElementById('settTravel').value);
+
+            const checkedSystems = document.querySelectorAll('input[name="computerSystems"]:checked');
+            user.computerSystems = Array.from(checkedSystems).map(c => c.value);
+
+            const checkedHB = document.querySelectorAll('input[name="healthBoards"]:checked');
+            user.healthBoards = Array.from(checkedHB).map(c => c.value);
+
+            // Update session name
+            const newSession = {
+                ...session,
+                name: `${user.title} ${user.firstName} ${user.lastName}`,
+                email: user.email
+            };
+            localStorage.setItem('gprn_session', JSON.stringify(newSession));
+
+            saveMockData(data);
+            Toast.show('Settings saved successfully', 'success');
+        }
+
+        function changePassword(e) {
+            e.preventDefault();
+            const current = document.getElementById('pwCurrent').value;
+            const newPw = document.getElementById('pwNew').value;
+            const confirm = document.getElementById('pwConfirm').value;
+
+            const user = getUser();
+            if (current !== user.password) {
+                Toast.show('Current password is incorrect', 'error');
+                return;
+            }
+            if (newPw.length < 6) {
+                Toast.show('New password must be at least 6 characters', 'error');
+                return;
+            }
+            if (newPw !== confirm) {
+                Toast.show('New passwords do not match', 'error');
+                return;
+            }
+
+            const data = getMockData();
+            const session = Auth.getSession();
+            const u = data.locums.find(l => l.id === session.id);
+            u.password = newPw;
+            saveMockData(data);
+            Toast.show('Password updated successfully', 'success');
+            document.getElementById('passwordForm').reset();
+        }
+
+        renderSettings();
+    </script>
+</body>
+</html>

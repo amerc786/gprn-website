@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register as Locum GP - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="auth-page">
+        <div class="hero-bg-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+        </div>
+
+        <div class="auth-card wide">
+            <div class="auth-logo">
+                <a href="index.html" class="logo">
+                    <span class="logo-icon">GP</span><span class="logo-text">RN</span>
+                </a>
+                <p>Register as a Locum GP</p>
+            </div>
+
+            <!-- Stepper -->
+            <div class="stepper" id="stepper">
+                <div class="step active" data-step="1">
+                    <div class="step-circle">1</div>
+                    <span class="step-label">Personal Info</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step" data-step="2">
+                    <div class="step-circle">2</div>
+                    <span class="step-label">Professional</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step" data-step="3">
+                    <div class="step-circle">3</div>
+                    <span class="step-label">Preferences</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step" data-step="4">
+                    <div class="step-circle">4</div>
+                    <span class="step-label">Documents</span>
+                </div>
+            </div>
+
+            <form id="registerForm" novalidate>
+                <!-- Step 1: Personal Info -->
+                <div class="form-step" id="step1">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="title">Title</label>
+                            <select id="title" class="form-select" required>
+                                <option value="">Select...</option>
+                                <option value="Dr">Dr</option>
+                                <option value="Mr">Mr</option>
+                                <option value="Mrs">Mrs</option>
+                                <option value="Ms">Ms</option>
+                            </select>
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="firstName">First Name</label>
+                            <input type="text" id="firstName" class="form-input" placeholder="First name" required>
+                            <div class="form-error"></div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="lastName">Last Name</label>
+                            <input type="text" id="lastName" class="form-input" placeholder="Last name" required>
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="email">Email Address</label>
+                            <input type="email" id="email" class="form-input" placeholder="you@example.com" required data-validate="email">
+                            <div class="form-error"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="phone">Phone Number</label>
+                        <input type="tel" id="phone" class="form-input" placeholder="07700 000000" required data-validate="tel">
+                        <div class="form-error"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="password">Password</label>
+                            <div class="password-wrapper">
+                                <input type="password" id="password" class="form-input" placeholder="Min 6 characters" required data-validate="password">
+                                <button type="button" class="password-toggle" onclick="togglePw('password', this)" aria-label="Show password">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="confirmPassword">Confirm Password</label>
+                            <div class="password-wrapper">
+                                <input type="password" id="confirmPassword" class="form-input" placeholder="Confirm password" required data-validate="password-confirm">
+                                <button type="button" class="password-toggle" onclick="togglePw('confirmPassword', this)" aria-label="Show password">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                            <div class="form-error"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Professional -->
+                <div class="form-step" id="step2" style="display:none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="gmcNumber">GMC Number</label>
+                            <input type="text" id="gmcNumber" class="form-input" placeholder="7 digit GMC number" required data-validate="gmc" maxlength="7">
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="medicalSchool">Medical School</label>
+                            <input type="text" id="medicalSchool" class="form-input" placeholder="e.g. Cardiff University" required>
+                            <div class="form-error"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="yearQualified">Year Qualified</label>
+                        <input type="number" id="yearQualified" class="form-input" placeholder="e.g. 2015" min="1970" max="2026" required>
+                        <div class="form-error"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">On Performer List?</label>
+                            <div style="display:flex; gap:16px; margin-top:4px;">
+                                <label class="form-radio"><input type="radio" name="performerList" value="yes" required> Yes</label>
+                                <label class="form-radio"><input type="radio" name="performerList" value="no"> No</label>
+                            </div>
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">NHS Pension?</label>
+                            <div style="display:flex; gap:16px; margin-top:4px;">
+                                <label class="form-radio"><input type="radio" name="nhsPension" value="yes" required> Yes</label>
+                                <label class="form-radio"><input type="radio" name="nhsPension" value="no"> No</label>
+                            </div>
+                            <div class="form-error"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Computer Systems</label>
+                        <div style="display:flex; gap:16px; margin-top:4px;">
+                            <label class="form-checkbox"><input type="checkbox" name="computerSystems" value="EMIS"> EMIS</label>
+                            <label class="form-checkbox"><input type="checkbox" name="computerSystems" value="Vision"> Vision</label>
+                            <label class="form-checkbox"><input type="checkbox" name="computerSystems" value="TPP"> TPP</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="signingScripts">Signing Scripts Preference</label>
+                        <select id="signingScripts" class="form-select">
+                            <option value="Will sign scripts">Will sign scripts</option>
+                            <option value="Would negotiate a separate fee">Would negotiate a separate fee</option>
+                            <option value="Will not sign scripts">Will not sign scripts</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Step 3: Preferences -->
+                <div class="form-step" id="step3" style="display:none;">
+                    <div class="form-group">
+                        <label class="form-label">Health Boards</label>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px; margin-top:4px;">
+                            <label class="form-checkbox"><input type="checkbox" name="healthBoards" value="Aneurin Bevan"> Aneurin Bevan</label>
+                            <label class="form-checkbox"><input type="checkbox" name="healthBoards" value="Betsi Cadwaladr"> Betsi Cadwaladr</label>
+                            <label class="form-checkbox"><input type="checkbox" name="healthBoards" value="Cardiff and Vale"> Cardiff and Vale</label>
+                            <label class="form-checkbox"><input type="checkbox" name="healthBoards" value="Cwm Taf Morgannwg"> Cwm Taf Morgannwg</label>
+                            <label class="form-checkbox"><input type="checkbox" name="healthBoards" value="Hywel Dda"> Hywel Dda</label>
+                            <label class="form-checkbox"><input type="checkbox" name="healthBoards" value="Powys"> Powys</label>
+                            <label class="form-checkbox"><input type="checkbox" name="healthBoards" value="Swansea Bay"> Swansea Bay</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Preferred Shift Types</label>
+                        <div style="display:flex; gap:16px; margin-top:4px;">
+                            <label class="form-checkbox"><input type="checkbox" name="shiftTypes" value="AM"> AM</label>
+                            <label class="form-checkbox"><input type="checkbox" name="shiftTypes" value="PM"> PM</label>
+                            <label class="form-checkbox"><input type="checkbox" name="shiftTypes" value="Full Day"> Full Day</label>
+                            <label class="form-checkbox"><input type="checkbox" name="shiftTypes" value="On-Call"> On-Call</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="travelDistance">Maximum Travel Distance</label>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <input type="range" id="travelDistance" min="5" max="100" value="30" style="flex:1; accent-color: var(--primary);">
+                            <span id="travelDistanceValue" style="font-weight:600; min-width:55px; text-align:right;">30 miles</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="bio">Bio</label>
+                        <textarea id="bio" class="form-textarea" placeholder="Tell practices about yourself, your experience, and availability..." rows="4"></textarea>
+                    </div>
+                </div>
+
+                <!-- Step 4: Documents -->
+                <div class="form-step" id="step4" style="display:none;">
+                    <p style="font-size:0.9rem; color:var(--dark-600); margin-bottom:24px;">Upload your documents to complete your profile. You can also do this later from your dashboard.</p>
+
+                    <div class="form-group">
+                        <label class="form-label">Indemnity Certificate</label>
+                        <div class="upload-zone" id="uploadIndemnity">
+                            <div class="upload-zone-icon">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            </div>
+                            <p>Click to upload or drag and drop</p>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Performer List Status</label>
+                        <div class="upload-zone" id="uploadPerformer">
+                            <div class="upload-zone-icon">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            </div>
+                            <p>Click to upload or drag and drop</p>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">DBS Check</label>
+                        <div class="upload-zone" id="uploadDBS">
+                            <div class="upload-zone-icon">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            </div>
+                            <p>Click to upload or drag and drop</p>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">CV</label>
+                        <div class="upload-zone" id="uploadCV">
+                            <div class="upload-zone-icon">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            </div>
+                            <p>Click to upload or drag and drop</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div style="display:flex; justify-content:space-between; margin-top:32px;">
+                    <button type="button" class="btn btn-ghost" id="btnBack" style="display:none;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                        Back
+                    </button>
+                    <div style="flex:1;"></div>
+                    <button type="button" class="btn btn-primary" id="btnNext">Next Step</button>
+                </div>
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="login.html">Log In</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        (function() {
+            initMockData();
+
+            let currentStep = 1;
+            const totalSteps = 4;
+
+            const btnNext = document.getElementById('btnNext');
+            const btnBack = document.getElementById('btnBack');
+            const stepper = document.getElementById('stepper');
+            const form = document.getElementById('registerForm');
+            const travelSlider = document.getElementById('travelDistance');
+            const travelValue = document.getElementById('travelDistanceValue');
+
+            // Travel distance slider
+            travelSlider.addEventListener('input', function() {
+                travelValue.textContent = this.value + ' miles';
+            });
+
+            // Simulated upload zones
+            document.querySelectorAll('.upload-zone').forEach(zone => {
+                zone.addEventListener('click', function() {
+                    this.innerHTML = '<p class="uploaded"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px;"><polyline points="20 6 9 17 4 12"/></svg>File uploaded successfully</p>';
+                });
+            });
+
+            function showStep(step) {
+                for (let i = 1; i <= totalSteps; i++) {
+                    document.getElementById('step' + i).style.display = i === step ? 'block' : 'none';
+                }
+
+                // Update stepper
+                const steps = stepper.querySelectorAll('.step');
+                const lines = stepper.querySelectorAll('.step-line');
+                steps.forEach((s, idx) => {
+                    const num = idx + 1;
+                    s.classList.remove('active', 'completed');
+                    if (num < step) s.classList.add('completed');
+                    else if (num === step) s.classList.add('active');
+                });
+                lines.forEach((l, idx) => {
+                    l.classList.toggle('completed', idx + 1 < step);
+                });
+
+                btnBack.style.display = step > 1 ? 'inline-flex' : 'none';
+                btnNext.textContent = step === totalSteps ? 'Create Account' : 'Next Step';
+            }
+
+            function validateCurrentStep() {
+                const stepEl = document.getElementById('step' + currentStep);
+                const fields = stepEl.querySelectorAll('[required], [data-validate]');
+                let valid = true;
+                fields.forEach(field => {
+                    const error = FormValidator.validateField(field);
+                    const errorEl = field.closest('.form-group')?.querySelector('.form-error');
+                    if (error) {
+                        valid = false;
+                        field.classList.add('error');
+                        if (errorEl) errorEl.textContent = error;
+                    } else {
+                        field.classList.remove('error');
+                        if (errorEl) errorEl.textContent = '';
+                    }
+                });
+                return valid;
+            }
+
+            btnNext.addEventListener('click', function() {
+                if (!validateCurrentStep()) return;
+
+                if (currentStep < totalSteps) {
+                    currentStep++;
+                    showStep(currentStep);
+                } else {
+                    // Final submit
+                    const data = getMockData();
+                    const newId = 'loc-' + String(data.locums.length + 1).padStart(3, '0');
+                    const computerSystems = Array.from(document.querySelectorAll('input[name="computerSystems"]:checked')).map(c => c.value);
+                    const healthBoards = Array.from(document.querySelectorAll('input[name="healthBoards"]:checked')).map(c => c.value);
+                    const shiftTypes = Array.from(document.querySelectorAll('input[name="shiftTypes"]:checked')).map(c => c.value);
+                    const performerList = document.querySelector('input[name="performerList"]:checked');
+                    const nhsPension = document.querySelector('input[name="nhsPension"]:checked');
+
+                    const newLocum = {
+                        id: newId,
+                        email: document.getElementById('email').value.trim(),
+                        password: document.getElementById('password').value,
+                        role: 'locum',
+                        title: document.getElementById('title').value,
+                        firstName: document.getElementById('firstName').value.trim(),
+                        lastName: document.getElementById('lastName').value.trim(),
+                        phone: document.getElementById('phone').value.trim(),
+                        gmcNumber: document.getElementById('gmcNumber').value.trim(),
+                        medicalSchool: document.getElementById('medicalSchool').value.trim(),
+                        yearQualified: parseInt(document.getElementById('yearQualified').value),
+                        performerList: performerList ? performerList.value === 'yes' : false,
+                        nhsPension: nhsPension ? nhsPension.value === 'yes' : false,
+                        computerSystems: computerSystems,
+                        signingScripts: document.getElementById('signingScripts').value,
+                        healthBoards: healthBoards,
+                        preferredShiftTypes: shiftTypes,
+                        travelDistance: parseInt(document.getElementById('travelDistance').value),
+                        bio: document.getElementById('bio').value.trim(),
+                        avatar: null,
+                        bookingReliability: 100,
+                        responseTime: 'N/A',
+                        totalShifts: 0,
+                        documents: {
+                            indemnity: { uploaded: false, name: null },
+                            performerListStatus: { uploaded: false, name: null },
+                            dbs: { uploaded: false, name: null },
+                            cv: { uploaded: false, name: null }
+                        },
+                        rates: { am: 400, pm: 400, fullDay: 780, onCall: 40, housecall: 0 },
+                        practiceRates: {}
+                    };
+
+                    data.locums.push(newLocum);
+                    saveMockData(data);
+
+                    // Log in automatically
+                    const session = Auth.login(newLocum.email, newLocum.password);
+                    if (session) {
+                        Toast.show('Account created successfully! Welcome to GPRN.', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'locum-dashboard.html';
+                        }, 800);
+                    }
+                }
+            });
+
+            btnBack.addEventListener('click', function() {
+                if (currentStep > 1) {
+                    currentStep--;
+                    showStep(currentStep);
+                }
+            });
+
+            showStep(1);
+        })();
+
+        function togglePw(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            btn.innerHTML = isPassword
+                ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+                : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+        }
+    </script>
+</body>
+</html>
