@@ -101,12 +101,22 @@
         }
 
         function handleMarkPaid(invoiceId) {
-            const success = InvoiceManager.updateStatus(invoiceId, 'paid');
-            if (success) {
+            // Direct localStorage update — no dependency on InvoiceManager
+            try {
+                const raw = localStorage.getItem('gprn_data');
+                const d = JSON.parse(raw);
+                const inv = d.invoices.find(i => i.id === invoiceId);
+                if (!inv) {
+                    Toast.show('Invoice not found.', 'error');
+                    return;
+                }
+                inv.status = 'paid';
+                inv.paidDate = new Date().toISOString().split('T')[0];
+                localStorage.setItem('gprn_data', JSON.stringify(d));
                 Toast.show('Invoice marked as paid. Locum has been notified.', 'success');
-                setTimeout(() => window.location.reload(), 800);
-            } else {
-                Toast.show('Failed to update invoice. Please try again.', 'error');
+                setTimeout(() => window.location.reload(), 600);
+            } catch(e) {
+                Toast.show('Error: ' + e.message, 'error');
             }
         }
 
