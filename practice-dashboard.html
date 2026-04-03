@@ -45,24 +45,26 @@
         const fillRate = totalShiftCount > 0 ? Math.round(((filledShiftCount + completedOfferCount) / Math.max(totalShiftCount, 1)) * 100) : 0;
         const fillRateDisplay = Math.min(fillRate, 100);
 
-        // Coverage data for Mon-Fri
+        // Coverage data for Mon-Fri — store dates for click handlers
         const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
         const today = new Date();
         const dayOfWeek = today.getDay();
         const monday = new Date(today);
         monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
 
+        const coverageDates = [];
         const coverageData = weekDays.map((day, i) => {
             const d = new Date(monday);
             d.setDate(monday.getDate() + i);
             const dateStr = d.toISOString().split('T')[0];
+            coverageDates.push(dateStr);
             const totalShifts = practiceShifts.filter(s => s.date === dateStr).length;
             const filledShifts = practiceOffers.filter(o =>
                 o.shiftDate === dateStr &&
                 (o.status === 'accepted' || o.status === 'completed')
             ).length;
             const pct = totalShifts > 0 ? Math.round((filledShifts / totalShifts) * 100) : (i < 3 ? [80, 60, 100, 40, 0][i] : 0);
-            return { day, pct: Math.min(pct || [80, 60, 100, 40, 20][i], 100) };
+            return { day, pct: Math.min(pct || [80, 60, 100, 40, 20][i], 100), dateStr };
         });
 
         // Top locums - most used based on completed offers
@@ -85,21 +87,22 @@
                 };
             });
 
-        // Spending trend mini chart - last 6 months
+        // Spending trend — store month metadata for click handlers
         const invoices = InvoiceManager.getForPractice(session.id);
         const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const spendingData = [];
+        const spendingMeta = [];
         for (let i = 5; i >= 0; i--) {
             const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const mMonth = m.getMonth();
             const mYear = m.getFullYear();
-            const total = invoices
-                .filter(inv => {
-                    const d = new Date(inv.shiftDate);
-                    return d.getMonth() === mMonth && d.getFullYear() === mYear;
-                })
-                .reduce((s, inv) => s + inv.total, 0);
+            const monthInvoices = invoices.filter(inv => {
+                const d = new Date(inv.shiftDate);
+                return d.getMonth() === mMonth && d.getFullYear() === mYear;
+            });
+            const total = monthInvoices.reduce((s, inv) => s + inv.total, 0);
             spendingData.push({ label: monthsShort[mMonth], value: total });
+            spendingMeta.push({ month: mMonth, year: mYear, label: monthsShort[mMonth] + ' ' + mYear });
         }
         const maxSpend = Math.max(...spendingData.map(e => e.value), 1);
 
@@ -156,15 +159,19 @@
                 locumId: offer.locumId,
                 shiftDate: offer.shiftDate,
                 sessionType: offer.sessionType,
-                rate: loc ? loc.rates.am : 0,
+                startTime: offer.startTime,
+                endTime: offer.endTime,
+                rate: offer.sessionType === 'Full Day' ? (offer.rateFullDay || 820) : (offer.sessionType === 'PM' ? (offer.ratePM || 430) : (offer.rateAM || 430)),
                 reliability: loc ? loc.bookingReliability : 0,
                 isBarred: BarredList.isBarred(session.id, offer.locumId),
                 isPreferred: BarredList.isPreferred(session.id, offer.locumId)
             };
         });
 
-        // Notifications - filtered for current user
-        const notifications = (data.notifications || []).filter(n => n.userId === session.id || !n.userId);
+        // Notifications - filtered for current user, exclude acknowledged
+        const notifications = (data.notifications || [])
+            .filter(n => (n.userId === session.id || !n.userId) && !n.acknowledged)
+            .slice(0, 20);
 
         let html = `
             <div style="margin-bottom: 32px;">
@@ -175,10 +182,42 @@
             </div>
 
             <div class="dash-stats-row">
-                ${renderStatCard('search', 'Open Shifts', openShifts.length, null, null)}
-                ${renderStatCard('file-text', 'Pending Applications', pendingApps.length, null, null)}
-                ${renderStatCard('check', 'Fill Rate', fillRateDisplay + '%', null, null)}
-                ${renderStatCard('pound', 'Monthly Spend', formatCurrency(monthlySpend), null, null)}
+                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('openShifts')">
+                    <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
+                        ${getIcon('search')}
+                    </div>
+                    <div class="dash-stat-info">
+                        <span class="dash-stat-value">${openShifts.length}</span>
+                        <span class="dash-stat-label">Open Shifts</span>
+                    </div>
+                </div>
+                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('pendingApps')">
+                    <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
+                        ${getIcon('file-text')}
+                    </div>
+                    <div class="dash-stat-info">
+                        <span class="dash-stat-value">${pendingApps.length}</span>
+                        <span class="dash-stat-label">Pending Applications</span>
+                    </div>
+                </div>
+                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('fillRate')">
+                    <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
+                        ${getIcon('check')}
+                    </div>
+                    <div class="dash-stat-info">
+                        <span class="dash-stat-value">${fillRateDisplay}%</span>
+                        <span class="dash-stat-label">Fill Rate</span>
+                    </div>
+                </div>
+                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('monthlySpend')">
+                    <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
+                        ${getIcon('pound')}
+                    </div>
+                    <div class="dash-stat-info">
+                        <span class="dash-stat-value">${formatCurrency(monthlySpend)}</span>
+                        <span class="dash-stat-label">Monthly Spend</span>
+                    </div>
+                </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
@@ -187,11 +226,11 @@
                         <h2>Shift Coverage This Week</h2>
                     </div>
                     <div class="content-card-body">
-                        ${coverageData.map(c => {
+                        ${coverageData.map((c, i) => {
                             const colorClass = c.pct >= 80 ? '' : (c.pct >= 50 ? 'warn' : 'danger');
                             const fillClass = c.pct < 50 ? 'warning' : '';
                             return `
-                                <div class="coverage-bar-container">
+                                <div class="coverage-bar-container" style="cursor: pointer;" onclick="showDayCoverage(${i})">
                                     <div class="coverage-label">
                                         <span>${c.day}</span>
                                         <span class="coverage-pct ${colorClass}">${c.pct}%</span>
@@ -210,8 +249,8 @@
                     </div>
                     <div class="content-card-body">
                         <div class="bar-chart">
-                            ${spendingData.map(e => `
-                                <div class="bar-chart-item">
+                            ${spendingData.map((e, i) => `
+                                <div class="bar-chart-item" style="cursor: pointer;" onclick="showMonthSpend(${i})">
                                     <div class="bar-chart-value">${e.value > 0 ? formatCurrency(e.value) : '-'}</div>
                                     <div class="bar-chart-bar" style="height: ${e.value > 0 ? Math.max((e.value / maxSpend) * 120, 4) : 4}px;"></div>
                                     <div class="bar-chart-label">${e.label}</div>
@@ -260,10 +299,10 @@
                             <div style="padding: 14px 0; border-bottom: 1px solid var(--gray-100);">
                                 ${(app.isBarred || app.isPreferred) ? renderBarredWarning(session.id, app.locumId) : ''}
                                 <div style="display: flex; align-items: center; justify-content: space-between;">
-                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showApplicantDetail('${app.offerId}')">
                                         <div class="header-avatar" style="width: 40px; height: 40px; font-size: 0.8rem;">${getInitials(app.locumName)}</div>
                                         <div>
-                                            <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${app.locumName}</strong>
+                                            <strong style="display: block; font-size: 0.9rem; color: var(--primary); text-decoration: underline;">${app.locumName}</strong>
                                             <span style="font-size: 0.82rem; color: var(--dark-600);">${DateUtils.format(app.shiftDate, 'medium')} &bull; ${app.sessionType || 'AM'} &bull; ${formatCurrency(app.rate)}/session</span>
                                             <span style="font-size: 0.78rem; color: var(--dark-600); margin-left: 6px;">(${app.reliability}% reliable)</span>
                                         </div>
@@ -281,16 +320,18 @@
                 <div class="content-card">
                     <div class="content-card-header">
                         <h2>Recent Notifications</h2>
+                        <span style="font-size: 0.78rem; color: var(--dark-600);">${notifications.length} unread</span>
                     </div>
-                    <div class="content-card-body">
+                    <div class="content-card-body" id="notifPane" style="max-height: 320px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;">
+                        <style>#notifPane::-webkit-scrollbar { display: none; }</style>
                         ${notifications.length === 0
                             ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No notifications.</p>'
-                            : notifications.slice(0, 6).map(n => `
-                                <div class="notif-item">
+                            : notifications.slice(0, 5).map((n, idx) => `
+                                <div class="notif-item" id="notif-${idx}" style="cursor: pointer;" onclick="expandNotification(${idx})">
                                     <div class="notif-dot ${n.read ? 'read' : 'unread'}"></div>
-                                    <div>
+                                    <div style="flex: 1;">
                                         <div class="notif-title">${n.title}</div>
-                                        <div class="notif-message">${n.message}</div>
+                                        <div class="notif-message" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${n.message}</div>
                                         <div class="notif-time">${DateUtils.relative(n.date)}</div>
                                     </div>
                                 </div>
@@ -337,6 +378,9 @@
 
         pageContent.innerHTML = html;
 
+        // ===== HANDLER FUNCTIONS =====
+
+        // --- Accept / Decline (existing) ---
         function acceptApp(offerId) {
             const success = Booking.acceptOffer(offerId);
             if (success) {
@@ -357,6 +401,444 @@
             setTimeout(() => window.location.reload(), 800);
         }
 
+        // --- GP Applicant Detail Modal ---
+        function showApplicantDetail(offerId) {
+            const freshData = getMockData();
+            const offer = freshData.offers.find(o => o.id === offerId);
+            if (!offer) return;
+            const loc = freshData.locums.find(l => l.id === offer.locumId);
+            if (!loc) return;
+
+            const locumName = `${loc.title} ${loc.firstName} ${loc.lastName}`;
+            const avgRating = FeedbackManager.getAverageRating(offer.locumId);
+            const isBarred = BarredList.isBarred(session.id, offer.locumId);
+            const isPreferred = BarredList.isPreferred(session.id, offer.locumId);
+
+            // Shift history at this practice
+            const pastShifts = freshData.offers.filter(o =>
+                o.locumId === offer.locumId && o.practiceId === session.id && o.status === 'completed'
+            ).length;
+
+            // Future bookings at this practice
+            const futureBookings = freshData.offers.filter(o =>
+                o.locumId === offer.locumId && o.practiceId === session.id &&
+                ['accepted', 'confirmed', 'acknowledged'].includes(o.status) &&
+                new Date(o.shiftDate) > new Date()
+            ).length;
+
+            // Get shift for budget comparison
+            const shift = freshData.shifts.find(s => s.id === offer.shiftId);
+            const offeredRate = offer.sessionType === 'Full Day' ? (offer.rateFullDay || 820) : (offer.sessionType === 'PM' ? (offer.ratePM || 430) : (offer.rateAM || 430));
+            const budgetRate = shift ? shift.budgetRate : null;
+
+            let budgetHtml = '';
+            if (budgetRate) {
+                const diff = offeredRate - budgetRate;
+                const badge = diff > 0 ? `<span class="badge badge-danger">£${diff.toFixed(0)} over budget</span>` : (diff < 0 ? `<span class="badge badge-success">£${Math.abs(diff).toFixed(0)} under budget</span>` : `<span class="badge badge-info">On budget</span>`);
+                budgetHtml = `
+                    <div style="padding: 10px 14px; background: var(--gray-50); border-radius: var(--radius); margin-top: 12px;">
+                        <span style="font-size: 0.82rem; color: var(--dark-600);">Budget: ${formatCurrency(budgetRate)}</span>
+                        <span style="margin-left: 8px;">${badge}</span>
+                    </div>`;
+            }
+
+            Modal.show({
+                title: locumName,
+                size: 'large',
+                body: `
+                    <div style="display: flex; gap: 20px; align-items: flex-start;">
+                        <div class="header-avatar" style="width: 64px; height: 64px; font-size: 1.2rem; flex-shrink: 0;">${getInitials(locumName)}</div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;">
+                                ${isBarred ? '<span class="badge badge-danger">BARRED</span>' : ''}
+                                ${isPreferred ? '<span class="badge badge-success">PREFERRED</span>' : ''}
+                                <span class="badge badge-info">${loc.bookingReliability}% reliable</span>
+                                ${avgRating ? `<span style="color: var(--coral); font-weight: 600;">&#9733; ${avgRating}/5</span>` : '<span style="font-size:0.82rem; color:var(--dark-600);">No ratings yet</span>'}
+                            </div>
+                            <div style="font-size: 0.88rem; color: var(--dark-600); margin-bottom: 4px;">${loc.email}</div>
+                            ${loc.phone ? `<div style="font-size: 0.88rem; color: var(--dark-600);">${loc.phone}</div>` : ''}
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px;">
+                        <div style="padding: 16px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">${pastShifts}</div>
+                            <div style="font-size: 0.82rem; color: var(--dark-600);">Previous shifts at your practice</div>
+                        </div>
+                        <div style="padding: 16px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">${futureBookings}</div>
+                            <div style="font-size: 0.82rem; color: var(--dark-600);">Future bookings at your practice</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding: 16px; background: var(--gray-50); border-radius: var(--radius);">
+                        <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 8px;">Shift Applied For</h4>
+                        <div style="font-size: 0.88rem; color: var(--dark-600);">
+                            ${getIcon('calendar')} <strong>${DateUtils.format(offer.shiftDate, 'full')}</strong>
+                            &bull; ${offer.sessionType} &bull; ${offer.startTime} - ${offer.endTime}
+                        </div>
+                        <div style="font-size: 0.9rem; margin-top: 8px;">
+                            <strong>Offered Rate:</strong> ${formatCurrency(offeredRate)}/session
+                        </div>
+                        ${budgetHtml}
+                    </div>
+
+                    <div id="counterSection" style="display: none; margin-top: 16px; padding: 16px; border: 2px solid var(--primary); border-radius: var(--radius);">
+                        <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 12px;">Counter-Offer</h4>
+                        <div class="form-group" style="margin-bottom: 10px;">
+                            <label class="form-label">Your Proposed Rate (£)</label>
+                            <input type="number" id="counterRate" class="form-input" placeholder="e.g. 450" min="0" step="10" style="max-width: 200px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 10px;">
+                            <label class="form-label">Message (optional)</label>
+                            <textarea id="counterMessage" class="form-textarea" rows="2" placeholder="Explain your counter-offer..."></textarea>
+                        </div>
+                        <button class="btn btn-primary btn-small" id="submitCounterBtn">Send Counter-Offer</button>
+                        <button class="btn btn-ghost btn-small" onclick="document.getElementById('counterSection').style.display='none';">Cancel</button>
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-primary" id="modalAcceptBtn" ${isBarred ? 'disabled style="opacity:0.5"' : ''}>Accept</button>
+                    <button class="btn btn-secondary" id="modalCounterBtn">Counter-Offer</button>
+                    <button class="btn btn-ghost" id="modalDeclineBtn">Decline</button>
+                `,
+                onOpen: (overlay) => {
+                    overlay.querySelector('#modalAcceptBtn').addEventListener('click', () => {
+                        Modal.close(overlay);
+                        acceptApp(offerId);
+                    });
+                    overlay.querySelector('#modalDeclineBtn').addEventListener('click', () => {
+                        Modal.close(overlay);
+                        declineApp(offerId);
+                    });
+                    overlay.querySelector('#modalCounterBtn').addEventListener('click', () => {
+                        document.getElementById('counterSection').style.display = 'block';
+                    });
+                    overlay.querySelector('#submitCounterBtn').addEventListener('click', () => {
+                        const rate = parseFloat(document.getElementById('counterRate').value);
+                        const msg = document.getElementById('counterMessage').value;
+                        if (!rate || rate <= 0) {
+                            Toast.show('Please enter a valid rate.', 'error');
+                            return;
+                        }
+                        const success = Booking.counterOffer(offerId, rate, msg);
+                        if (success) {
+                            Modal.close(overlay);
+                            Toast.show('Counter-offer sent to ' + locumName, 'success');
+                            setTimeout(() => window.location.reload(), 800);
+                        } else {
+                            Toast.show('Failed to send counter-offer.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        // --- Notification Expand & Dismiss ---
+        function expandNotification(idx) {
+            const freshData = getMockData();
+            const notifs = (freshData.notifications || [])
+                .filter(n => (n.userId === session.id || !n.userId) && !n.acknowledged);
+            const n = notifs[idx];
+            if (!n) return;
+
+            const overlay = Modal.show({
+                title: n.title,
+                size: 'medium',
+                body: `
+                    <div style="margin-bottom: 16px;">
+                        <p style="font-size: 0.95rem; color: var(--dark); line-height: 1.6;">${n.message}</p>
+                    </div>
+                    <div style="padding: 10px 14px; background: var(--gray-50); border-radius: var(--radius); font-size: 0.82rem; color: var(--dark-600);">
+                        ${getIcon('clock')} ${n.date ? DateUtils.format(n.date, 'full') + ' &bull; ' + DateUtils.relative(n.date) : 'Recently'}
+                    </div>
+                    ${n.type ? `<div style="margin-top: 8px;"><span class="badge badge-info" style="font-size: 0.75rem;">${n.type.replace(/_/g, ' ')}</span></div>` : ''}
+                `,
+                footer: '<button class="btn btn-primary" id="ackNotifBtn">Acknowledge &amp; Dismiss</button>'
+            });
+
+            overlay.querySelector('#ackNotifBtn').addEventListener('click', () => {
+                // Mark acknowledged in mock data
+                const d = getMockData();
+                const allNotifs = d.notifications || [];
+                const match = allNotifs.find(nn => nn.title === n.title && nn.message === n.message && nn.date === n.date);
+                if (match) {
+                    match.acknowledged = true;
+                    match.read = true;
+                    saveMockData(d);
+                }
+                // Remove from DOM
+                const el = document.getElementById('notif-' + idx);
+                if (el) el.remove();
+                Modal.close(overlay);
+                Toast.show('Notification dismissed.', 'info', 1500);
+            });
+
+            // Also dismiss on modal close (clicking X or backdrop)
+            const closeBtn = overlay.querySelector('[data-modal-close]');
+            closeBtn.addEventListener('click', () => {
+                const d = getMockData();
+                const allNotifs = d.notifications || [];
+                const match = allNotifs.find(nn => nn.title === n.title && nn.message === n.message && nn.date === n.date);
+                if (match) {
+                    match.acknowledged = true;
+                    match.read = true;
+                    saveMockData(d);
+                }
+                const el = document.getElementById('notif-' + idx);
+                if (el) el.remove();
+            });
+        }
+
+        // --- Day Coverage Detail Modal ---
+        function showDayCoverage(dayIndex) {
+            const dateStr = coverageDates[dayIndex];
+            const dayName = weekDays[dayIndex];
+            const freshData = getMockData();
+            const dayShifts = freshData.shifts.filter(s => s.practiceId === session.id && s.date === dateStr);
+
+            let shiftRows = '';
+            if (dayShifts.length === 0) {
+                shiftRows = '<p style="color: var(--dark-600); font-size: 0.88rem; padding: 16px 0;">No shifts scheduled for this day.</p>';
+            } else {
+                shiftRows = dayShifts.map(shift => {
+                    const offer = freshData.offers.find(o => o.shiftId === shift.id && ['accepted', 'confirmed', 'acknowledged', 'completed'].includes(o.status));
+                    const pendingCount = freshData.offers.filter(o => o.shiftId === shift.id && o.status === 'pending').length;
+                    let statusBadge = '';
+                    let details = '';
+
+                    if (shift.status === 'filled' || offer) {
+                        statusBadge = '<span class="badge badge-success">Filled</span>';
+                        if (offer) {
+                            const loc = freshData.locums.find(l => l.id === offer.locumId);
+                            const locName = loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown';
+                            const rate = offer.sessionType === 'Full Day' ? (offer.rateFullDay || 820) : (offer.sessionType === 'PM' ? (offer.ratePM || 430) : (offer.rateAM || 430));
+                            details = `
+                                <div style="margin-top: 8px; padding: 10px; background: rgba(16,185,129,0.08); border-radius: var(--radius); font-size: 0.85rem;">
+                                    ${getIcon('user')} <strong>${locName}</strong> &bull; ${formatCurrency(rate)}/session
+                                </div>`;
+                        }
+                    } else if (shift.status === 'open') {
+                        statusBadge = '<span class="badge badge-warning">Open</span>';
+                        details = `<div style="margin-top: 6px; font-size: 0.82rem; color: var(--dark-600);">${pendingCount} applicant${pendingCount !== 1 ? 's' : ''} &bull; <a href="view-requested-shifts.html" style="color: var(--primary);">View details</a></div>`;
+                    } else {
+                        statusBadge = `<span class="badge">${shift.status}</span>`;
+                    }
+
+                    return `
+                        <div style="padding: 14px 0; border-bottom: 1px solid var(--gray-100);">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <strong style="font-size: 0.9rem;">${shift.sessionType || 'Session'}</strong>
+                                    <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${shift.startTime} - ${shift.endTime}</span>
+                                </div>
+                                ${statusBadge}
+                            </div>
+                            ${details}
+                        </div>`;
+                }).join('');
+            }
+
+            Modal.show({
+                title: `${dayName} ${DateUtils.format(dateStr, 'full')}`,
+                size: 'medium',
+                body: `
+                    <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 0.88rem; color: var(--dark-600);">${dayShifts.length} shift${dayShifts.length !== 1 ? 's' : ''} scheduled</span>
+                        <span class="badge ${coverageData[dayIndex].pct >= 80 ? 'badge-success' : coverageData[dayIndex].pct >= 50 ? 'badge-warning' : 'badge-danger'}">${coverageData[dayIndex].pct}% covered</span>
+                    </div>
+                    ${shiftRows}
+                `,
+                footer: `<a href="post-shift.html" class="btn btn-primary">${getIcon('plus-circle')} Post Shift for ${dayName}</a>`
+            });
+        }
+
+        // --- Monthly Spend Detail Modal ---
+        function showMonthSpend(monthIndex) {
+            const meta = spendingMeta[monthIndex];
+            const freshInvoices = InvoiceManager.getForPractice(session.id);
+            const monthInvoices = freshInvoices.filter(inv => {
+                const d = new Date(inv.shiftDate);
+                return d.getMonth() === meta.month && d.getFullYear() === meta.year;
+            });
+
+            const totalSpent = monthInvoices.reduce((s, inv) => s + inv.total, 0);
+            const paidTotal = monthInvoices.filter(i => i.status === 'paid').reduce((s, inv) => s + inv.total, 0);
+            const outstandingTotal = monthInvoices.filter(i => i.status !== 'paid').reduce((s, inv) => s + inv.total, 0);
+
+            const freshData = getMockData();
+            let invoiceRows = '';
+            if (monthInvoices.length === 0) {
+                invoiceRows = '<p style="color: var(--dark-600); font-size: 0.88rem; padding: 16px 0;">No invoices for this month.</p>';
+            } else {
+                invoiceRows = `<table style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--gray-200); text-align: left;">
+                            <th style="padding: 8px 4px;">Invoice</th>
+                            <th style="padding: 8px 4px;">Locum</th>
+                            <th style="padding: 8px 4px;">Shift Date</th>
+                            <th style="padding: 8px 4px;">Session</th>
+                            <th style="padding: 8px 4px; text-align: right;">Amount</th>
+                            <th style="padding: 8px 4px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${monthInvoices.map(inv => {
+                            const loc = freshData.locums.find(l => l.id === inv.locumId);
+                            const locName = loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown';
+                            const statusClass = inv.status === 'paid' ? 'badge-success' : (inv.status === 'overdue' ? 'badge-danger' : 'badge-warning');
+                            return `
+                                <tr style="border-bottom: 1px solid var(--gray-100);">
+                                    <td style="padding: 8px 4px; font-weight: 600;">${inv.invoiceId || inv.id}</td>
+                                    <td style="padding: 8px 4px;">${locName}</td>
+                                    <td style="padding: 8px 4px;">${DateUtils.format(inv.shiftDate, 'short')}</td>
+                                    <td style="padding: 8px 4px;">${inv.sessionType || '-'}</td>
+                                    <td style="padding: 8px 4px; text-align: right; font-weight: 600;">${formatCurrency(inv.total)}</td>
+                                    <td style="padding: 8px 4px;"><span class="badge ${statusClass}" style="font-size: 0.72rem;">${inv.status || 'pending'}</span></td>
+                                </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>`;
+            }
+
+            Modal.show({
+                title: `Spending — ${meta.label}`,
+                size: 'large',
+                body: `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                        <div style="padding: 14px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--dark);">${formatCurrency(totalSpent)}</div>
+                            <div style="font-size: 0.78rem; color: var(--dark-600);">Total Spend</div>
+                        </div>
+                        <div style="padding: 14px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--success);">${formatCurrency(paidTotal)}</div>
+                            <div style="font-size: 0.78rem; color: var(--dark-600);">Paid</div>
+                        </div>
+                        <div style="padding: 14px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--coral);">${formatCurrency(outstandingTotal)}</div>
+                            <div style="font-size: 0.78rem; color: var(--dark-600);">Outstanding</div>
+                        </div>
+                    </div>
+                    <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 12px;">${monthInvoices.length} Invoice${monthInvoices.length !== 1 ? 's' : ''}</h4>
+                    ${invoiceRows}
+                `,
+                footer: `<a href="billing.html" class="btn btn-secondary">View Full Billing</a>`
+            });
+        }
+
+        // --- KPI Detail Modals ---
+        function showKPIDetail(type) {
+            const freshData = getMockData();
+
+            if (type === 'openShifts') {
+                const shifts = freshData.shifts.filter(s => s.practiceId === session.id && s.status === 'open');
+                const rows = shifts.length === 0
+                    ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No open shifts.</p>'
+                    : shifts.map(s => {
+                        const applicants = freshData.offers.filter(o => o.shiftId === s.id && o.status === 'pending').length;
+                        return `
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+                                <div>
+                                    <strong style="font-size: 0.9rem;">${DateUtils.format(s.date, 'medium')}</strong>
+                                    <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${s.sessionType} &bull; ${s.startTime} - ${s.endTime}</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 0.82rem; color: var(--dark-600);">${applicants} applicant${applicants !== 1 ? 's' : ''}</span>
+                                    <a href="view-requested-shifts.html" class="btn btn-ghost btn-small">View</a>
+                                </div>
+                            </div>`;
+                    }).join('');
+
+                Modal.show({
+                    title: `Open Shifts (${shifts.length})`,
+                    size: 'large',
+                    body: rows,
+                    footer: `<a href="post-shift.html" class="btn btn-primary">${getIcon('plus-circle')} Post a Shift</a>`
+                });
+
+            } else if (type === 'pendingApps') {
+                const pending = freshData.offers.filter(o => o.practiceId === session.id && o.status === 'pending');
+                const rows = pending.length === 0
+                    ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No pending applications.</p>'
+                    : pending.map(o => {
+                        const loc = freshData.locums.find(l => l.id === o.locumId);
+                        const locName = loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown';
+                        const rate = o.sessionType === 'Full Day' ? (o.rateFullDay || 820) : (o.sessionType === 'PM' ? (o.ratePM || 430) : (o.rateAM || 430));
+                        return `
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100); cursor: pointer;" onclick="Modal.close(); setTimeout(() => showApplicantDetail('${o.id}'), 350);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.75rem;">${getInitials(locName)}</div>
+                                    <div>
+                                        <strong style="font-size: 0.9rem; color: var(--primary);">${locName}</strong>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600);">${DateUtils.format(o.shiftDate, 'medium')} &bull; ${o.sessionType} &bull; ${formatCurrency(rate)}</div>
+                                    </div>
+                                </div>
+                                <span style="font-size: 0.82rem; color: var(--primary);">View &rarr;</span>
+                            </div>`;
+                    }).join('');
+
+                Modal.show({
+                    title: `Pending Applications (${pending.length})`,
+                    size: 'large',
+                    body: rows,
+                    footer: `<a href="view-requested-shifts.html" class="btn btn-secondary">View All Shifts</a>`
+                });
+
+            } else if (type === 'fillRate') {
+                const allShifts = freshData.shifts.filter(s => s.practiceId === session.id);
+                const total = allShifts.length;
+                const filled = allShifts.filter(s => s.status === 'filled').length;
+                const completed = freshData.offers.filter(o => o.practiceId === session.id && (o.status === 'completed' || o.status === 'accepted' || o.status === 'confirmed')).length;
+                const open = allShifts.filter(s => s.status === 'open');
+                const rate = total > 0 ? Math.min(Math.round(((filled + completed) / total) * 100), 100) : 0;
+
+                const unfilledRows = open.length === 0
+                    ? '<p style="color: var(--dark-600); font-size: 0.85rem;">All shifts are filled!</p>'
+                    : open.slice(0, 10).map(s => `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                            <div>
+                                <strong style="font-size: 0.88rem;">${DateUtils.format(s.date, 'medium')}</strong>
+                                <span style="font-size: 0.82rem; color: var(--dark-600); margin-left: 8px;">${s.sessionType} &bull; ${s.startTime}-${s.endTime}</span>
+                            </div>
+                            <span class="badge badge-warning">Open</span>
+                        </div>
+                    `).join('');
+
+                Modal.show({
+                    title: `Fill Rate Breakdown`,
+                    size: 'medium',
+                    body: `
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <div style="font-size: 3rem; font-weight: 800; color: var(--primary);">${rate}%</div>
+                            <div style="font-size: 0.88rem; color: var(--dark-600);">Overall Fill Rate</div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                            <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
+                                <div style="font-size: 1.3rem; font-weight: 700;">${total}</div>
+                                <div style="font-size: 0.78rem; color: var(--dark-600);">Total Shifts</div>
+                            </div>
+                            <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
+                                <div style="font-size: 1.3rem; font-weight: 700; color: var(--success);">${filled + completed}</div>
+                                <div style="font-size: 0.78rem; color: var(--dark-600);">Filled / Completed</div>
+                            </div>
+                            <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
+                                <div style="font-size: 1.3rem; font-weight: 700; color: var(--coral);">${open.length}</div>
+                                <div style="font-size: 0.78rem; color: var(--dark-600);">Still Open</div>
+                            </div>
+                        </div>
+                        ${open.length > 0 ? `<h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 8px;">Unfilled Shifts</h4>` : ''}
+                        ${unfilledRows}
+                    `,
+                    footer: `<a href="post-shift.html" class="btn btn-primary">${getIcon('plus-circle')} Post a Shift</a>`
+                });
+
+            } else if (type === 'monthlySpend') {
+                // Reuse the spending detail for current month (last item in spendingMeta)
+                showMonthSpend(spendingMeta.length - 1);
+            }
+        }
+
+        // --- Leave Feedback (existing) ---
         function leaveFeedback(offerId, locumId) {
             const locum = data.locums.find(l => l.id === locumId);
             const locumName = locum ? locum.title + ' ' + locum.firstName + ' ' + locum.lastName : 'Unknown';
