@@ -53,7 +53,13 @@
             const currentData = getMockData();
             let shifts = currentData.shifts.filter(s => s.practiceId === session.id);
 
-            if (statusFilter && statusFilter !== 'all') {
+            if (statusFilter === 'history') {
+                shifts = shifts.filter(s => s.status === 'filled' || new Date(s.date) < new Date());
+            } else if (statusFilter === 'completed') {
+                shifts = shifts.filter(s => {
+                    return currentData.offers.some(o => o.shiftId === s.id && o.status === 'completed');
+                });
+            } else if (statusFilter && statusFilter !== 'all') {
                 shifts = shifts.filter(s => s.status === statusFilter);
             }
             if (dateFrom) {
@@ -72,19 +78,19 @@
             }
 
             return shifts.map(shift => {
-                // Get real pending offers for this shift, or create mock ones from applicant count
-                let shiftOffers = currentData.offers.filter(o => o.shiftId === shift.id && o.status === 'pending');
-                const applicantCount = Math.max(shiftOffers.length, shift.applicants || 0);
+                // Get ALL offers for this shift (to avoid recreating handled ones)
+                const allShiftOffers = currentData.offers.filter(o => o.shiftId === shift.id);
+                let shiftOffers = allShiftOffers.filter(o => o.status === 'pending' || o.status === 'negotiating');
 
-                // If we have fewer real offers than the applicant count, create offer records for mock applicants
-                if (shiftOffers.length < applicantCount) {
+                // Only create mock offers for open shifts that have never had real offers
+                if (shift.status === 'open' && allShiftOffers.length === 0 && (shift.applicants || 0) > 0) {
+                    const applicantCount = shift.applicants || 0;
                     const usedLocumIds = new Set(shiftOffers.map(o => o.locumId));
                     const availableLocums = locums.filter(l => !usedLocumIds.has(l.id));
-                    const needed = applicantCount - shiftOffers.length;
-                    for (let i = 0; i < Math.min(needed, availableLocums.length); i++) {
+                    for (let i = 0; i < Math.min(applicantCount, availableLocums.length); i++) {
                         ensureOfferExists(currentData, shift, availableLocums[i]);
                     }
-                    shiftOffers = currentData.offers.filter(o => o.shiftId === shift.id && o.status === 'pending');
+                    shiftOffers = currentData.offers.filter(o => o.shiftId === shift.id && (o.status === 'pending' || o.status === 'negotiating'));
                 }
 
                 // Resolve locum details for each offer
@@ -129,19 +135,41 @@
                                             ${renderBarredWarning(session.id, loc.id)}
                                             <div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
                                                 <span style="font-size: 0.8rem; color: var(--dark-600);">Reliability: <strong style="color: ${loc.bookingReliability >= 95 ? 'var(--success)' : 'var(--warning)'};">${loc.bookingReliability}%</strong></span>
-                                                <span style="font-size: 0.8rem; color: var(--dark-600);">Rate: ${formatCurrency(loc.rates.am)}/session</span>
+                                                <span style="font-size: 0.8rem; color: var(--dark-600);">Rate: ${formatCurrency(offer.sessionType === 'Full Day' ? offer.rateFullDay : offer.sessionType === 'AM' ? offer.rateAM : offer.ratePM)}</span>
+                                                ${shift.budgetRate ? (() => { const offerRate = offer.sessionType === 'Full Day' ? offer.rateFullDay : offer.sessionType === 'AM' ? offer.rateAM : offer.ratePM; return offerRate > shift.budgetRate ? '<span class="badge badge-danger" style="font-size:0.7rem;padding:2px 6px;">Over budget</span>' : '<span class="badge badge-success" style="font-size:0.7rem;padding:2px 6px;">Within budget</span>'; })() : ''}
                                             </div>
                                         </div>
                                     </div>
-                                    <div style="display: flex; gap: 8px;">
+                                    ${offer.negotiations && offer.negotiations.length > 0 ? `
+                                    <div style="width:100%;padding:8px 12px;background:rgba(14,165,233,0.06);border-radius:6px;margin-top:4px;">
+                                        <div style="font-size:0.75rem;font-weight:600;color:var(--secondary);margin-bottom:4px;">Rate Negotiation</div>
+                                        ${offer.negotiations.map(n => '<div style="font-size:0.78rem;color:var(--dark-600);margin-bottom:2px;"><strong>' + (n.from === 'practice' ? 'You' : 'Locum') + ':</strong> ' + formatCurrency(n.rate) + (n.accepted ? ' ✓ Agreed' : '') + (n.message ? ' — ' + n.message : '') + '</div>').join('')}
+                                    </div>` : ''}
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                         <a href="locum-profile-view.html?id=${loc.id}" class="btn btn-ghost btn-small">View Profile</a>
-                                        <button class="btn btn-primary btn-small" onclick="acceptApplicant('${offer.id}')">Accept</button>
-                                        <button class="btn btn-ghost btn-small" onclick="declineApplicant('${offer.id}')">Decline</button>
+                                        ${offer.status === 'negotiating' && offer.negotiations && offer.negotiations.length > 0 && offer.negotiations[offer.negotiations.length - 1].from === 'locum' ? `
+                                            <button class="btn btn-small" style="background:var(--secondary);color:white;border-color:var(--secondary);" onclick="openNegotiate('${offer.id}', ${offer.counterRate})">Counter</button>
+                                            <button class="btn btn-primary btn-small" onclick="acceptCounterOffer('${offer.id}')">Accept Rate</button>
+                                            <button class="btn btn-ghost btn-small" onclick="declineApplicant('${offer.id}')">Decline</button>
+                                        ` : `
+                                            <button class="btn btn-small" style="background:var(--secondary);color:white;border-color:var(--secondary);" onclick="openNegotiate('${offer.id}', ${offer.sessionType === 'Full Day' ? offer.rateFullDay : offer.sessionType === 'AM' ? offer.rateAM : offer.ratePM})">Negotiate</button>
+                                            <button class="btn btn-primary btn-small" onclick="acceptApplicant('${offer.id}')">Accept</button>
+                                            <button class="btn btn-ghost btn-small" onclick="declineApplicant('${offer.id}')">Decline</button>
+                                        `}
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
                         ` : ''}
+
+                        ${allShiftOffers && allShiftOffers.some(o => ['accepted','acknowledged','confirmed','completed'].includes(o.status)) ? (() => {
+                            const ao = allShiftOffers.find(o => ['accepted','acknowledged','confirmed','completed'].includes(o.status));
+                            if (!ao) return '';
+                            const loc = locums.find(l => l.id === ao.locumId);
+                            if (!loc) return '';
+                            const inv = currentData.invoices ? currentData.invoices.find(i => i.offerId === ao.id) : null;
+                            return '<div style="padding:12px;background:rgba(16,185,129,0.06);border-radius:8px;margin-top:8px;border:1px solid rgba(16,185,129,0.15);"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"><div style="display:flex;align-items:center;gap:10px;"><div class="header-avatar" style="width:32px;height:32px;font-size:0.65rem;">' + getInitials(loc.firstName + ' ' + loc.lastName) + '</div><div><strong style="font-size:0.85rem;color:var(--dark);">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</strong><div style="font-size:0.78rem;color:var(--dark-600);">Status: <span class="badge ' + getStatusBadge(ao.status) + '" style="font-size:0.7rem;">' + ao.status.charAt(0).toUpperCase() + ao.status.slice(1).replace(/_/g,' ') + '</span>' + (ao.agreedRate ? ' • Agreed rate: ' + formatCurrency(ao.agreedRate) : ' • Rate: ' + formatCurrency(ao.sessionType === 'Full Day' ? ao.rateFullDay : ao.sessionType === 'AM' ? ao.rateAM : ao.ratePM)) + '</div></div></div><div style="display:flex;gap:8px;">' + (inv ? '<a href="invoice-view.html?id=' + inv.id + '" class="btn btn-ghost btn-small">' + inv.invoiceNumber + ' (' + inv.status + ')</a>' : '') + '<a href="locum-profile-view.html?id=' + loc.id + '" class="btn btn-ghost btn-small">View Profile</a></div></div></div>';
+                        })() : ''}
 
                         <div class="shift-card-footer">
                             <span style="font-size: 0.82rem; color: var(--gray-400);">Shift date: ${DateUtils.format(shift.date, 'medium')}</span>
@@ -175,6 +203,8 @@
                             <option value="all" ${statusFilter === 'all' ? 'selected' : ''}>All Statuses</option>
                             <option value="open" ${statusFilter === 'open' ? 'selected' : ''}>Open</option>
                             <option value="filled" ${statusFilter === 'filled' ? 'selected' : ''}>Filled</option>
+                            <option value="completed" ${statusFilter === 'completed' ? 'selected' : ''}>Completed</option>
+                            <option value="history" ${statusFilter === 'history' ? 'selected' : ''}>All Historical</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -224,6 +254,35 @@
                 Toast.show('Failed to decline applicant. Please try again.', 'error');
             }
             setTimeout(() => render(), 500);
+        }
+        function getStatusBadge(status) {
+            const map = { 'open': 'badge-primary', 'filled': 'badge-success', 'pending': 'badge-warning', 'accepted': 'badge-success', 'acknowledged': 'badge-success', 'confirmed': 'badge-info', 'completed': 'badge-info', 'declined': 'badge-neutral', 'withdrawn': 'badge-neutral', 'cancelled': 'badge-danger', 'no_show': 'badge-danger', 'negotiating': 'badge-warning', 'rejected_by_locum': 'badge-danger', 'paid': 'badge-success', 'overdue': 'badge-danger', 'disputed': 'badge-warning' };
+            return map[status] || 'badge-neutral';
+        }
+
+        function openNegotiate(offerId, currentRate) {
+            Modal.show({
+                title: 'Negotiate Rate',
+                body: '<div style="padding:8px 0;"><p style="font-size:0.88rem;color:var(--dark-600);margin-bottom:16px;">Current offered rate: <strong>' + formatCurrency(currentRate) + '</strong></p><div class="form-group"><label class="form-label">Your counter-offer (£)</label><input type="number" id="counterRate" class="form-input" placeholder="e.g. 400" step="10" min="0"></div><div class="form-group"><label class="form-label">Message (optional)</label><textarea id="counterMessage" class="form-input" rows="2" placeholder="e.g. This is our standard rate for PM sessions"></textarea></div></div>',
+                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="sendCounterBtn">Send Counter-Offer</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#sendCounterBtn').addEventListener('click', function() {
+                        var rate = Number(overlay.querySelector('#counterRate').value);
+                        var msg = overlay.querySelector('#counterMessage').value.trim();
+                        if (!rate || rate <= 0) { Toast.show('Please enter a valid rate', 'error'); return; }
+                        Booking.counterOffer(offerId, rate, msg);
+                        Modal.close(overlay);
+                        Toast.show('Counter-offer sent to locum', 'success');
+                        setTimeout(function() { render(); }, 500);
+                    });
+                }
+            });
+        }
+
+        function acceptCounterOffer(offerId) {
+            Booking.practiceRespondToCounter(offerId, true);
+            Toast.show('Rate agreed! The locum has been notified.', 'success');
+            setTimeout(function() { render(); }, 500);
         }
     </script>
 </body>

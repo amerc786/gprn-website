@@ -42,15 +42,42 @@
                 case 'accepted':
                     actionsHtml = `
                         <div class="offer-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn btn-small btn-primary" onclick="acknowledgeOffer('${offer.id}')">Acknowledge</button>
+                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="rejectOffer('${offer.id}', ${hoursUntilShift < 48})">Reject</button>
+                        </div>`;
+                    break;
+                case 'acknowledged':
+                    actionsHtml = `
+                        <div class="offer-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                             <button class="btn btn-small btn-primary" onclick="confirmAttendance('${offer.id}')">Confirm Attendance</button>
-                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="cancelShift('${offer.id}', ${hoursUntilShift < 48})">Cancel Shift</button>
+                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="rejectOffer('${offer.id}', ${hoursUntilShift < 48})">Reject</button>
                         </div>`;
                     break;
                 case 'confirmed':
                     actionsHtml = `
                         <div class="offer-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <span class="badge badge-success" style="font-size: 0.82rem; padding: 6px 12px;">Confirmed - awaiting shift date</span>
-                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="cancelShift('${offer.id}', ${hoursUntilShift < 48})">Cancel Shift</button>
+                            ${new Date(offer.shiftDate) < new Date() ? `<button class="btn btn-small btn-primary" onclick="confirmComplete('${offer.id}')">Confirm Shift Complete</button>` : `<span class="badge badge-success" style="font-size: 0.82rem; padding: 6px 12px;">Confirmed - awaiting shift date</span>`}
+                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="rejectOffer('${offer.id}', ${hoursUntilShift < 48})">Reject</button>
+                        </div>`;
+                    break;
+                case 'negotiating':
+                    actionsHtml = `
+                        <div class="offer-actions">
+                            ${offer.negotiations ? `
+                                <div style="background: rgba(14,165,233,0.06); border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; width: 100%;">
+                                    <div style="font-size: 0.78rem; font-weight: 600; color: var(--secondary); margin-bottom: 6px;">Rate Negotiation</div>
+                                    ${offer.negotiations.map(n => '<div style="font-size:0.8rem;color:var(--dark-600);margin-bottom:3px;"><strong>' + (n.from === 'practice' ? offer.practiceName : 'You') + ':</strong> ' + formatCurrency(n.rate) + (n.accepted ? ' ✓ Agreed' : '') + (n.message ? ' — ' + n.message : '') + '</div>').join('')}
+                                </div>
+                            ` : ''}
+                            ${offer.negotiations && offer.negotiations.length > 0 && offer.negotiations[offer.negotiations.length - 1].from === 'practice' ? `
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button class="btn btn-small btn-primary" onclick="acceptNegotiation('${offer.id}')">Accept Rate (${formatCurrency(offer.counterRate)})</button>
+                                    <button class="btn btn-small" style="background: var(--secondary); color: white; border-color: var(--secondary);" onclick="counterNegotiation('${offer.id}', ${offer.counterRate})">Counter</button>
+                                    <button class="btn btn-small btn-ghost" onclick="withdrawOffer('${offer.id}')">Withdraw</button>
+                                </div>
+                            ` : `
+                                <span class="badge badge-warning" style="font-size: 0.82rem; padding: 6px 12px;">Waiting for practice response</span>
+                            `}
                         </div>`;
                     break;
                 case 'completed':
@@ -73,6 +100,12 @@
                     actionsHtml = `
                         <div class="offer-actions">
                             <span class="badge badge-danger" style="font-size: 0.82rem; padding: 6px 12px;">No-show recorded - reliability score affected</span>
+                        </div>`;
+                    break;
+                case 'rejected_by_locum':
+                    actionsHtml = `
+                        <div class="offer-actions">
+                            <span class="badge badge-danger" style="font-size: 0.82rem; padding: 6px 12px;">You rejected this shift${offer.lateCancellation ? ' (late - reliability affected)' : ''}</span>
                         </div>`;
                     break;
                 case 'declined':
@@ -235,6 +268,79 @@
                 Toast.show('Failed to cancel shift. Please try again.', 'error');
             }
             renderOffers();
+        }
+
+        function acknowledgeOffer(offerId) {
+            const success = Booking.acknowledgeOffer(offerId);
+            if (success) {
+                Toast.show('Offer acknowledged! The practice has been notified.', 'success');
+            } else {
+                Toast.show('Failed to acknowledge offer.', 'error');
+            }
+            renderOffers();
+        }
+
+        function rejectOffer(offerId, isLate) {
+            if (isLate) {
+                Modal.show({
+                    title: 'Late Rejection Warning',
+                    body: '<div style="padding:8px 0;"><p style="font-size:0.95rem;color:var(--danger);font-weight:600;margin-bottom:12px;">This shift is less than 48 hours away!</p><p style="font-size:0.9rem;color:var(--dark-600);margin-bottom:8px;">Late rejections negatively affect your booking reliability score.</p><p style="font-size:0.9rem;color:var(--dark-600);">The shift will be automatically relisted for other locums.</p></div>',
+                    footer: '<button class="btn btn-ghost" data-modal-close>Keep Shift</button><button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" id="confirmRejectBtn">Reject Shift</button>',
+                    onOpen: function(overlay) { overlay.querySelector('#confirmRejectBtn').addEventListener('click', function() { Modal.close(overlay); doReject(offerId); }); }
+                });
+            } else {
+                Modal.show({
+                    title: 'Reject Shift',
+                    body: '<p style="font-size:0.9rem;color:var(--dark-600);padding:8px 0;">Are you sure you want to reject this shift? The practice will be notified and the shift will be automatically relisted.</p>',
+                    footer: '<button class="btn btn-ghost" data-modal-close>Keep Shift</button><button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" id="confirmRejectBtn">Reject Shift</button>',
+                    onOpen: function(overlay) { overlay.querySelector('#confirmRejectBtn').addEventListener('click', function() { Modal.close(overlay); doReject(offerId); }); }
+                });
+            }
+        }
+
+        function doReject(offerId) {
+            const success = Booking.rejectAcceptedOffer(offerId);
+            if (success) {
+                Toast.show('Shift rejected. The practice has been notified and the shift has been relisted.', 'info');
+            } else {
+                Toast.show('Failed to reject shift.', 'error');
+            }
+            renderOffers();
+        }
+
+        function confirmComplete(offerId) {
+            const success = Booking.confirmCompletion(offerId);
+            if (success) {
+                Toast.show('Shift marked as complete! Invoice generated. The practice has been notified.', 'success');
+            } else {
+                Toast.show('Failed to confirm completion.', 'error');
+            }
+            renderOffers();
+        }
+
+        function acceptNegotiation(offerId) {
+            Booking.respondToCounter(offerId, true);
+            Toast.show('Rate accepted! Your offer is now pending approval.', 'success');
+            renderOffers();
+        }
+
+        function counterNegotiation(offerId, currentRate) {
+            Modal.show({
+                title: 'Counter-Offer',
+                body: '<div style="padding:8px 0;"><p style="font-size:0.88rem;color:var(--dark-600);margin-bottom:16px;">Practice offered: <strong>' + formatCurrency(currentRate) + '</strong></p><div class="form-group"><label class="form-label">Your counter-rate (£)</label><input type="number" id="locumCounterRate" class="form-input" placeholder="e.g. 450" step="10" min="0"></div><div class="form-group"><label class="form-label">Message (optional)</label><textarea id="locumCounterMsg" class="form-input" rows="2" placeholder="e.g. I can do it for this rate..."></textarea></div></div>',
+                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="sendLocumCounterBtn">Send Counter</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#sendLocumCounterBtn').addEventListener('click', function() {
+                        var rate = Number(overlay.querySelector('#locumCounterRate').value);
+                        var msg = overlay.querySelector('#locumCounterMsg').value.trim();
+                        if (!rate || rate <= 0) { Toast.show('Please enter a valid rate', 'error'); return; }
+                        Booking.respondToCounter(offerId, false, rate, msg);
+                        Modal.close(overlay);
+                        Toast.show('Counter-offer sent to practice', 'success');
+                        renderOffers();
+                    });
+                }
+            });
         }
 
         renderOffers();

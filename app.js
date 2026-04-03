@@ -308,7 +308,10 @@ function getStatusBadge(status) {
         overdue: 'badge-danger',
         disputed: 'badge-info',
         declined: 'badge-danger',
-        no_show: 'badge-danger'
+        no_show: 'badge-danger',
+        acknowledged: 'badge-success',
+        negotiating: 'badge-warning',
+        rejected_by_locum: 'badge-danger'
     };
     return map[status] || 'badge-neutral';
 }
@@ -422,6 +425,128 @@ const Booking = {
         const data = getMockData();
         return data.offers.some(o => o.locumId === locumId && o.shiftDate === date &&
             ['accepted', 'confirmed'].includes(o.status) && o.id !== excludeOfferId);
+    },
+
+    acknowledgeOffer(offerId) {
+        const data = getMockData();
+        const offer = data.offers.find(o => o.id === offerId);
+        if (!offer || offer.status !== 'accepted') return false;
+        offer.status = 'acknowledged';
+        offer.acknowledgedDate = DateUtils.toISO(new Date());
+        this.addNotification(data, offer.practiceId, 'offer_accepted', 'Offer Acknowledged',
+            `The locum has acknowledged the shift on ${DateUtils.format(offer.shiftDate, 'medium')}.`);
+        EmailManager.send(data, offer.practiceId, 'Offer Acknowledged',
+            `The locum has acknowledged and confirmed they will attend the shift on ${DateUtils.format(offer.shiftDate, 'medium')}.`, 'offer_acknowledged');
+        saveMockData(data);
+        return true;
+    },
+
+    rejectAcceptedOffer(offerId) {
+        const data = getMockData();
+        const offer = data.offers.find(o => o.id === offerId);
+        if (!offer || !['accepted', 'acknowledged', 'confirmed'].includes(offer.status)) return false;
+        const daysBefore = Math.ceil((new Date(offer.shiftDate) - new Date()) / (1000*60*60*24));
+        offer.status = 'rejected_by_locum';
+        offer.rejectedDate = DateUtils.toISO(new Date());
+        offer.lateCancellation = daysBefore < 2;
+        if (offer.lateCancellation) {
+            const locum = data.locums.find(l => l.id === offer.locumId);
+            if (locum) locum.bookingReliability = Math.max(0, locum.bookingReliability - 5);
+        }
+        const shift = data.shifts.find(s => s.id === offer.shiftId);
+        if (shift) shift.status = 'open';
+        this.addNotification(data, offer.practiceId, 'cancellation', 'Locum Rejected Shift',
+            `The locum has rejected the previously accepted shift on ${DateUtils.format(offer.shiftDate, 'medium')}. The shift has been automatically relisted.`);
+        EmailManager.send(data, offer.practiceId, 'Shift Relisted',
+            `The locum has rejected the shift on ${DateUtils.format(offer.shiftDate, 'medium')}. The shift has been automatically relisted.`, 'shift_relisted');
+        saveMockData(data);
+        return true;
+    },
+
+    confirmCompletion(offerId) {
+        const data = getMockData();
+        const offer = data.offers.find(o => o.id === offerId);
+        if (!offer || !['accepted', 'acknowledged', 'confirmed'].includes(offer.status)) return false;
+        offer.status = 'completed';
+        offer.completedDate = DateUtils.toISO(new Date());
+        offer.completedByLocum = true;
+        InvoiceManager.generateFromOffer(data, offer);
+        this.addNotification(data, offer.practiceId, 'shift_confirmed', 'Shift Completed',
+            `The locum has confirmed completion of the shift on ${DateUtils.format(offer.shiftDate, 'medium')}. An invoice has been generated.`);
+        this.addNotification(data, offer.locumId, 'leave_feedback', 'Leave Feedback',
+            `Your shift at ${offer.practiceName} is complete. Please leave feedback.`);
+        this.addNotification(data, offer.practiceId, 'leave_feedback', 'Leave Feedback',
+            `Please rate the locum who worked on ${DateUtils.format(offer.shiftDate, 'medium')}.`);
+        EmailManager.send(data, offer.practiceId, 'Shift Completed',
+            `The shift on ${DateUtils.format(offer.shiftDate, 'medium')} has been confirmed as completed. An invoice has been generated.`, 'shift_completed');
+        saveMockData(data);
+        return true;
+    },
+
+    counterOffer(offerId, counterRate, message) {
+        const data = getMockData();
+        const offer = data.offers.find(o => o.id === offerId);
+        if (!offer) return false;
+        if (!offer.negotiations) offer.negotiations = [];
+        offer.negotiations.push({ from: 'practice', rate: counterRate, message: message, date: new Date().toISOString() });
+        offer.status = 'negotiating';
+        offer.counterRate = counterRate;
+        this.addNotification(data, offer.locumId, 'new_offer', 'Rate Counter-Offer',
+            `${offer.practiceName} has proposed a rate of ${formatCurrency(counterRate)} for the shift on ${DateUtils.format(offer.shiftDate, 'medium')}.`);
+        EmailManager.send(data, offer.locumId, 'Rate Counter-Offer',
+            `${offer.practiceName} has proposed a different rate for your shift on ${DateUtils.format(offer.shiftDate, 'medium')}. Please review in your offers.`, 'counter_offer');
+        saveMockData(data);
+        return true;
+    },
+
+    respondToCounter(offerId, accepted, counterRate, message) {
+        const data = getMockData();
+        const offer = data.offers.find(o => o.id === offerId);
+        if (!offer) return false;
+        if (!offer.negotiations) offer.negotiations = [];
+        if (accepted) {
+            const agreedRate = offer.counterRate;
+            if (offer.sessionType === 'AM') offer.rateAM = agreedRate;
+            else if (offer.sessionType === 'PM') offer.ratePM = agreedRate;
+            else offer.rateFullDay = agreedRate;
+            offer.agreedRate = agreedRate;
+            offer.status = 'pending';
+            offer.negotiations.push({ from: 'locum', accepted: true, rate: agreedRate, message: message || 'Rate accepted', date: new Date().toISOString() });
+            this.addNotification(data, offer.practiceId, 'offer_accepted', 'Rate Agreed',
+                `The locum has accepted the proposed rate of ${formatCurrency(agreedRate)} for ${DateUtils.format(offer.shiftDate, 'medium')}.`);
+        } else {
+            offer.negotiations.push({ from: 'locum', rate: counterRate, message: message, date: new Date().toISOString() });
+            offer.counterRate = counterRate;
+            this.addNotification(data, offer.practiceId, 'new_offer', 'Rate Counter-Offer',
+                `The locum has proposed a rate of ${formatCurrency(counterRate)} for the shift on ${DateUtils.format(offer.shiftDate, 'medium')}.`);
+        }
+        saveMockData(data);
+        return true;
+    },
+
+    practiceRespondToCounter(offerId, accepted, counterRate, message) {
+        const data = getMockData();
+        const offer = data.offers.find(o => o.id === offerId);
+        if (!offer) return false;
+        if (!offer.negotiations) offer.negotiations = [];
+        if (accepted) {
+            const agreedRate = offer.counterRate;
+            if (offer.sessionType === 'AM') offer.rateAM = agreedRate;
+            else if (offer.sessionType === 'PM') offer.ratePM = agreedRate;
+            else offer.rateFullDay = agreedRate;
+            offer.agreedRate = agreedRate;
+            offer.status = 'pending';
+            offer.negotiations.push({ from: 'practice', accepted: true, rate: agreedRate, message: message || 'Rate accepted', date: new Date().toISOString() });
+            this.addNotification(data, offer.locumId, 'offer_accepted', 'Rate Agreed',
+                `${offer.practiceName} has accepted the proposed rate of ${formatCurrency(agreedRate)} for ${DateUtils.format(offer.shiftDate, 'medium')}.`);
+        } else {
+            offer.negotiations.push({ from: 'practice', rate: counterRate, message: message, date: new Date().toISOString() });
+            offer.counterRate = counterRate;
+            this.addNotification(data, offer.locumId, 'new_offer', 'Rate Counter-Offer',
+                `${offer.practiceName} has proposed a rate of ${formatCurrency(counterRate)} for the shift on ${DateUtils.format(offer.shiftDate, 'medium')}.`);
+        }
+        saveMockData(data);
+        return true;
     },
 
     addNotification(data, userId, type, title, message) {
@@ -557,9 +682,11 @@ const InvoiceManager = {
             offer.sessionType === 'AM' ? (offer.rateAM || locum.rates.am) : (offer.ratePM || locum.rates.pm);
         const housecallFee = offer.housecalls ? (offer.rateHousecall || locum.rates.housecall || 0) : 0;
         const total = rate + housecallFee;
-        const invNum = 'INV-' + String(data.invoices.length + 1001).padStart(4, '0');
+        const existingNums = data.invoices.map(i => parseInt((i.invoiceNumber || '').replace('GPRN-', '')) || 0);
+        const nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 10001;
+        const invNum = 'GPRN-' + nextNum;
         data.invoices.push({
-            id: 'inv-' + Date.now(),
+            id: 'inv-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
             invoiceNumber: invNum,
             offerId: offer.id,
             locumId: offer.locumId,

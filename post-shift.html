@@ -108,7 +108,10 @@
                                     <span id="housecallsLabel" style="font-size: 0.88rem; color: var(--dark-600);">No</span>
                                 </div>
                             </div>
-                            <div></div>
+                            <div class="form-group">
+                                <label class="form-label" for="budgetRate">Session Budget (£) <span style="font-weight: 400; color: var(--dark-600);">(optional, visible only to you)</span></label>
+                                <input type="number" id="budgetRate" class="form-input" placeholder="e.g. 450" min="0" step="10">
+                            </div>
                         </div>
 
                         <div class="form-row">
@@ -191,6 +194,7 @@
             document.getElementById('morningPatients').value = tmpl.morningPatients || '';
             document.getElementById('afternoonPatients').value = tmpl.afternoonPatients || '';
             document.getElementById('comments').value = tmpl.comments || '';
+            document.getElementById('budgetRate').value = tmpl.budgetRate || '';
 
             const toggle = document.getElementById('housecallsToggle');
             if (tmpl.housecalls) {
@@ -263,7 +267,8 @@
                     housecalls: housecalls,
                     morningPatients: morningPatients,
                     afternoonPatients: afternoonPatients,
-                    comments: comments
+                    comments: comments,
+                    budgetRate: Number(document.getElementById('budgetRate').value) || null
                 });
                 saveMockData(data);
             }
@@ -297,7 +302,8 @@
                     comment: comments,
                     applicants: 0,
                     urgent: false,
-                    status: 'open'
+                    status: 'open',
+                    budgetRate: Number(document.getElementById('budgetRate').value) || null
                 });
             }
             saveMockData(data);
