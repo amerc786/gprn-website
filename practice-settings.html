@@ -189,6 +189,32 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="content-card" style="margin-top: 20px;">
+                        <div class="content-card-header">
+                            <h2>Email Log</h2>
+                        </div>
+                        <div class="content-card-body">
+                            ${(() => {
+                                const emailLog = EmailManager.getLog(session.id).slice(0, 10);
+                                if (emailLog.length === 0) {
+                                    return '<p style="color: var(--dark-600); font-size: 0.88rem; padding: 12px 0;">No emails sent yet.</p>';
+                                }
+                                return emailLog.map(email => {
+                                    const time = new Date(email.timestamp);
+                                    const timeStr = time.toLocaleDateString() + ' ' + time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                    return '<div class="email-log-item">' +
+                                        '<div class="email-log-icon">' + getIcon('mail') + '</div>' +
+                                        '<div class="email-log-info">' +
+                                            '<div class="email-log-subject">' + email.subject + '</div>' +
+                                            '<div class="email-log-body">' + (email.body || '').substring(0, 120) + (email.body && email.body.length > 120 ? '...' : '') + '</div>' +
+                                        '</div>' +
+                                        '<div class="email-log-time">' + timeStr + '</div>' +
+                                    '</div>';
+                                }).join('');
+                            })()}
+                        </div>
+                    </div>
                 </div>
             `;
 

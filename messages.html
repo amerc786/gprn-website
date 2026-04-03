@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage()) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const role = Auth.getRole();
+        const pageContent = initAppLayout(role, 'messages', 'Messages');
+
+        // ---- Seed mock messages on first load ----
+        function seedMessages() {
+            const data = getMockData();
+            if (data.messages && data.messages.length > 0) return;
+            if (!data.messages) data.messages = [];
+
+            const now = new Date();
+
+            // Thread 1: loc-001 <-> prac-001 about a shift
+            const thread1 = 'thread-seed-001';
+            data.messages.push(
+                {
+                    id: 'msg-seed-001',
+                    threadId: thread1,
+                    fromId: 'prac-001',
+                    toId: 'loc-001',
+                    subject: 'Shift on ' + DateUtils.format(DateUtils.toISO(addDays(now, 3)), 'medium'),
+                    body: 'Hi Dr Williams, we have a full day shift available this week. Would you be interested in covering it? The morning surgery has around 16 patients and afternoon around 12.',
+                    shiftId: 'shift-001',
+                    timestamp: addDays(now, -2).toISOString(),
+                    read: true
+                },
+                {
+                    id: 'msg-seed-002',
+                    threadId: thread1,
+                    fromId: 'loc-001',
+                    toId: 'prac-001',
+                    subject: 'Shift on ' + DateUtils.format(DateUtils.toISO(addDays(now, 3)), 'medium'),
+                    body: 'Hello Jane, thanks for reaching out. I would be happy to cover the shift. Could you confirm what computer system you are running and whether there will be any housecalls?',
+                    shiftId: 'shift-001',
+                    timestamp: addDays(now, -1).toISOString(),
+                    read: true
+                },
+                {
+                    id: 'msg-seed-003',
+                    threadId: thread1,
+                    fromId: 'prac-001',
+                    toId: 'loc-001',
+                    subject: 'Shift on ' + DateUtils.format(DateUtils.toISO(addDays(now, 3)), 'medium'),
+                    body: 'We use EMIS Web. No housecalls expected for this session. Looking forward to having you. Please arrive by 8:15 for a quick orientation.',
+                    shiftId: 'shift-001',
+                    timestamp: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(),
+                    read: false
+                }
+            );
+
+            // Thread 2: loc-001 <-> prac-002 about pre-shift briefing
+            const thread2 = 'thread-seed-002';
+            data.messages.push(
+                {
+                    id: 'msg-seed-004',
+                    threadId: thread2,
+                    fromId: 'loc-001',
+                    toId: 'prac-002',
+                    subject: 'Pre-shift briefing request',
+                    body: 'Hi David, I am booked for a session at Whitchurch Road Surgery next week. Could I get a brief overview of any ongoing complex patients I should be aware of beforehand?',
+                    shiftId: null,
+                    timestamp: addDays(now, -3).toISOString(),
+                    read: true
+                },
+                {
+                    id: 'msg-seed-005',
+                    threadId: thread2,
+                    fromId: 'prac-002',
+                    toId: 'loc-001',
+                    subject: 'Pre-shift briefing request',
+                    body: 'Of course, Dr Williams. I will prepare a summary of current complex cases and email it to you the day before your session. We use Vision so please make sure you are comfortable with the system.',
+                    shiftId: null,
+                    timestamp: addDays(now, -2).toISOString(),
+                    read: true
+                }
+            );
+
+            saveMockData(data);
+        }
+
+        seedMessages();
+
+        // ---- State ----
+        let activeThreadId = null;
+
+        // ---- Render ----
+        function render() {
+            const threads = MessageManager.getThreads(session.id);
+
+            pageContent.innerHTML = `
+                <div class="messages-layout">
+                    <div class="thread-list">
+                        <div class="thread-list-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Conversations</span>
+                            <button class="btn btn-primary btn-small" id="newMsgBtn">${getIcon('mail')} New Message</button>
+                        </div>
+                        <div id="threadListBody">
+                            ${threads.length === 0 ? '<div style="padding: 32px 16px; text-align: center; color: var(--gray-400); font-size: 0.88rem;">No messages yet.</div>' : ''}
+                            ${threads.map(t => {
+                                const name = MessageManager.getUserName(t.otherId);
+                                const initials = getInitials(name);
+                                const preview = t.lastMessage.body.length > 50 ? t.lastMessage.body.substring(0, 50) + '...' : t.lastMessage.body;
+                                const time = formatMessageTime(t.lastMessage.timestamp);
+                                return `
+                                <div class="thread-item ${activeThreadId === t.threadId ? 'active' : ''}" data-thread-id="${t.threadId}">
+                                    <div class="thread-avatar">${initials}</div>
+                                    <div class="thread-info">
+                                        <div class="thread-name">${name}</div>
+                                        <div class="thread-preview">${preview}</div>
+                                    </div>
+                                    <div class="thread-meta">
+                                        <div class="thread-time">${time}</div>
+                                        ${t.unread > 0 ? `<div class="thread-unread">${t.unread}</div>` : ''}
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                    <div class="chat-area" id="chatArea">
+                        ${activeThreadId ? renderChat(activeThreadId) : renderChatEmpty()}
+                    </div>
+                </div>
+            `;
+
+            bindEvents();
+        }
+
+        function renderChatEmpty() {
+            return `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--gray-400);">
+                    <div style="margin-bottom: 12px;">${getIcon('mail')}</div>
+                    <p style="font-size: 0.95rem; font-weight: 600;">Select a conversation</p>
+                    <p style="font-size: 0.82rem;">Choose a thread from the left or start a new message.</p>
+                </div>
+            `;
+        }
+
+        function renderChat(threadId) {
+            const messages = MessageManager.getThread(threadId);
+            if (messages.length === 0) return renderChatEmpty();
+
+            const firstMsg = messages[0];
+            const otherId = firstMsg.fromId === session.id ? firstMsg.toId : firstMsg.fromId;
+            const otherName = MessageManager.getUserName(otherId);
+
+            // Find shift info if linked
+            let shiftInfo = '';
+            if (firstMsg.shiftId) {
+                const data = getMockData();
+                const shift = data.shifts.find(s => s.id === firstMsg.shiftId);
+                if (shift) {
+                    shiftInfo = `<div class="chat-header-sub">Re: Shift at ${shift.practiceName} on ${DateUtils.format(shift.date, 'medium')}</div>`;
+                }
+            }
+
+            const subjectInfo = firstMsg.subject ? `<div class="chat-header-sub">${firstMsg.subject}</div>` : '';
+
+            return `
+                <div class="chat-header">
+                    <div class="thread-avatar" style="width: 36px; height: 36px; font-size: 0.7rem;">${getInitials(otherName)}</div>
+                    <div>
+                        <div class="chat-header-name">${otherName}</div>
+                        ${shiftInfo || subjectInfo}
+                    </div>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    ${messages.map(m => renderMessageBubble(m, session.id)).join('')}
+                </div>
+                <div class="chat-compose">
+                    <input type="text" class="form-input" id="msgInput" placeholder="Type your message..." autocomplete="off">
+                    <button class="btn btn-primary" id="sendMsgBtn">Send</button>
+                </div>
+            `;
+        }
+
+        function formatMessageTime(timestamp) {
+            const d = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - d;
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) {
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else if (diffDays === 1) {
+                return 'Yesterday';
+            } else if (diffDays < 7) {
+                const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                return days[d.getDay()];
+            } else {
+                return DateUtils.format(timestamp, 'short');
+            }
+        }
+
+        function bindEvents() {
+            // Thread click
+            document.querySelectorAll('.thread-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    activeThreadId = el.dataset.threadId;
+                    MessageManager.markThreadRead(activeThreadId, session.id);
+                    render();
+                    scrollChatToBottom();
+                });
+            });
+
+            // New message button
+            const newMsgBtn = document.getElementById('newMsgBtn');
+            if (newMsgBtn) {
+                newMsgBtn.addEventListener('click', openNewMessageModal);
+            }
+
+            // Send message
+            const sendBtn = document.getElementById('sendMsgBtn');
+            const msgInput = document.getElementById('msgInput');
+            if (sendBtn && msgInput) {
+                sendBtn.addEventListener('click', () => sendReply(msgInput));
+                msgInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendReply(msgInput);
+                    }
+                });
+                // Auto-focus input
+                msgInput.focus();
+            }
+        }
+
+        function sendReply(inputEl) {
+            const body = inputEl.value.trim();
+            if (!body) return;
+
+            // Get the other user from the active thread
+            const messages = MessageManager.getThread(activeThreadId);
+            if (messages.length === 0) return;
+            const firstMsg = messages[0];
+            const otherId = firstMsg.fromId === session.id ? firstMsg.toId : firstMsg.fromId;
+            const subject = firstMsg.subject || 'Message';
+
+            MessageManager.send(session.id, otherId, subject, body, firstMsg.shiftId);
+            Toast.show('Message sent', 'success');
+            render();
+            scrollChatToBottom();
+        }
+
+        function scrollChatToBottom() {
+            setTimeout(() => {
+                const chatMsgs = document.getElementById('chatMessages');
+                if (chatMsgs) chatMsgs.scrollTop = chatMsgs.scrollHeight;
+            }, 50);
+        }
+
+        // ---- New Message Modal ----
+        function openNewMessageModal(preRecipient, preSubject, preBody, preShiftId) {
+            const data = getMockData();
+            let recipientOptions = '';
+
+            if (role === 'locum') {
+                // Show all practices
+                recipientOptions = data.practices.map(p =>
+                    `<option value="${p.id}" ${preRecipient === p.id ? 'selected' : ''}>${p.practiceName}</option>`
+                ).join('');
+            } else {
+                // Show all locums
+                recipientOptions = data.locums.map(l =>
+                    `<option value="${l.id}" ${preRecipient === l.id ? 'selected' : ''}>${l.title} ${l.firstName} ${l.lastName}</option>`
+                ).join('');
+            }
+
+            Modal.show({
+                title: 'New Message',
+                size: 'medium',
+                body: `
+                    <div class="form-group">
+                        <label class="form-label">Recipient</label>
+                        <select class="form-select" id="modalRecipient" ${preRecipient ? 'disabled' : ''}>
+                            <option value="">-- Select recipient --</option>
+                            ${recipientOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Subject</label>
+                        <input type="text" class="form-input" id="modalSubject" placeholder="Enter subject..." value="${preSubject || ''}">
+                    </div>
+                    ${preShiftId ? `<input type="hidden" id="modalShiftId" value="${preShiftId}">` : ''}
+                    <div class="form-group">
+                        <label class="form-label">Message</label>
+                        <textarea class="form-input" id="modalBody" rows="5" placeholder="Write your message...">${preBody || ''}</textarea>
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" id="modalSendBtn">Send Message</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#modalSendBtn').addEventListener('click', () => {
+                        const recipientEl = overlay.querySelector('#modalRecipient');
+                        const toId = recipientEl.disabled ? recipientEl.value : recipientEl.value;
+                        const subject = overlay.querySelector('#modalSubject').value.trim();
+                        const body = overlay.querySelector('#modalBody').value.trim();
+                        const shiftIdEl = overlay.querySelector('#modalShiftId');
+                        const shiftId = shiftIdEl ? shiftIdEl.value : null;
+
+                        if (!toId) { Toast.show('Please select a recipient.', 'warning'); return; }
+                        if (!subject) { Toast.show('Please enter a subject.', 'warning'); return; }
+                        if (!body) { Toast.show('Please enter a message.', 'warning'); return; }
+
+                        const threadId = MessageManager.send(session.id, toId, subject, body, shiftId);
+                        Toast.show('Message sent successfully!', 'success');
+                        Modal.close(overlay);
+                        activeThreadId = threadId;
+                        render();
+                        scrollChatToBottom();
+                    });
+                }
+            });
+        }
+
+        // Expose for external linking (e.g., from shift-detail.html via URL params)
+        window.openNewMessageModal = openNewMessageModal;
+
+        // Check for URL params (compose from another page)
+        const urlParams = new URLSearchParams(window.location.search);
+        const composeFor = urlParams.get('compose');
+        const composeSubject = urlParams.get('subject');
+        const composeShift = urlParams.get('shiftId');
+        if (composeFor) {
+            // Render first, then open modal
+            render();
+            setTimeout(() => {
+                openNewMessageModal(composeFor, composeSubject || '', '', composeShift || null);
+            }, 300);
+        } else {
+            render();
+        }
+    </script>
+</body>
+</html>

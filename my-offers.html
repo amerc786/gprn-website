@@ -25,6 +25,105 @@
             return (data.offers || []).filter(o => o.locumId === user.id);
         }
 
+        function renderOfferCardEnhanced(offer) {
+            const now = new Date();
+            const shiftDate = new Date(offer.shiftDate);
+            const hoursUntilShift = (shiftDate - now) / (1000 * 60 * 60);
+
+            // Build status-specific actions
+            let actionsHtml = '';
+            switch (offer.status) {
+                case 'pending':
+                    actionsHtml = `
+                        <div class="offer-actions">
+                            <button class="btn btn-small btn-ghost" onclick="withdrawOffer('${offer.id}')">Withdraw</button>
+                        </div>`;
+                    break;
+                case 'accepted':
+                    actionsHtml = `
+                        <div class="offer-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn btn-small btn-primary" onclick="confirmAttendance('${offer.id}')">Confirm Attendance</button>
+                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="cancelShift('${offer.id}', ${hoursUntilShift < 48})">Cancel Shift</button>
+                        </div>`;
+                    break;
+                case 'confirmed':
+                    actionsHtml = `
+                        <div class="offer-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <span class="badge badge-success" style="font-size: 0.82rem; padding: 6px 12px;">Confirmed - awaiting shift date</span>
+                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="cancelShift('${offer.id}', ${hoursUntilShift < 48})">Cancel Shift</button>
+                        </div>`;
+                    break;
+                case 'completed':
+                    const hasReviewed = FeedbackManager.hasReviewed(Auth.getSession().id, offer.id);
+                    actionsHtml = `
+                        <div class="offer-actions">
+                            ${hasReviewed
+                                ? '<span class="badge badge-info" style="font-size: 0.82rem; padding: 6px 12px;">Feedback submitted</span>'
+                                : `<a href="leave-feedback.html?offerId=${offer.id}" class="btn btn-small btn-primary">Leave Feedback</a>`
+                            }
+                        </div>`;
+                    break;
+                case 'cancelled':
+                    actionsHtml = `
+                        <div class="offer-actions">
+                            <span class="badge badge-danger" style="font-size: 0.82rem; padding: 6px 12px;">Cancelled${offer.lateCancellation ? ' (late - reliability affected)' : ''}</span>
+                        </div>`;
+                    break;
+                case 'no_show':
+                    actionsHtml = `
+                        <div class="offer-actions">
+                            <span class="badge badge-danger" style="font-size: 0.82rem; padding: 6px 12px;">No-show recorded - reliability score affected</span>
+                        </div>`;
+                    break;
+                case 'declined':
+                    actionsHtml = `
+                        <div class="offer-actions">
+                            <span class="badge badge-neutral" style="font-size: 0.82rem; padding: 6px 12px;">Declined by practice</span>
+                        </div>`;
+                    break;
+                case 'withdrawn':
+                    actionsHtml = `
+                        <div class="offer-actions">
+                            <span class="badge badge-neutral" style="font-size: 0.82rem; padding: 6px 12px;">${offer.autoWithdrawn ? 'Auto-withdrawn (another offer accepted)' : 'Withdrawn'}</span>
+                        </div>`;
+                    break;
+            }
+
+            return `
+            <div class="offer-card" data-offer-id="${offer.id}">
+                <div class="offer-card-header">
+                    <div>
+                        <h3 class="offer-card-title">${offer.practiceName}</h3>
+                        <p class="offer-card-location">${offer.healthBoard}</p>
+                    </div>
+                    <span class="badge ${getStatusBadge(offer.status)}">${offer.status.charAt(0).toUpperCase() + offer.status.slice(1).replace('_', ' ')}</span>
+                </div>
+                <div class="offer-card-details">
+                    <div class="offer-detail">
+                        ${getIcon('calendar')}
+                        <span>${DateUtils.format(offer.shiftDate, 'full')}</span>
+                    </div>
+                    <div class="offer-detail">
+                        ${getIcon('clock')}
+                        <span>${offer.startTime} - ${offer.endTime}</span>
+                    </div>
+                    <div class="offer-detail">
+                        ${getIcon('tag')}
+                        <span>${offer.sessionType}</span>
+                    </div>
+                    ${!offer.housecalls ? '<span class="badge badge-neutral" style="margin-left:auto">No Housecalls</span>' : ''}
+                </div>
+                <div class="offer-card-footer">
+                    <div class="offer-rates">
+                        <span>Your rates: AM ${formatCurrency(offer.rateAM)}, PM ${formatCurrency(offer.ratePM)}, Day ${formatCurrency(offer.rateFullDay)}</span>
+                    </div>
+                    <span class="offer-date">Offer made: ${DateUtils.format(offer.offerDate, 'medium')}</span>
+                </div>
+                ${offer.comment ? '<div class="offer-comment"><strong>Your comment:</strong> ' + offer.comment + '</div>' : ''}
+                ${actionsHtml}
+            </div>`;
+        }
+
         function renderOffers() {
             const offers = getOffers();
             const now = new Date();
@@ -44,7 +143,7 @@
                 </div>
                 <div id="offersList">
                     ${filtered.length > 0
-                        ? filtered.map(o => renderOfferCard(o)).join('')
+                        ? filtered.map(o => renderOfferCardEnhanced(o)).join('')
                         : renderEmptyState('file-text', 'No offers found', 'No pending offers or upcoming bookings', 'Browse Shifts', 'available-shifts.html')
                     }
                 </div>
@@ -65,6 +164,72 @@
                 Toast.show('Offer withdrawn successfully', 'success');
                 renderOffers();
             }
+        }
+
+        function confirmAttendance(offerId) {
+            const success = Booking.confirmAttendance(offerId);
+            if (success) {
+                Toast.show('Attendance confirmed! You are all set for this shift.', 'success');
+            } else {
+                Toast.show('Failed to confirm attendance. Please try again.', 'error');
+            }
+            renderOffers();
+        }
+
+        function cancelShift(offerId, isLateCancellation) {
+            if (isLateCancellation) {
+                Modal.show({
+                    title: 'Late Cancellation Warning',
+                    body: `
+                        <div style="padding: 8px 0;">
+                            <p style="font-size: 0.95rem; color: var(--danger); font-weight: 600; margin-bottom: 12px;">
+                                This shift is less than 48 hours away!
+                            </p>
+                            <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 8px;">
+                                Late cancellations will negatively affect your booking reliability score. This may impact your visibility to practices.
+                            </p>
+                            <p style="font-size: 0.9rem; color: var(--dark-600);">
+                                Are you sure you want to cancel?
+                            </p>
+                        </div>
+                    `,
+                    footer: `
+                        <button class="btn btn-ghost" data-modal-close>Keep Shift</button>
+                        <button class="btn btn-primary" style="background: var(--danger); border-color: var(--danger);" id="confirmCancelBtn">Cancel Shift</button>
+                    `,
+                    onOpen: function(overlay) {
+                        overlay.querySelector('#confirmCancelBtn').addEventListener('click', function() {
+                            Modal.close(overlay);
+                            performCancel(offerId);
+                        });
+                    }
+                });
+            } else {
+                Modal.show({
+                    title: 'Cancel Shift',
+                    body: '<p style="font-size: 0.9rem; color: var(--dark-600); padding: 8px 0;">Are you sure you want to cancel this shift? The practice will be notified.</p>',
+                    footer: `
+                        <button class="btn btn-ghost" data-modal-close>Keep Shift</button>
+                        <button class="btn btn-primary" style="background: var(--danger); border-color: var(--danger);" id="confirmCancelBtn">Cancel Shift</button>
+                    `,
+                    onOpen: function(overlay) {
+                        overlay.querySelector('#confirmCancelBtn').addEventListener('click', function() {
+                            Modal.close(overlay);
+                            performCancel(offerId);
+                        });
+                    }
+                });
+            }
+        }
+
+        function performCancel(offerId) {
+            const success = Booking.cancelShift(offerId, 'locum');
+            if (success) {
+                Toast.show('Shift cancelled. The practice has been notified.', 'info');
+            } else {
+                Toast.show('Failed to cancel shift. Please try again.', 'error');
+            }
+            renderOffers();
         }
 
         renderOffers();

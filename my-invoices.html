@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Invoices - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage('locum')) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const data = getMockData();
+        const pageContent = initAppLayout('locum', 'invoices', 'My Invoices');
+
+        // Seed invoices from completed offers if none exist for this locum
+        let invoices = InvoiceManager.getForLocum(session.id);
+        if (invoices.length === 0) {
+            const completedOffers = data.offers.filter(o => o.locumId === session.id && o.status === 'completed');
+            if (completedOffers.length > 0) {
+                completedOffers.forEach(offer => InvoiceManager.generateFromOffer(data, offer));
+                saveMockData(data);
+                invoices = InvoiceManager.getForLocum(session.id);
+            }
+            // If still no invoices, seed some manually
+            if (invoices.length === 0) {
+                const today = new Date();
+                const practices = data.practices;
+                const locum = data.locums.find(l => l.id === session.id);
+                const seedStatuses = ['paid', 'pending', 'paid', 'overdue', 'paid', 'paid', 'pending', 'paid'];
+                const sessionTypes = ['AM', 'PM', 'Full Day'];
+                if (!data.invoices) data.invoices = [];
+                for (let i = 0; i < 8; i++) {
+                    const genDate = new Date(today);
+                    genDate.setDate(today.getDate() - (i * 7 + 3));
+                    const shiftDate = new Date(genDate);
+                    shiftDate.setDate(genDate.getDate() - 1);
+                    const dueDate = new Date(genDate);
+                    dueDate.setDate(genDate.getDate() + 30);
+                    const practice = practices[i % practices.length];
+                    const sType = sessionTypes[i % 3];
+                    const rate = sType === 'Full Day' ? locum.rates.fullDay : (sType === 'AM' ? locum.rates.am : locum.rates.pm);
+                    const housecallFee = i % 3 === 0 ? 0 : (locum.rates.housecall || 0);
+                    const total = rate + housecallFee;
+                    const status = seedStatuses[i];
+                    data.invoices.push({
+                        id: 'inv-seed-' + Date.now() + '-' + i,
+                        invoiceNumber: 'INV-' + String(data.invoices.length + 1001).padStart(4, '0'),
+                        offerId: null,
+                        locumId: session.id,
+                        locumName: locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : session.name,
+                        practiceId: practice.id,
+                        practiceName: practice.practiceName,
+                        shiftDate: shiftDate.toISOString().split('T')[0],
+                        sessionType: sType,
+                        startTime: sType === 'PM' ? '13:00' : '08:30',
+                        endTime: sType === 'AM' ? '12:30' : '17:00',
+                        sessionRate: rate,
+                        housecallFee: housecallFee,
+                        total: total,
+                        status: status,
+                        generatedDate: genDate.toISOString().split('T')[0],
+                        dueDate: dueDate.toISOString().split('T')[0],
+                        paidDate: status === 'paid' ? genDate.toISOString().split('T')[0] : null,
+                        disputeReason: null
+                    });
+                }
+                saveMockData(data);
+                invoices = InvoiceManager.getForLocum(session.id);
+            }
+        }
+
+        let filterStatus = '';
+
+        function getFilteredInvoices() {
+            let filtered = InvoiceManager.getForLocum(session.id);
+            if (filterStatus) {
+                filtered = filtered.filter(inv => inv.status === filterStatus);
+            }
+            return filtered;
+        }
+
+        function getInvoiceStatusBadge(status) {
+            const map = {
+                pending: 'badge-warning',
+                paid: 'badge-success',
+                overdue: 'badge-danger',
+                disputed: 'badge-info'
+            };
+            return map[status] || 'badge-neutral';
+        }
+
+        function buildEarningsChart(allInvoices) {
+            const now = new Date();
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const months = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                months.push({ year: d.getFullYear(), month: d.getMonth(), label: monthNames[d.getMonth()] });
+            }
+            const earnings = months.map(m => {
+                return allInvoices
+                    .filter(inv => {
+                        const d = new Date(inv.shiftDate);
+                        return d.getFullYear() === m.year && d.getMonth() === m.month && inv.status === 'paid';
+                    })
+                    .reduce((sum, inv) => sum + inv.total, 0);
+            });
+            const maxVal = Math.max(...earnings, 1);
+            return `<div class="bar-chart">
+                ${months.map((m, i) => `
+                    <div class="bar-chart-item">
+                        <div class="bar-chart-value">${earnings[i] > 0 ? formatCurrency(earnings[i]) : ''}</div>
+                        <div class="bar-chart-bar" style="height: ${Math.max((earnings[i] / maxVal) * 130, 4)}px;"></div>
+                        <div class="bar-chart-label">${m.label}</div>
+                    </div>
+                `).join('')}
+            </div>`;
+        }
+
+        function handleChasePayment(invoiceId) {
+            if (InvoiceManager.chasePayment(invoiceId)) {
+                Toast.show('Payment reminder sent to the practice.', 'success');
+                render();
+            } else {
+                Toast.show('Could not send reminder. Please try again.', 'error');
+            }
+        }
+
+        function render() {
+            filterStatus = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : filterStatus;
+            const allInvoices = InvoiceManager.getForLocum(session.id);
+            const filtered = getFilteredInvoices();
+
+            // Summary calculations
+            const totalEarned = allInvoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0);
+            const now = new Date();
+            const thisMonthEarned = allInvoices.filter(i => {
+                const d = new Date(i.shiftDate);
+                return i.status === 'paid' && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+            }).reduce((s, i) => s + i.total, 0);
+            const outstanding = allInvoices.filter(i => i.status === 'pending').reduce((s, i) => s + i.total, 0);
+            const overdue = allInvoices.filter(i => i.status === 'overdue').reduce((s, i) => s + i.total, 0);
+
+            pageContent.innerHTML = `
+                <div class="dash-stats-row" style="margin-bottom: 32px;">
+                    ${renderStatCard('pound', 'Total Earned', formatCurrency(totalEarned), null, null)}
+                    ${renderStatCard('calendar', 'This Month', formatCurrency(thisMonthEarned), null, null)}
+                    ${renderStatCard('clock', 'Outstanding', formatCurrency(outstanding), null, null)}
+                    ${renderStatCard('activity', 'Overdue', formatCurrency(overdue), null, null)}
+                </div>
+
+                <div class="content-card" style="margin-bottom: 32px;">
+                    <div class="content-card-header">
+                        <h2>Earnings (Last 6 Months)</h2>
+                    </div>
+                    <div class="content-card-body">
+                        ${buildEarningsChart(allInvoices)}
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2>Invoices</h2>
+                    </div>
+                    <div style="padding: 16px 24px; border-bottom: 1px solid var(--gray-100);">
+                        <div class="filter-bar" style="margin-bottom: 0;">
+                            <div class="form-group">
+                                <label class="form-label">Status</label>
+                                <select id="filterStatus" class="form-select" onchange="render()">
+                                    <option value="" ${filterStatus === '' ? 'selected' : ''}>All</option>
+                                    <option value="pending" ${filterStatus === 'pending' ? 'selected' : ''}>Pending</option>
+                                    <option value="paid" ${filterStatus === 'paid' ? 'selected' : ''}>Paid</option>
+                                    <option value="overdue" ${filterStatus === 'overdue' ? 'selected' : ''}>Overdue</option>
+                                    <option value="disputed" ${filterStatus === 'disputed' ? 'selected' : ''}>Disputed</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="content-card-body" style="padding: 0; overflow-x: auto;">
+                        ${filtered.length === 0 ? `
+                            <div class="empty-state" style="padding: 40px;">
+                                <div class="empty-state-icon">${getIcon('file-text')}</div>
+                                <h3>No invoices found</h3>
+                                <p>Invoices will appear here once your shifts are completed.</p>
+                            </div>
+                        ` : `
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Date</th>
+                                    <th>Practice</th>
+                                    <th>Shift Date</th>
+                                    <th>Session</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filtered.map(inv => `
+                                    <tr>
+                                        <td><strong style="color: var(--dark);">${inv.invoiceNumber}</strong></td>
+                                        <td>${DateUtils.format(inv.generatedDate, 'short')}</td>
+                                        <td>${inv.practiceName}</td>
+                                        <td>${DateUtils.format(inv.shiftDate, 'medium')}</td>
+                                        <td>${inv.sessionType}</td>
+                                        <td><strong style="color: var(--dark);">${formatCurrency(inv.total)}</strong></td>
+                                        <td><span class="badge ${getInvoiceStatusBadge(inv.status)}">${inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}</span></td>
+                                        <td>
+                                            <div style="display: flex; gap: 6px; align-items: center;">
+                                                <a href="invoice-view.html?id=${inv.id}" class="btn btn-ghost btn-small">View</a>
+                                                ${inv.status === 'pending' || inv.status === 'overdue' ? `
+                                                    <button class="btn btn-small btn-warning" onclick="handleChasePayment('${inv.id}')">Chase Payment</button>
+                                                ` : ''}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        render();
+    </script>
+</body>
+</html>

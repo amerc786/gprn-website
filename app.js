@@ -291,6 +291,436 @@ function getStatusBadge(status) {
     return map[status] || 'badge-neutral';
 }
 
+// ---- Booking Manager ----
+const Booking = {
+    acceptOffer(offerId) {
+        const data = getMockData();
+        const offer = data.offers.find(o => o.id === offerId);
+        if (!offer) return false;
+        offer.status = 'accepted';
+        offer.acceptedDate = DateUtils.toISO(new Date());
+        // Mark shift as filled
+        const shift = data.shifts.find(s => s.id === offer.shiftId);
+        if (shift) shift.status = 'filled';
+        // Auto-withdraw other pending offers for same shift
+        data.offers.filter(o => o.shiftId === offer.shiftId && o.id !== offerId && o.status === 'pending')
+            .forEach(o => { o.status = 'declined'; });
+        // Auto-withdraw locum's other offers for same date
+        data.offers.filter(o => o.locumId === offer.locumId && o.shiftDate === offer.shiftDate && o.id !== offerId && o.status === 'pending')
+            .forEach(o => { o.status = 'withdrawn'; o.autoWithdrawn = true; });
+        // Generate notification
+        this.addNotification(data, offer.locumId, 'offer_accepted', 'Offer Accepted',
+            `${offer.practiceName} has accepted your offer for ${DateUtils.format(offer.shiftDate, 'medium')}.`);
+        // Generate email
+        EmailManager.send(data, offer.locumId, 'Offer Accepted', `Your offer at ${offer.practiceName} for ${DateUtils.format(offer.shiftDate, 'medium')} has been accepted.`, 'offer_accepted');
+        saveMockData(data);
+        return true;
+    },
+
+    declineOffer(offerId) {
+        const data = getMockData();
+        const offer = data.offers.find(o => o.id === offerId);
+        if (!offer) return false;
+        offer.status = 'declined';
+        offer.declinedDate = DateUtils.toISO(new Date());
+        this.addNotification(data, offer.locumId, 'offer_declined', 'Offer Declined',
+            `${offer.practiceName} has declined your offer for ${DateUtils.format(offer.shiftDate, 'medium')}.`);
+        EmailManager.send(data, offer.locumId, 'Offer Declined', `Your offer at ${offer.practiceName} for ${DateUtils.format(offer.shiftDate, 'medium')} was not successful.`, 'offer_declined');
+        saveMockData(data);
+        return true;
+    },
+
+    confirmAttendance(offerId) {
+        const data = getMockData();
+        const offer = data.offers.find(o => o.id === offerId);
+        if (!offer) return false;
+        offer.status = 'confirmed';
+        offer.confirmedDate = DateUtils.toISO(new Date());
+        saveMockData(data);
+        return true;
+    },
+
+    markComplete(offerId, attended = true) {
+        const data = getMockData();
+        const offer = data.offers.find(o => o.id === offerId);
+        if (!offer) return false;
+        if (attended) {
+            offer.status = 'completed';
+            offer.completedDate = DateUtils.toISO(new Date());
+            // Auto-generate invoice
+            InvoiceManager.generateFromOffer(data, offer);
+            // Prompt for feedback
+            this.addNotification(data, offer.locumId, 'leave_feedback', 'Leave Feedback',
+                `Your shift at ${offer.practiceName} is complete. Please leave feedback.`);
+            this.addNotification(data, offer.practiceId, 'leave_feedback', 'Leave Feedback',
+                `Please rate the locum who worked on ${DateUtils.format(offer.shiftDate, 'medium')}.`);
+        } else {
+            offer.status = 'no_show';
+            offer.noShowDate = DateUtils.toISO(new Date());
+            // Affect reliability
+            const locum = data.locums.find(l => l.id === offer.locumId);
+            if (locum) locum.bookingReliability = Math.max(0, locum.bookingReliability - 10);
+            this.addNotification(data, offer.locumId, 'no_show', 'No-Show Recorded',
+                `A no-show was recorded for your shift at ${offer.practiceName} on ${DateUtils.format(offer.shiftDate, 'medium')}. Your reliability score has been affected.`);
+        }
+        saveMockData(data);
+        return true;
+    },
+
+    cancelShift(offerId, cancelledBy) {
+        const data = getMockData();
+        const offer = data.offers.find(o => o.id === offerId);
+        if (!offer) return false;
+        const daysBefore = Math.ceil((new Date(offer.shiftDate) - new Date()) / (1000*60*60*24));
+        offer.status = 'cancelled';
+        offer.cancelledBy = cancelledBy;
+        offer.cancelledDate = DateUtils.toISO(new Date());
+        offer.lateCancellation = daysBefore < 2;
+        // Re-open shift
+        const shift = data.shifts.find(s => s.id === offer.shiftId);
+        if (shift) shift.status = 'open';
+        // Late cancellation penalty
+        if (cancelledBy === 'locum' && offer.lateCancellation) {
+            const locum = data.locums.find(l => l.id === offer.locumId);
+            if (locum) locum.bookingReliability = Math.max(0, locum.bookingReliability - 5);
+        }
+        const notifyId = cancelledBy === 'locum' ? offer.practiceId : offer.locumId;
+        this.addNotification(data, notifyId, 'cancellation', 'Shift Cancelled',
+            `The shift on ${DateUtils.format(offer.shiftDate, 'medium')} at ${offer.practiceName} has been cancelled.`);
+        saveMockData(data);
+        return true;
+    },
+
+    isDoubleBooked(locumId, date, excludeOfferId) {
+        const data = getMockData();
+        return data.offers.some(o => o.locumId === locumId && o.shiftDate === date &&
+            ['accepted', 'confirmed'].includes(o.status) && o.id !== excludeOfferId);
+    },
+
+    addNotification(data, userId, type, title, message) {
+        if (!data.notifications) data.notifications = [];
+        data.notifications.push({
+            id: 'notif-' + Date.now() + Math.random().toString(36).substr(2, 5),
+            userId: userId,
+            type: type,
+            title: title,
+            message: message,
+            date: new Date().toISOString(),
+            read: false
+        });
+    }
+};
+
+// ---- Message Manager ----
+const MessageManager = {
+    send(fromId, toId, subject, body, shiftId) {
+        const data = getMockData();
+        if (!data.messages) data.messages = [];
+        const threadId = this.findThread(data, fromId, toId, shiftId) || ('thread-' + Date.now());
+        data.messages.push({
+            id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+            threadId,
+            fromId,
+            toId,
+            subject,
+            body,
+            shiftId: shiftId || null,
+            timestamp: new Date().toISOString(),
+            read: false
+        });
+        // Email notification
+        EmailManager.send(data, toId, 'New Message: ' + subject, body.substring(0, 100) + '...', 'message_received');
+        Booking.addNotification(data, toId, 'message', 'New Message', `You have a new message: "${subject}"`);
+        saveMockData(data);
+        return threadId;
+    },
+
+    findThread(data, user1, user2, shiftId) {
+        if (!data.messages) return null;
+        const msg = data.messages.find(m =>
+            ((m.fromId === user1 && m.toId === user2) || (m.fromId === user2 && m.toId === user1)) &&
+            (shiftId ? m.shiftId === shiftId : true)
+        );
+        return msg ? msg.threadId : null;
+    },
+
+    getThreads(userId) {
+        const data = getMockData();
+        if (!data.messages) return [];
+        const userMsgs = data.messages.filter(m => m.fromId === userId || m.toId === userId);
+        const threads = {};
+        userMsgs.forEach(m => {
+            if (!threads[m.threadId]) threads[m.threadId] = [];
+            threads[m.threadId].push(m);
+        });
+        return Object.entries(threads).map(([threadId, msgs]) => {
+            msgs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            const last = msgs[msgs.length - 1];
+            const otherId = last.fromId === userId ? last.toId : last.fromId;
+            const unread = msgs.filter(m => m.toId === userId && !m.read).length;
+            return { threadId, messages: msgs, lastMessage: last, otherId, unread, subject: msgs[0].subject };
+        }).sort((a, b) => new Date(b.lastMessage.timestamp) - new Date(a.lastMessage.timestamp));
+    },
+
+    getThread(threadId) {
+        const data = getMockData();
+        if (!data.messages) return [];
+        return data.messages.filter(m => m.threadId === threadId).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    },
+
+    markThreadRead(threadId, userId) {
+        const data = getMockData();
+        if (!data.messages) return;
+        data.messages.filter(m => m.threadId === threadId && m.toId === userId && !m.read)
+            .forEach(m => { m.read = true; });
+        saveMockData(data);
+    },
+
+    getUnreadCount(userId) {
+        const data = getMockData();
+        if (!data.messages) return 0;
+        return data.messages.filter(m => m.toId === userId && !m.read).length;
+    },
+
+    getUserName(userId) {
+        const data = getMockData();
+        const locum = data.locums.find(l => l.id === userId);
+        if (locum) return `${locum.title} ${locum.firstName} ${locum.lastName}`;
+        const practice = data.practices.find(p => p.id === userId);
+        if (practice) return practice.practiceName;
+        return 'Unknown';
+    }
+};
+
+// ---- Email Manager (Simulated) ----
+const EmailManager = {
+    send(data, toUserId, subject, body, type) {
+        if (!data.emailLog) data.emailLog = [];
+        const locum = data.locums.find(l => l.id === toUserId);
+        const practice = data.practices.find(p => p.id === toUserId);
+        const toEmail = locum ? locum.email : (practice ? practice.email : 'unknown');
+        const toName = locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : (practice ? practice.practiceName : 'Unknown');
+        data.emailLog.push({
+            id: 'email-' + Date.now() + Math.random().toString(36).substr(2, 5),
+            toUserId,
+            toEmail,
+            toName,
+            subject,
+            body,
+            type,
+            timestamp: new Date().toISOString(),
+            status: 'sent'
+        });
+    },
+
+    getLog(userId) {
+        const data = getMockData();
+        if (!data.emailLog) return [];
+        return data.emailLog.filter(e => e.toUserId === userId).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }
+};
+
+// ---- Invoice Manager ----
+const InvoiceManager = {
+    generateFromOffer(data, offer) {
+        if (!data.invoices) data.invoices = [];
+        const locum = data.locums.find(l => l.id === offer.locumId);
+        const practice = data.practices.find(p => p.id === offer.practiceId);
+        const rate = offer.sessionType === 'Full Day' ? (offer.rateFullDay || locum.rates.fullDay) :
+            offer.sessionType === 'AM' ? (offer.rateAM || locum.rates.am) : (offer.ratePM || locum.rates.pm);
+        const housecallFee = offer.housecalls ? (locum.rates.housecall || 0) : 0;
+        const total = rate + housecallFee;
+        const invNum = 'INV-' + String(data.invoices.length + 1001).padStart(4, '0');
+        data.invoices.push({
+            id: 'inv-' + Date.now(),
+            invoiceNumber: invNum,
+            offerId: offer.id,
+            locumId: offer.locumId,
+            locumName: locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown',
+            practiceId: offer.practiceId,
+            practiceName: offer.practiceName,
+            shiftDate: offer.shiftDate,
+            sessionType: offer.sessionType,
+            startTime: offer.startTime,
+            endTime: offer.endTime,
+            sessionRate: rate,
+            housecallFee: housecallFee,
+            total: total,
+            status: 'pending',
+            generatedDate: DateUtils.toISO(new Date()),
+            dueDate: DateUtils.toISO(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+            paidDate: null,
+            disputeReason: null
+        });
+    },
+
+    getForPractice(practiceId) {
+        const data = getMockData();
+        if (!data.invoices) return [];
+        return data.invoices.filter(i => i.practiceId === practiceId).sort((a, b) => new Date(b.generatedDate) - new Date(a.generatedDate));
+    },
+
+    getForLocum(locumId) {
+        const data = getMockData();
+        if (!data.invoices) return [];
+        return data.invoices.filter(i => i.locumId === locumId).sort((a, b) => new Date(b.generatedDate) - new Date(a.generatedDate));
+    },
+
+    updateStatus(invoiceId, status, reason) {
+        const data = getMockData();
+        const inv = data.invoices.find(i => i.id === invoiceId);
+        if (!inv) return false;
+        inv.status = status;
+        if (status === 'paid') inv.paidDate = DateUtils.toISO(new Date());
+        if (status === 'disputed') inv.disputeReason = reason;
+        if (status === 'paid') {
+            EmailManager.send(data, inv.locumId, 'Payment Received', `Payment of ${formatCurrency(inv.total)} for shift on ${DateUtils.format(inv.shiftDate, 'medium')} at ${inv.practiceName} has been received.`, 'payment_received');
+        }
+        saveMockData(data);
+        return true;
+    },
+
+    chasePayment(invoiceId) {
+        const data = getMockData();
+        const inv = data.invoices.find(i => i.id === invoiceId);
+        if (!inv) return false;
+        inv.status = 'overdue';
+        EmailManager.send(data, inv.practiceId, 'Payment Reminder', `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is overdue. Shift: ${DateUtils.format(inv.shiftDate, 'medium')}, Locum: ${inv.locumName}.`, 'payment_reminder');
+        Booking.addNotification(data, inv.practiceId, 'payment_reminder', 'Payment Reminder',
+            `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is overdue.`);
+        saveMockData(data);
+        return true;
+    }
+};
+
+// ---- Feedback Manager ----
+const FeedbackManager = {
+    submit(fromId, toId, offerId, ratings, comment, fromRole) {
+        const data = getMockData();
+        if (!data.feedback) data.feedback = [];
+        data.feedback.push({
+            id: 'fb-' + Date.now(),
+            fromId,
+            toId,
+            offerId,
+            ratings,
+            comment,
+            fromRole,
+            timestamp: new Date().toISOString()
+        });
+        saveMockData(data);
+        return true;
+    },
+
+    getForUser(userId) {
+        const data = getMockData();
+        if (!data.feedback) return [];
+        return data.feedback.filter(f => f.toId === userId).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    },
+
+    getAverageRating(userId) {
+        const reviews = this.getForUser(userId);
+        if (reviews.length === 0) return null;
+        const allScores = reviews.flatMap(r => Object.values(r.ratings));
+        return (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1);
+    },
+
+    hasReviewed(fromId, offerId) {
+        const data = getMockData();
+        if (!data.feedback) return false;
+        return data.feedback.some(f => f.fromId === fromId && f.offerId === offerId);
+    }
+};
+
+// ---- Barred/Preferred List Manager ----
+const BarredList = {
+    bar(practiceId, locumId, reason) {
+        const data = getMockData();
+        if (!data.barredLists) data.barredLists = {};
+        if (!data.barredLists[practiceId]) data.barredLists[practiceId] = [];
+        if (!this.isBarred(practiceId, locumId)) {
+            data.barredLists[practiceId].push({ locumId, reason, date: DateUtils.toISO(new Date()) });
+            saveMockData(data);
+        }
+    },
+
+    unbar(practiceId, locumId) {
+        const data = getMockData();
+        if (!data.barredLists || !data.barredLists[practiceId]) return;
+        data.barredLists[practiceId] = data.barredLists[practiceId].filter(b => b.locumId !== locumId);
+        saveMockData(data);
+    },
+
+    isBarred(practiceId, locumId) {
+        const data = getMockData();
+        if (!data.barredLists || !data.barredLists[practiceId]) return false;
+        return data.barredLists[practiceId].some(b => b.locumId === locumId);
+    },
+
+    getBarredList(practiceId) {
+        const data = getMockData();
+        if (!data.barredLists) return [];
+        return data.barredLists[practiceId] || [];
+    },
+
+    getBarReason(practiceId, locumId) {
+        const data = getMockData();
+        if (!data.barredLists || !data.barredLists[practiceId]) return null;
+        const entry = data.barredLists[practiceId].find(b => b.locumId === locumId);
+        return entry ? entry.reason : null;
+    },
+
+    addPreferred(practiceId, locumId) {
+        const data = getMockData();
+        if (!data.preferredLists) data.preferredLists = {};
+        if (!data.preferredLists[practiceId]) data.preferredLists[practiceId] = [];
+        if (!this.isPreferred(practiceId, locumId)) {
+            data.preferredLists[practiceId].push(locumId);
+            saveMockData(data);
+        }
+    },
+
+    removePreferred(practiceId, locumId) {
+        const data = getMockData();
+        if (!data.preferredLists || !data.preferredLists[practiceId]) return;
+        data.preferredLists[practiceId] = data.preferredLists[practiceId].filter(id => id !== locumId);
+        saveMockData(data);
+    },
+
+    isPreferred(practiceId, locumId) {
+        const data = getMockData();
+        if (!data.preferredLists || !data.preferredLists[practiceId]) return false;
+        return data.preferredLists[practiceId].includes(locumId);
+    }
+};
+
+// ---- Availability Manager ----
+const Availability = {
+    set(locumId, date, status) { // status: 'available', 'unavailable', 'preferred'
+        const data = getMockData();
+        if (!data.availability) data.availability = {};
+        if (!data.availability[locumId]) data.availability[locumId] = {};
+        if (status === 'none') {
+            delete data.availability[locumId][date];
+        } else {
+            data.availability[locumId][date] = status;
+        }
+        saveMockData(data);
+    },
+
+    get(locumId, date) {
+        const data = getMockData();
+        if (!data.availability || !data.availability[locumId]) return 'none';
+        return data.availability[locumId][date] || 'none';
+    },
+
+    getAll(locumId) {
+        const data = getMockData();
+        if (!data.availability) return {};
+        return data.availability[locumId] || {};
+    }
+};
+
 // ---- Page init helper ----
 function initPage(role) {
     if (!Auth.requireAuth(role)) return false;

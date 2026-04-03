@@ -16,6 +16,7 @@
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
 
+        const session = Auth.getSession();
         const params = new URLSearchParams(window.location.search);
         const locumId = params.get('id');
         const data = getMockData();
@@ -31,196 +32,338 @@
             { label: `${locum.title} ${locum.firstName} ${locum.lastName}` }
         ]);
 
-        const reliabilityColor = locum.bookingReliability >= 95 ? 'var(--success)' : (locum.bookingReliability >= 85 ? 'var(--warning)' : 'var(--danger)');
+        const locumName = `${locum.title} ${locum.firstName} ${locum.lastName}`;
+        const notesKey = `notes_${session.id}_${locumId}`;
 
-        pageContent.innerHTML = `
-            <a href="find-locums.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
-                ${getIcon('arrow-left')} Back to Find Locums
-            </a>
+        function saveNotes() {
+            const notes = document.getElementById('practiceNotes').value;
+            localStorage.setItem(notesKey, notes);
+            Toast.show('Notes saved.', 'success');
+        }
 
-            <div class="content-card" style="margin-bottom: 24px;">
-                <div class="content-card-body" style="padding: 32px;">
-                    <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 24px;">
-                        <div class="header-avatar" style="width: 80px; height: 80px; font-size: 1.6rem; flex-shrink: 0;">
-                            ${getInitials(locum.firstName + ' ' + locum.lastName)}
-                        </div>
-                        <div>
-                            <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">
-                                ${locum.title} ${locum.firstName} ${locum.lastName}
-                            </h1>
-                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                <span class="badge badge-primary">GP</span>
-                                <span style="font-size: 0.88rem; color: var(--dark-600);">GMC: ${locum.gmcNumber}</span>
-                                ${locum.performerList ? '<span class="badge badge-success">On Performer List</span>' : ''}
-                            </div>
-                        </div>
-                        <div style="margin-left: auto;">
-                            <button class="btn btn-primary btn-large" onclick="requestLocum()">
-                                ${getIcon('mail')} Request This Locum
-                            </button>
-                        </div>
+        function barThisLocum() {
+            Modal.show({
+                title: 'Bar Locum',
+                body: `
+                    <p style="font-size: 0.92rem; color: var(--dark-600); margin-bottom: 16px;">
+                        Are you sure you want to bar <strong>${locumName}</strong>?
+                    </p>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Reason for barring</label>
+                        <textarea id="barReason" class="form-input" rows="3" placeholder="Enter reason..." style="resize: vertical;"></textarea>
                     </div>
-                </div>
-            </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-coral" onclick="confirmBar()">Bar Locum</button>
+                `
+            });
+        }
 
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
-                <div>
-                    <div class="content-card" style="margin-bottom: 24px;">
-                        <div class="content-card-header">
-                            <h2>About</h2>
-                        </div>
-                        <div class="content-card-body">
-                            <p style="font-size: 0.95rem; color: var(--dark-600); line-height: 1.7;">${locum.bio}</p>
-                        </div>
-                    </div>
+        function confirmBar() {
+            const reason = document.getElementById('barReason') ? document.getElementById('barReason').value.trim() : '';
+            BarredList.bar(session.id, locumId, reason || 'No reason provided');
+            Modal.close();
+            Toast.show('Locum has been barred.', 'warning');
+            renderProfile();
+        }
 
-                    <div class="content-card" style="margin-bottom: 24px;">
-                        <div class="content-card-header">
-                            <h2>Professional Details</h2>
-                        </div>
-                        <div class="content-card-body">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                                <div>
-                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Medical School</span>
-                                    <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.medicalSchool}</p>
-                                </div>
-                                <div>
-                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Year Qualified</span>
-                                    <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.yearQualified}</p>
-                                </div>
-                                <div>
-                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Computer Systems</span>
-                                    <div style="display: flex; gap: 6px; margin-top: 6px;">
-                                        ${locum.computerSystems.map(cs => `<span class="badge badge-primary">${cs}</span>`).join('')}
-                                    </div>
-                                </div>
-                                <div>
-                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Signing Scripts</span>
-                                    <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.signingScripts}</p>
-                                </div>
-                                <div>
-                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">NHS Pension</span>
-                                    <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.nhsPension ? 'Yes' : 'No'}</p>
-                                </div>
-                                <div>
-                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Preferred Shifts</span>
-                                    <div style="display: flex; gap: 6px; margin-top: 6px;">
-                                        ${locum.preferredShiftTypes.map(t => `<span class="badge badge-neutral">${t}</span>`).join('')}
-                                    </div>
-                                </div>
-                                <div style="grid-column: 1 / -1;">
-                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Health Boards Covered</span>
-                                    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
-                                        ${locum.healthBoards.map(hb => `<span class="badge badge-info">${hb}</span>`).join('')}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        function unbarThisLocum() {
+            BarredList.unbar(session.id, locumId);
+            Toast.show('Locum removed from barred list.', 'success');
+            renderProfile();
+        }
 
-                    <div class="content-card">
-                        <div class="content-card-header">
-                            <h2>Documents</h2>
-                        </div>
-                        <div class="content-card-body">
-                            ${Object.entries(locum.documents).map(([key, doc]) => {
-                                const labels = { indemnity: 'Indemnity Certificate', performerListStatus: 'Performer List Status', dbs: 'DBS Check', cv: 'CV / Resume' };
-                                return `
-                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
-                                        <div style="display: flex; align-items: center; gap: 10px;">
-                                            ${getIcon('file-text')}
-                                            <span style="font-size: 0.9rem; color: var(--dark);">${labels[key] || key}</span>
-                                        </div>
-                                        ${doc.uploaded
-                                            ? '<span class="badge badge-success">Uploaded</span>'
-                                            : '<span class="badge badge-warning">Not Uploaded</span>'}
-                                    </div>`;
-                            }).join('')}
-                        </div>
-                    </div>
-                </div>
+        function markAsPreferred() {
+            BarredList.addPreferred(session.id, locumId);
+            Toast.show('Locum marked as preferred.', 'success');
+            renderProfile();
+        }
 
-                <div>
-                    <div class="content-card" style="margin-bottom: 24px;">
-                        <div class="content-card-header">
-                            <h2>Booking Reliability</h2>
-                        </div>
-                        <div class="content-card-body">
-                            <div style="text-align: center; margin-bottom: 16px;">
-                                <span style="font-family: 'Space Grotesk', sans-serif; font-size: 2.5rem; font-weight: 800; color: ${reliabilityColor};">${locum.bookingReliability}%</span>
-                            </div>
-                            <div class="coverage-bar" style="height: 12px;">
-                                <div class="coverage-fill" style="width: ${locum.bookingReliability}%; background: ${reliabilityColor};"></div>
-                            </div>
-                            <p style="font-size: 0.82rem; color: var(--dark-600); margin-top: 12px; text-align: center;">
-                                Based on ${locum.totalShifts} completed shifts
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="content-card" style="margin-bottom: 24px;">
-                        <div class="content-card-header">
-                            <h2>Quick Stats</h2>
-                        </div>
-                        <div class="content-card-body">
-                            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
-                                ${getIcon('clock')}
-                                <div>
-                                    <span style="font-size: 0.82rem; color: var(--dark-600);">Response Time</span>
-                                    <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.responseTime}</strong>
-                                </div>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
-                                ${getIcon('activity')}
-                                <div>
-                                    <span style="font-size: 0.82rem; color: var(--dark-600);">Total Shifts</span>
-                                    <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.totalShifts}</strong>
-                                </div>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0;">
-                                ${getIcon('map-pin')}
-                                <div>
-                                    <span style="font-size: 0.82rem; color: var(--dark-600);">Travel Distance</span>
-                                    <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.travelDistance} miles</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="content-card">
-                        <div class="content-card-header">
-                            <h2>Rates</h2>
-                        </div>
-                        <div class="content-card-body">
-                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-                                <span style="font-size: 0.88rem; color: var(--dark-600);">AM Session</span>
-                                <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.am)}</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-                                <span style="font-size: 0.88rem; color: var(--dark-600);">PM Session</span>
-                                <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.pm)}</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-                                <span style="font-size: 0.88rem; color: var(--dark-600);">Full Day</span>
-                                <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.fullDay)}</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-                                <span style="font-size: 0.88rem; color: var(--dark-600);">On-Call</span>
-                                <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.onCall)}/hr</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; padding: 8px 0;">
-                                <span style="font-size: 0.88rem; color: var(--dark-600);">Housecall</span>
-                                <strong style="font-size: 0.88rem; color: var(--dark);">${locum.rates.housecall > 0 ? formatCurrency(locum.rates.housecall) : 'Included'}</strong>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
+        function removeFromPreferred() {
+            BarredList.removePreferred(session.id, locumId);
+            Toast.show('Locum removed from preferred list.', 'info');
+            renderProfile();
+        }
 
         function requestLocum() {
-            Toast.show('Request sent to ' + locum.title + ' ' + locum.firstName + ' ' + locum.lastName + '. They will be notified.', 'success');
+            Toast.show('Request sent to ' + locumName + '. They will be notified.', 'success');
         }
+
+        function renderProfile() {
+            const reliabilityColor = locum.bookingReliability >= 95 ? 'var(--success)' : (locum.bookingReliability >= 85 ? 'var(--warning)' : 'var(--danger)');
+            const isBarred = BarredList.isBarred(session.id, locumId);
+            const isPreferred = BarredList.isPreferred(session.id, locumId);
+            const avgRating = FeedbackManager.getAverageRating(locumId);
+            const reviews = FeedbackManager.getForUser(locumId);
+            const savedNotes = localStorage.getItem(notesKey) || '';
+
+            pageContent.innerHTML = `
+                <a href="find-locums.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
+                    ${getIcon('arrow-left')} Back to Find Locums
+                </a>
+
+                <!-- Barred/Preferred Status Banner -->
+                ${renderBarredWarning(session.id, locumId)}
+
+                <!-- Profile Header -->
+                <div class="content-card" style="margin-bottom: 24px;">
+                    <div class="content-card-body" style="padding: 32px;">
+                        <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 24px; flex-wrap: wrap;">
+                            <div class="header-avatar" style="width: 80px; height: 80px; font-size: 1.6rem; flex-shrink: 0;">
+                                ${getInitials(locum.firstName + ' ' + locum.lastName)}
+                            </div>
+                            <div style="flex: 1;">
+                                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">
+                                    ${locumName}
+                                </h1>
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+                                    <span class="badge badge-primary">GP</span>
+                                    <span style="font-size: 0.88rem; color: var(--dark-600);">GMC: ${locum.gmcNumber}</span>
+                                    ${locum.performerList ? '<span class="badge badge-success">On Performer List</span>' : ''}
+                                </div>
+                                ${avgRating ? `
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    ${renderRatingStars(parseFloat(avgRating))}
+                                    <span style="font-weight: 700; font-size: 0.95rem; color: var(--dark);">${avgRating}</span>
+                                    <span style="font-size: 0.82rem; color: var(--gray-400);">(${reviews.length} review${reviews.length !== 1 ? 's' : ''})</span>
+                                </div>` : ''}
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn btn-primary btn-large" onclick="requestLocum()">
+                                    ${getIcon('mail')} Request This Locum
+                                </button>
+                                ${isBarred
+                                    ? `<button class="btn btn-secondary" onclick="unbarThisLocum()" style="color: var(--success);">Unbar</button>`
+                                    : `<button class="btn btn-secondary" onclick="barThisLocum()" style="color: var(--danger);">Bar This Locum</button>`
+                                }
+                                ${isPreferred
+                                    ? `<button class="btn btn-secondary" onclick="removeFromPreferred()">Remove Preferred</button>`
+                                    : `<button class="btn btn-secondary" onclick="markAsPreferred()" style="color: var(--success);">Mark as Preferred</button>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                    <div>
+                        <!-- About -->
+                        <div class="content-card" style="margin-bottom: 24px;">
+                            <div class="content-card-header">
+                                <h2>About</h2>
+                            </div>
+                            <div class="content-card-body">
+                                <p style="font-size: 0.95rem; color: var(--dark-600); line-height: 1.7;">${locum.bio}</p>
+                            </div>
+                        </div>
+
+                        <!-- Professional Details -->
+                        <div class="content-card" style="margin-bottom: 24px;">
+                            <div class="content-card-header">
+                                <h2>Professional Details</h2>
+                            </div>
+                            <div class="content-card-body">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                    <div>
+                                        <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Medical School</span>
+                                        <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.medicalSchool}</p>
+                                    </div>
+                                    <div>
+                                        <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Year Qualified</span>
+                                        <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.yearQualified}</p>
+                                    </div>
+                                    <div>
+                                        <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Computer Systems</span>
+                                        <div style="display: flex; gap: 6px; margin-top: 6px;">
+                                            ${locum.computerSystems.map(cs => `<span class="badge badge-primary">${cs}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Signing Scripts</span>
+                                        <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.signingScripts}</p>
+                                    </div>
+                                    <div>
+                                        <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">NHS Pension</span>
+                                        <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.nhsPension ? 'Yes' : 'No'}</p>
+                                    </div>
+                                    <div>
+                                        <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Preferred Shifts</span>
+                                        <div style="display: flex; gap: 6px; margin-top: 6px;">
+                                            ${locum.preferredShiftTypes.map(t => `<span class="badge badge-neutral">${t}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                    <div style="grid-column: 1 / -1;">
+                                        <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Health Boards Covered</span>
+                                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
+                                            ${locum.healthBoards.map(hb => `<span class="badge badge-info">${hb}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Documents with Expiry Status -->
+                        <div class="content-card" style="margin-bottom: 24px;">
+                            <div class="content-card-header">
+                                <h2>Documents</h2>
+                            </div>
+                            <div class="content-card-body">
+                                ${Object.entries(locum.documents).map(([key, doc]) => {
+                                    const labels = { indemnity: 'Indemnity Certificate', performerListStatus: 'Performer List Status', dbs: 'DBS Check', cv: 'CV / Resume' };
+                                    const expiry = doc.expiry ? getDocumentExpiryStatus(doc.expiry) : null;
+                                    return `
+                                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                                ${getIcon('file-text')}
+                                                <span style="font-size: 0.9rem; color: var(--dark);">${labels[key] || key}</span>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                ${expiry ? `<span class="badge ${expiry.badge}">${expiry.label}</span>` : ''}
+                                                ${doc.uploaded
+                                                    ? '<span class="badge badge-success">Uploaded</span>'
+                                                    : '<span class="badge badge-warning">Not Uploaded</span>'}
+                                            </div>
+                                        </div>`;
+                                }).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Ratings & Reviews -->
+                        <div class="content-card" style="margin-bottom: 24px;">
+                            <div class="content-card-header">
+                                <h2>Ratings & Reviews</h2>
+                            </div>
+                            <div class="content-card-body">
+                                ${avgRating ? `
+                                <div class="rating-summary" style="margin-bottom: 20px;">
+                                    <span class="rating-number">${avgRating}</span>
+                                    ${renderRatingStars(parseFloat(avgRating), 20)}
+                                    <span class="rating-count">${reviews.length} review${reviews.length !== 1 ? 's' : ''}</span>
+                                </div>` : ''}
+
+                                ${reviews.length === 0
+                                    ? '<p style="font-size: 0.88rem; color: var(--dark-600);">No reviews yet.</p>'
+                                    : reviews.map(r => {
+                                        const reviewerName = MessageManager.getUserName(r.fromId);
+                                        const avgScore = (Object.values(r.ratings).reduce((a, b) => a + b, 0) / Object.values(r.ratings).length).toFixed(1);
+                                        return `
+                                        <div style="padding: 16px 0; border-bottom: 1px solid var(--gray-100);">
+                                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                    <strong style="font-size: 0.88rem; color: var(--dark);">${reviewerName}</strong>
+                                                    ${renderRatingStars(parseFloat(avgScore))}
+                                                </div>
+                                                <span class="review-date">${DateUtils.format(r.timestamp, 'medium')}</span>
+                                            </div>
+                                            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px;">
+                                                ${Object.entries(r.ratings).map(([cat, val]) => `
+                                                    <span style="font-size: 0.78rem; color: var(--dark-600);">${cat}: <strong>${val}/5</strong></span>
+                                                `).join('')}
+                                            </div>
+                                            ${r.comment ? `<p class="review-comment">${r.comment}</p>` : ''}
+                                        </div>`;
+                                    }).join('')
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Private Practice Notes -->
+                        <div class="content-card">
+                            <div class="content-card-header">
+                                <h2>Private Notes</h2>
+                                <span style="font-size: 0.78rem; color: var(--gray-400);">Only visible to your practice</span>
+                            </div>
+                            <div class="content-card-body">
+                                <textarea id="practiceNotes" class="form-input" rows="4" style="resize: vertical; margin-bottom: 12px;" placeholder="Add private notes about this locum...">${savedNotes}</textarea>
+                                <button class="btn btn-primary btn-small" onclick="saveNotes()">Save Notes</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <!-- Booking Reliability -->
+                        <div class="content-card" style="margin-bottom: 24px;">
+                            <div class="content-card-header">
+                                <h2>Booking Reliability</h2>
+                            </div>
+                            <div class="content-card-body">
+                                <div style="text-align: center; margin-bottom: 16px;">
+                                    <span style="font-family: 'Space Grotesk', sans-serif; font-size: 2.5rem; font-weight: 800; color: ${reliabilityColor};">${locum.bookingReliability}%</span>
+                                </div>
+                                <div class="coverage-bar" style="height: 12px;">
+                                    <div class="coverage-fill" style="width: ${locum.bookingReliability}%; background: ${reliabilityColor};"></div>
+                                </div>
+                                <p style="font-size: 0.82rem; color: var(--dark-600); margin-top: 12px; text-align: center;">
+                                    Based on ${locum.totalShifts} completed shifts
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats -->
+                        <div class="content-card" style="margin-bottom: 24px;">
+                            <div class="content-card-header">
+                                <h2>Quick Stats</h2>
+                            </div>
+                            <div class="content-card-body">
+                                <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
+                                    ${getIcon('clock')}
+                                    <div>
+                                        <span style="font-size: 0.82rem; color: var(--dark-600);">Response Time</span>
+                                        <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.responseTime}</strong>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
+                                    ${getIcon('activity')}
+                                    <div>
+                                        <span style="font-size: 0.82rem; color: var(--dark-600);">Total Shifts</span>
+                                        <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.totalShifts}</strong>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0;">
+                                    ${getIcon('map-pin')}
+                                    <div>
+                                        <span style="font-size: 0.82rem; color: var(--dark-600);">Travel Distance</span>
+                                        <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.travelDistance} miles</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Rates -->
+                        <div class="content-card">
+                            <div class="content-card-header">
+                                <h2>Rates</h2>
+                            </div>
+                            <div class="content-card-body">
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                    <span style="font-size: 0.88rem; color: var(--dark-600);">AM Session</span>
+                                    <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.am)}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                    <span style="font-size: 0.88rem; color: var(--dark-600);">PM Session</span>
+                                    <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.pm)}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                    <span style="font-size: 0.88rem; color: var(--dark-600);">Full Day</span>
+                                    <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.fullDay)}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                    <span style="font-size: 0.88rem; color: var(--dark-600);">On-Call</span>
+                                    <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.onCall)}/hr</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                                    <span style="font-size: 0.88rem; color: var(--dark-600);">Housecall</span>
+                                    <strong style="font-size: 0.88rem; color: var(--dark);">${locum.rates.housecall > 0 ? formatCurrency(locum.rates.housecall) : 'Included'}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        renderProfile();
     </script>
 </body>
 </html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Feedback - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage()) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const role = Auth.getRole();
+        const data = getMockData();
+        const pageContent = initAppLayout(role, 'dashboard', 'Leave Feedback');
+
+        const offerId = new URLSearchParams(window.location.search).get('offerId');
+        const offer = data.offers.find(o => o.id === offerId);
+
+        if (!offer) {
+            pageContent.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <h2 style="margin-bottom: 12px;">Offer Not Found</h2>
+                    <p style="color: var(--dark-600); margin-bottom: 20px;">The offer you are looking for could not be found.</p>
+                    <a href="${role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html'}" class="btn btn-primary">Back to Dashboard</a>
+                </div>`;
+            throw new Error('Offer not found');
+        }
+
+        // Determine who we are giving feedback about
+        const isLocumReviewing = role === 'locum';
+        const targetId = isLocumReviewing ? offer.practiceId : offer.locumId;
+
+        // Get target name
+        let targetName = '';
+        if (isLocumReviewing) {
+            const practice = data.practices.find(p => p.id === offer.practiceId);
+            targetName = practice ? practice.practiceName : offer.practiceName;
+        } else {
+            const locum = data.locums.find(l => l.id === offer.locumId);
+            targetName = locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown Locum';
+        }
+
+        // Categories based on role
+        const categories = isLocumReviewing
+            ? ['Organisation', 'Support Staff', 'Facilities', 'Would Work Again']
+            : ['Punctuality', 'Clinical Skills', 'Communication', 'Would Book Again'];
+
+        // Check if already reviewed
+        const alreadyReviewed = FeedbackManager.hasReviewed(session.id, offerId);
+
+        // Track star ratings
+        const ratings = {};
+        categories.forEach(c => { ratings[c] = 0; });
+
+        function renderStarsInput(category) {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                const fill = i <= (ratings[category] || 0) ? '#F97316' : '#E2E8F0';
+                stars += `<svg onclick="setRating('${category}', ${i})" width="28" height="28" viewBox="0 0 24 24" fill="${fill}" stroke="${fill}" stroke-width="1" style="cursor:pointer;transition:transform 0.1s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+            }
+            return `<span class="rating-stars">${stars}</span>`;
+        }
+
+        function setRating(category, value) {
+            ratings[category] = value;
+            render();
+        }
+
+        function submitFeedback() {
+            // Validate all categories have ratings
+            const unrated = categories.filter(c => ratings[c] === 0);
+            if (unrated.length > 0) {
+                Toast.show('Please rate all categories before submitting.', 'warning');
+                return;
+            }
+
+            const comment = document.getElementById('feedbackComment').value.trim();
+            const ratingsObj = {};
+            categories.forEach(c => { ratingsObj[c] = ratings[c]; });
+
+            FeedbackManager.submit(session.id, targetId, offerId, ratingsObj, comment, role);
+            Toast.show('Feedback submitted successfully. Thank you!', 'success');
+
+            setTimeout(() => {
+                window.location.href = role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html';
+            }, 1500);
+        }
+
+        function render() {
+            if (alreadyReviewed) {
+                pageContent.innerHTML = `
+                    <a href="${role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html'}" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
+                        ${getIcon('arrow-left')} Back to Dashboard
+                    </a>
+                    <div class="content-card">
+                        <div class="content-card-body" style="text-align: center; padding: 60px 20px;">
+                            <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(16,185,129,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                                ${getIcon('check')}
+                            </div>
+                            <h2 style="font-size: 1.4rem; font-weight: 700; margin-bottom: 8px;">Already Submitted</h2>
+                            <p style="font-size: 0.92rem; color: var(--dark-600);">You have already submitted feedback for this shift.</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            const commentVal = document.getElementById('feedbackComment') ? document.getElementById('feedbackComment').value : '';
+
+            pageContent.innerHTML = `
+                <a href="${role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html'}" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
+                    ${getIcon('arrow-left')} Back to Dashboard
+                </a>
+
+                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
+                    Leave Feedback
+                </h1>
+
+                <!-- Shift Info -->
+                <div class="content-card" style="margin-bottom: 24px;">
+                    <div class="content-card-header">
+                        <h2>Shift Details</h2>
+                    </div>
+                    <div class="content-card-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div>
+                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">
+                                    ${isLocumReviewing ? 'Practice' : 'Locum'}
+                                </span>
+                                <p style="font-size: 0.95rem; font-weight: 600; color: var(--dark); margin-top: 4px;">${targetName}</p>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Date</span>
+                                <p style="font-size: 0.95rem; color: var(--dark); margin-top: 4px;">${DateUtils.format(offer.shiftDate, 'full')}</p>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Session Type</span>
+                                <p style="font-size: 0.95rem; color: var(--dark); margin-top: 4px;">${offer.sessionType}</p>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Time</span>
+                                <p style="font-size: 0.95rem; color: var(--dark); margin-top: 4px;">${offer.startTime} - ${offer.endTime}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rating Form -->
+                <div class="content-card" style="margin-bottom: 24px;">
+                    <div class="content-card-header">
+                        <h2>Rate ${targetName}</h2>
+                    </div>
+                    <div class="content-card-body">
+                        <div class="rating-categories">
+                            ${categories.map(cat => `
+                                <div class="rating-category">
+                                    <span class="rating-category-label">${cat}</span>
+                                    <div class="rating-input">
+                                        ${renderStarsInput(cat)}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label class="form-label">Comments (Optional)</label>
+                            <textarea id="feedbackComment" class="form-input" rows="4" style="resize: vertical;" placeholder="Share your experience...">${commentVal}</textarea>
+                        </div>
+
+                        <button class="btn btn-primary btn-large" onclick="submitFeedback()" style="width: 100%; justify-content: center; margin-top: 8px;">
+                            Submit Feedback
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        render();
+    </script>
+</body>
+</html>

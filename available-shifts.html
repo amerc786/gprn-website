@@ -22,7 +22,7 @@
 
         const SHIFTS_PER_PAGE = 10;
         let currentPage = 1;
-        let filteredShifts = [...data.shifts].filter(s => s.status === 'open');
+        let filteredShifts = [...getMockData().shifts].filter(s => s.status === 'open');
 
         const healthBoards = [
             'All Health Boards',
@@ -114,7 +114,9 @@
             const typeVal = document.getElementById('filterShiftType').value;
             const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
 
-            filteredShifts = data.shifts.filter(s => {
+            // Re-read fresh data so filled shifts are excluded
+            const currentData = getMockData();
+            filteredShifts = currentData.shifts.filter(s => {
                 if (s.status !== 'open') return false;
                 if (dateVal && s.date !== dateVal) return false;
                 if (hbVal && s.healthBoard !== hbVal) return false;

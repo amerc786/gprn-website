@@ -11,6 +11,8 @@ function renderSidebar(role, activePage) {
         { id: 'rates', label: 'My Rates', icon: 'pound', href: 'my-rates.html' },
         { id: 'profile', label: 'My Profile', icon: 'user', href: 'my-profile.html' },
         { id: 'report', label: 'Report Extra Shifts', icon: 'plus-circle', href: 'report-extra-shifts.html' },
+        { id: 'invoices', label: 'My Invoices', icon: 'pound', href: 'my-invoices.html' },
+        { id: 'messages', label: 'Messages', icon: 'mail', href: 'messages.html' },
         { divider: true, label: 'Resources' },
         { id: 'cpd', label: 'CPD Events', icon: 'award', href: 'cpd-events.html' },
         { id: 'jobs', label: 'Jobs Board', icon: 'briefcase', href: 'jobs-board.html' },
@@ -24,6 +26,7 @@ function renderSidebar(role, activePage) {
         { id: 'view-shifts', label: 'View Shifts', icon: 'list', href: 'view-requested-shifts.html' },
         { id: 'find-locums', label: 'Find Locums', icon: 'search', href: 'find-locums.html' },
         { id: 'billing', label: 'Billing', icon: 'pound', href: 'billing.html' },
+        { id: 'messages', label: 'Messages', icon: 'mail', href: 'messages.html' },
         { divider: true, label: 'Resources' },
         { id: 'cpd', label: 'CPD Events', icon: 'award', href: 'cpd-events.html' },
         { id: 'jobs', label: 'Jobs Board', icon: 'briefcase', href: 'jobs-board.html' },
@@ -70,7 +73,9 @@ function renderSidebar(role, activePage) {
 function renderTopHeader(title, breadcrumbs) {
     const session = Auth.getSession();
     const data = getMockData();
-    const unreadCount = data.notifications ? data.notifications.filter(n => !n.read).length : 0;
+    const unreadNotifs = data.notifications ? data.notifications.filter(n => !n.read && (!n.userId || n.userId === session.id)).length : 0;
+    const unreadMsgs = MessageManager.getUnreadCount(session.id);
+    const unreadCount = unreadNotifs + unreadMsgs;
 
     return `
     <header class="top-header">
@@ -299,6 +304,67 @@ function getPageHead(title) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">`;
+}
+
+// ---- Rating Stars Component ----
+function renderRatingStars(rating, size = 16) {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+        const fill = i <= Math.round(rating) ? '#F97316' : '#E2E8F0';
+        stars += `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${fill}" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+    }
+    return `<span class="rating-stars">${stars}</span>`;
+}
+
+// ---- Barred Warning Component ----
+function renderBarredWarning(practiceId, locumId) {
+    if (BarredList.isBarred(practiceId, locumId)) {
+        const reason = BarredList.getBarReason(practiceId, locumId);
+        return `<div class="barred-warning"><span class="badge badge-danger">BARRED</span> <span class="barred-reason">${reason || 'This locum is on your barred list'}</span></div>`;
+    }
+    if (BarredList.isPreferred(practiceId, locumId)) {
+        return `<div class="preferred-indicator"><span class="badge badge-success">PREFERRED</span></div>`;
+    }
+    return '';
+}
+
+// ---- Message Thread Component ----
+function renderMessageBubble(msg, currentUserId) {
+    const isMine = msg.fromId === currentUserId;
+    const time = new Date(msg.timestamp);
+    const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dateStr = DateUtils.format(msg.timestamp, 'medium');
+    return `<div class="message-bubble ${isMine ? 'sent' : 'received'}">
+        <div class="message-content">${msg.body}</div>
+        <div class="message-time">${dateStr} ${timeStr}</div>
+    </div>`;
+}
+
+// ---- Invoice Component ----
+function renderInvoiceRow(inv) {
+    return `<tr>
+        <td><strong>${inv.invoiceNumber}</strong></td>
+        <td>${DateUtils.format(inv.generatedDate, 'short')}</td>
+        <td>${inv.locumName}</td>
+        <td>${DateUtils.format(inv.shiftDate, 'medium')}</td>
+        <td>${inv.sessionType}</td>
+        <td><strong>${formatCurrency(inv.total)}</strong></td>
+        <td><span class="badge ${getStatusBadge(inv.status)}">${inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}</span></td>
+        <td>
+            <a href="invoice-view.html?id=${inv.id}" class="btn btn-small btn-ghost">View</a>
+        </td>
+    </tr>`;
+}
+
+// ---- Document Expiry Check ----
+function getDocumentExpiryStatus(expiryDate) {
+    if (!expiryDate) return { status: 'ok', label: 'No expiry' };
+    const now = new Date();
+    const expiry = new Date(expiryDate);
+    const daysUntil = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+    if (daysUntil < 0) return { status: 'expired', label: 'EXPIRED', badge: 'badge-danger' };
+    if (daysUntil <= 30) return { status: 'expiring', label: `Expires in ${daysUntil} days`, badge: 'badge-warning' };
+    return { status: 'ok', label: `Expires ${DateUtils.format(expiryDate, 'medium')}`, badge: 'badge-neutral' };
 }
 
 // ---- Common scripts ----

@@ -28,10 +28,10 @@ const MOCK_DATA = {
             responseTime: '1-2 days',
             totalShifts: 156,
             documents: {
-                indemnity: { uploaded: true, name: 'Indemnity_Certificate_2026.pdf' },
-                performerListStatus: { uploaded: true, name: 'Performer_List_Confirmation.pdf' },
-                dbs: { uploaded: true, name: 'DBS_Enhanced_Check.pdf' },
-                cv: { uploaded: true, name: 'Dr_Williams_CV.pdf' }
+                indemnity: { uploaded: true, name: 'Indemnity_Certificate_2026.pdf', expiry: '2026-09-15' },
+                performerListStatus: { uploaded: true, name: 'Performer_List_Confirmation.pdf', expiry: null },
+                dbs: { uploaded: true, name: 'DBS_Enhanced_Check.pdf', expiry: '2026-12-01' },
+                cv: { uploaded: true, name: 'Dr_Williams_CV.pdf', expiry: null }
             },
             rates: {
                 am: 430,
@@ -563,6 +563,15 @@ const MOCK_DATA = {
     shifts: [],
     offers: [],
     notifications: [],
+    messages: [],
+    emailLog: [],
+    invoices: [],
+    feedback: [],
+    barredLists: {},
+    preferredLists: {},
+    availability: {},
+    shiftTemplates: {},
+    reportedShifts: [],
 
     cpdEvents: [
         {
@@ -757,6 +766,7 @@ function generateOffers() {
 
         offers.push({
             id: `offer-${String(i + 1).padStart(3, '0')}`,
+            shiftId: `shift-${String((i % 12) + 1).padStart(3, '0')}`,
             locumId: 'loc-001',
             practiceId: practice.id,
             practiceName: practice.practiceName,

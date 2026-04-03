@@ -20,6 +20,35 @@
         const data = getMockData();
         const pageContent = initAppLayout('practice', 'view-shifts', 'View Shifts');
 
+        // Ensure each shift's applicants have corresponding offer records
+        function ensureOfferExists(currentData, shift, locum) {
+            const existing = currentData.offers.find(o => o.shiftId === shift.id && o.locumId === locum.id && o.status === 'pending');
+            if (existing) return existing.id;
+            const offerId = 'offer-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+            currentData.offers.push({
+                id: offerId,
+                shiftId: shift.id,
+                locumId: locum.id,
+                practiceId: shift.practiceId,
+                practiceName: shift.practiceName,
+                healthBoard: shift.healthBoard,
+                shiftDate: shift.date,
+                startTime: shift.startTime,
+                endTime: shift.endTime,
+                sessionType: shift.sessionType,
+                rateAM: locum.rates.am,
+                ratePM: locum.rates.pm,
+                rateFullDay: locum.rates.fullDay,
+                rateHousecall: locum.rates.housecall || 0,
+                status: 'pending',
+                offerDate: DateUtils.toISO(new Date()),
+                comment: '',
+                housecalls: shift.housecalls
+            });
+            saveMockData(currentData);
+            return offerId;
+        }
+
         function renderShiftsList(statusFilter, dateFrom, dateTo) {
             const currentData = getMockData();
             let shifts = currentData.shifts.filter(s => s.practiceId === session.id);
@@ -36,7 +65,6 @@
 
             shifts.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            // Build mock applicants for each shift
             const locums = currentData.locums;
 
             if (shifts.length === 0) {
@@ -44,8 +72,26 @@
             }
 
             return shifts.map(shift => {
-                const applicantCount = shift.applicants || Math.floor(Math.random() * 3);
-                const shiftApplicants = locums.slice(0, applicantCount);
+                // Get real pending offers for this shift, or create mock ones from applicant count
+                let shiftOffers = currentData.offers.filter(o => o.shiftId === shift.id && o.status === 'pending');
+                const applicantCount = Math.max(shiftOffers.length, shift.applicants || 0);
+
+                // If we have fewer real offers than the applicant count, create offer records for mock applicants
+                if (shiftOffers.length < applicantCount) {
+                    const usedLocumIds = new Set(shiftOffers.map(o => o.locumId));
+                    const availableLocums = locums.filter(l => !usedLocumIds.has(l.id));
+                    const needed = applicantCount - shiftOffers.length;
+                    for (let i = 0; i < Math.min(needed, availableLocums.length); i++) {
+                        ensureOfferExists(currentData, shift, availableLocums[i]);
+                    }
+                    shiftOffers = currentData.offers.filter(o => o.shiftId === shift.id && o.status === 'pending');
+                }
+
+                // Resolve locum details for each offer
+                const applicants = shiftOffers.map(offer => {
+                    const loc = locums.find(l => l.id === offer.locumId);
+                    return loc ? { offer, locum: loc } : null;
+                }).filter(Boolean);
 
                 return `
                     <div class="shift-card-full" data-shift-id="${shift.id}">
@@ -56,7 +102,7 @@
                             </div>
                             <div class="shift-card-badges">
                                 <span class="badge ${getStatusBadge(shift.status)}">${shift.status.charAt(0).toUpperCase() + shift.status.slice(1)}</span>
-                                <span class="badge badge-neutral">${applicantCount} applicant${applicantCount !== 1 ? 's' : ''}</span>
+                                <span class="badge badge-neutral">${applicants.length} applicant${applicants.length !== 1 ? 's' : ''}</span>
                             </div>
                         </div>
                         <div class="shift-card-details">
@@ -71,15 +117,16 @@
                             ${!shift.housecalls ? `<span class="badge badge-neutral">No Housecalls</span>` : `<span class="badge badge-info">Housecalls</span>`}
                         </div>
 
-                        ${applicantCount > 0 ? `
+                        ${applicants.length > 0 ? `
                         <div id="applicants-${shift.id}" style="display: none; padding-top: 12px; border-top: 1px solid var(--gray-100);">
                             <h4 style="font-size: 0.88rem; font-weight: 600; color: var(--dark-700); margin-bottom: 12px;">Applicants</h4>
-                            ${shiftApplicants.map(loc => `
-                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gray-50); border-radius: 8px; margin-bottom: 8px;">
+                            ${applicants.map(({ offer, locum: loc }) => `
+                                <div class="applicant-row" data-offer-id="${offer.id}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gray-50); border-radius: 8px; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                                     <div style="display: flex; align-items: center; gap: 12px;">
                                         <div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.7rem;">${getInitials(loc.firstName + ' ' + loc.lastName)}</div>
                                         <div>
                                             <strong style="font-size: 0.88rem; color: var(--dark);">${loc.title} ${loc.firstName} ${loc.lastName}</strong>
+                                            ${renderBarredWarning(session.id, loc.id)}
                                             <div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
                                                 <span style="font-size: 0.8rem; color: var(--dark-600);">Reliability: <strong style="color: ${loc.bookingReliability >= 95 ? 'var(--success)' : 'var(--warning)'};">${loc.bookingReliability}%</strong></span>
                                                 <span style="font-size: 0.8rem; color: var(--dark-600);">Rate: ${formatCurrency(loc.rates.am)}/session</span>
@@ -88,8 +135,8 @@
                                     </div>
                                     <div style="display: flex; gap: 8px;">
                                         <a href="locum-profile-view.html?id=${loc.id}" class="btn btn-ghost btn-small">View Profile</a>
-                                        <button class="btn btn-primary btn-small" onclick="acceptApplicant('${shift.id}', '${loc.id}')">Accept</button>
-                                        <button class="btn btn-ghost btn-small" onclick="declineApplicant('${shift.id}', '${loc.id}', this)">Decline</button>
+                                        <button class="btn btn-primary btn-small" onclick="acceptApplicant('${offer.id}')">Accept</button>
+                                        <button class="btn btn-ghost btn-small" onclick="declineApplicant('${offer.id}')">Decline</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -98,7 +145,7 @@
 
                         <div class="shift-card-footer">
                             <span style="font-size: 0.82rem; color: var(--gray-400);">Posted ${DateUtils.relative(shift.date)}</span>
-                            ${applicantCount > 0 ? `
+                            ${applicants.length > 0 ? `
                                 <button class="btn btn-ghost btn-small" onclick="toggleApplicants('${shift.id}', this)">
                                     ${getIcon('chevron-down')} Show Applicants
                                 </button>
@@ -159,21 +206,24 @@
             }
         }
 
-        function acceptApplicant(shiftId, locumId) {
-            const d = getMockData();
-            const shift = d.shifts.find(s => s.id === shiftId);
-            if (shift) {
-                shift.status = 'filled';
-                saveMockData(d);
+        function acceptApplicant(offerId) {
+            const success = Booking.acceptOffer(offerId);
+            if (success) {
+                Toast.show('Applicant accepted! Shift marked as filled. Other applicants have been auto-declined.', 'success');
+            } else {
+                Toast.show('Failed to accept applicant. Please try again.', 'error');
             }
-            Toast.show('Applicant accepted! Shift marked as filled.', 'success');
             setTimeout(() => render(), 500);
         }
 
-        function declineApplicant(shiftId, locumId, btn) {
-            Toast.show('Applicant declined.', 'info');
-            const row = btn.closest('[style*="background: var(--gray-50)"]');
-            if (row) row.style.opacity = '0.4';
+        function declineApplicant(offerId) {
+            const success = Booking.declineOffer(offerId);
+            if (success) {
+                Toast.show('Applicant declined. The locum has been notified.', 'info');
+            } else {
+                Toast.show('Failed to decline applicant. Please try again.', 'error');
+            }
+            setTimeout(() => render(), 500);
         }
     </script>
 </body>

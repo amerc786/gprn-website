@@ -186,6 +186,7 @@
                                 </div>` : ''}
 
                                 <button class="btn btn-primary" style="width: 100%;" id="submitOfferBtn">Submit Offer</button>
+                                <button class="btn btn-ghost" style="width: 100%; margin-top: 10px;" id="requestInfoBtn">${getIcon('mail')} Request Info from Practice</button>
                             </div>
                         </div>
                     </div>
@@ -210,15 +211,12 @@
             `;
 
             // Submit Offer handler
-            document.getElementById('submitOfferBtn').addEventListener('click', function() {
+            function doSubmitOffer() {
                 const sessionType = document.getElementById('offerSessionType').value;
-                if (!sessionType) {
-                    Toast.show('Please select a session type to make an offer.', 'warning');
-                    return;
-                }
 
                 const newOffer = {
                     id: 'offer-' + String(Date.now()).slice(-6),
+                    shiftId: shift.id,
                     locumId: session.id,
                     practiceId: shift.practiceId,
                     practiceName: shift.practiceName,
@@ -246,6 +244,80 @@
                 setTimeout(() => {
                     window.location.href = 'my-offers.html';
                 }, 1500);
+            }
+
+            document.getElementById('submitOfferBtn').addEventListener('click', function() {
+                const sessionType = document.getElementById('offerSessionType').value;
+                if (!sessionType) {
+                    Toast.show('Please select a session type to make an offer.', 'warning');
+                    return;
+                }
+
+                // Double-booking check
+                if (Booking.isDoubleBooked(session.id, shift.date)) {
+                    Modal.show({
+                        title: 'Double Booking Warning',
+                        body: `
+                            <div style="padding: 8px 0;">
+                                <p style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 12px;">
+                                    You already have an <strong>accepted or confirmed</strong> shift on <strong>${DateUtils.format(shift.date, 'full')}</strong>.
+                                </p>
+                                <p style="font-size: 0.9rem; color: var(--dark-600);">
+                                    Submitting this offer may result in a scheduling conflict if accepted. Do you want to proceed anyway?
+                                </p>
+                            </div>
+                        `,
+                        footer: `
+                            <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                            <button class="btn btn-primary" id="confirmDoubleBookBtn">Submit Anyway</button>
+                        `,
+                        onOpen: function(overlay) {
+                            overlay.querySelector('#confirmDoubleBookBtn').addEventListener('click', function() {
+                                Modal.close(overlay);
+                                doSubmitOffer();
+                            });
+                        }
+                    });
+                    return;
+                }
+
+                doSubmitOffer();
+            });
+
+            // Request Info button - opens compose message modal
+            document.getElementById('requestInfoBtn').addEventListener('click', function() {
+                const defaultSubject = 'Enquiry about shift on ' + DateUtils.format(shift.date, 'medium');
+                Modal.show({
+                    title: 'Send Message to ' + shift.practiceName,
+                    size: 'medium',
+                    body: `
+                        <div class="form-group">
+                            <label class="form-label">Subject</label>
+                            <input type="text" class="form-input" id="msgSubject" value="${defaultSubject}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Message</label>
+                            <textarea class="form-input" id="msgBody" rows="5" placeholder="Type your message here..."></textarea>
+                        </div>
+                    `,
+                    footer: `
+                        <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                        <button class="btn btn-primary" id="sendMsgBtn">${getIcon('mail')} Send Message</button>
+                    `,
+                    onOpen: function(overlay) {
+                        overlay.querySelector('#sendMsgBtn').addEventListener('click', function() {
+                            const subject = overlay.querySelector('#msgSubject').value.trim();
+                            const body = overlay.querySelector('#msgBody').value.trim();
+                            if (!body) {
+                                Toast.show('Please enter a message.', 'warning');
+                                return;
+                            }
+                            MessageManager.send(session.id, shift.practiceId, subject, body, shift.id);
+                            Modal.close(overlay);
+                            Toast.show('Message sent to ' + shift.practiceName + '!', 'success');
+                        });
+                    }
+                });
             });
         }
     </script>

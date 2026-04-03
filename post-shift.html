@@ -24,6 +24,15 @@
         tomorrow.setDate(tomorrow.getDate() + 1);
         const minDate = tomorrow.toISOString().split('T')[0];
 
+        // Load templates for this practice
+        function getTemplates() {
+            const data = getMockData();
+            if (!data.shiftTemplates) data.shiftTemplates = {};
+            return data.shiftTemplates[session.id] || [];
+        }
+
+        const templates = getTemplates();
+
         pageContent.innerHTML = `
             <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
                 Post a New Shift
@@ -31,6 +40,18 @@
 
             <div class="content-card">
                 <div class="content-card-body">
+                    <!-- Template Dropdown -->
+                    <div class="form-group" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid var(--gray-100);">
+                        <label class="form-label" for="templateSelect">
+                            ${getIcon('file-text')} Use Template
+                        </label>
+                        <select id="templateSelect" class="form-select" onchange="loadTemplate(this.value)">
+                            <option value="">-- Start from scratch --</option>
+                            ${templates.map((t, i) => `<option value="${i}">${t.name}</option>`).join('')}
+                        </select>
+                        <div class="form-hint">Select a saved template to pre-fill the form, or start from scratch.</div>
+                    </div>
+
                     <form id="postShiftForm" novalidate>
                         <div class="form-row">
                             <div class="form-group">
@@ -83,7 +104,7 @@
                             <div class="form-group">
                                 <label class="form-label">Housecalls Required</label>
                                 <div style="display: flex; align-items: center; gap: 12px; padding-top: 4px;">
-                                    <div class="toggle-switch" id="housecallsToggle" onclick="this.classList.toggle('active')"></div>
+                                    <div class="toggle-switch" id="housecallsToggle" onclick="this.classList.toggle('active'); document.getElementById('housecallsLabel').textContent = this.classList.contains('active') ? 'Yes' : 'No';"></div>
                                     <span id="housecallsLabel" style="font-size: 0.88rem; color: var(--dark-600);">No</span>
                                 </div>
                             </div>
@@ -106,6 +127,45 @@
                             <textarea id="comments" class="form-textarea" rows="4" placeholder="Provide any additional information about this shift, e.g. parking, access details, expected caseload..."></textarea>
                         </div>
 
+                        <!-- Repeat This Shift Section -->
+                        <div class="content-card" style="margin: 20px 0; background: var(--gray-50); border: 1px solid var(--gray-200);">
+                            <div class="content-card-body" style="padding: 16px;">
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                                    <label class="form-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="repeatShift" onchange="document.getElementById('repeatOptions').style.display = this.checked ? 'flex' : 'none';">
+                                        <strong>Repeat This Shift</strong>
+                                    </label>
+                                </div>
+                                <div id="repeatOptions" style="display: none; align-items: center; gap: 12px;">
+                                    <label class="form-label" style="margin: 0; white-space: nowrap;">Repeat for</label>
+                                    <select id="repeatWeeks" class="form-select" style="width: 140px;">
+                                        <option value="1">1 week</option>
+                                        <option value="2">2 weeks</option>
+                                        <option value="3">3 weeks</option>
+                                        <option value="4" selected>4 weeks</option>
+                                        <option value="5">5 weeks</option>
+                                        <option value="6">6 weeks</option>
+                                        <option value="7">7 weeks</option>
+                                        <option value="8">8 weeks</option>
+                                    </select>
+                                    <span style="font-size: 0.85rem; color: var(--dark-600);">Creates one shift per week on the same day.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Save as Template Section -->
+                        <div style="padding: 16px; margin: 20px 0; background: var(--gray-50); border-radius: var(--radius); border: 1px solid var(--gray-200);">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                <label class="form-checkbox" style="margin: 0;">
+                                    <input type="checkbox" id="saveAsTemplate" onchange="document.getElementById('templateNameGroup').style.display = this.checked ? 'block' : 'none';">
+                                    <strong>Save as Template</strong>
+                                </label>
+                            </div>
+                            <div id="templateNameGroup" style="display: none; margin-top: 8px;">
+                                <input type="text" id="templateName" class="form-input" placeholder="Template name, e.g. Standard AM Session" style="max-width: 400px;">
+                            </div>
+                        </div>
+
                         <div style="display: flex; gap: 12px; padding-top: 12px;">
                             <button type="submit" class="btn btn-primary btn-large">
                                 ${getIcon('plus-circle')} Post Shift
@@ -116,6 +176,33 @@
                 </div>
             </div>
         `;
+
+        // Load template into form
+        function loadTemplate(index) {
+            if (index === '') return;
+            const templates = getTemplates();
+            const tmpl = templates[parseInt(index)];
+            if (!tmpl) return;
+
+            document.getElementById('sessionType').value = tmpl.sessionType || '';
+            document.getElementById('startTime').value = tmpl.startTime || '08:30';
+            document.getElementById('endTime').value = tmpl.endTime || '17:00';
+            document.getElementById('shiftType').value = tmpl.shiftType || 'GP Only';
+            document.getElementById('morningPatients').value = tmpl.morningPatients || '';
+            document.getElementById('afternoonPatients').value = tmpl.afternoonPatients || '';
+            document.getElementById('comments').value = tmpl.comments || '';
+
+            const toggle = document.getElementById('housecallsToggle');
+            if (tmpl.housecalls) {
+                toggle.classList.add('active');
+                document.getElementById('housecallsLabel').textContent = 'Yes';
+            } else {
+                toggle.classList.remove('active');
+                document.getElementById('housecallsLabel').textContent = 'No';
+            }
+
+            Toast.show('Template "' + tmpl.name + '" loaded.', 'info', 2000);
+        }
 
         // Session type auto-fill times
         document.getElementById('sessionType').addEventListener('change', function() {
@@ -135,11 +222,6 @@
                     end.value = '17:00';
                     break;
             }
-        });
-
-        // Housecalls toggle label
-        document.getElementById('housecallsToggle').addEventListener('click', function() {
-            document.getElementById('housecallsLabel').textContent = this.classList.contains('active') ? 'Yes' : 'No';
         });
 
         // Form submit
@@ -162,38 +244,79 @@
             const afternoonPatients = parseInt(document.getElementById('afternoonPatients').value) || 0;
             const comments = document.getElementById('comments').value;
 
-            const newShift = {
-                id: 'shift-' + Date.now(),
-                practiceId: session.id,
-                practiceName: practice.practiceName,
-                healthBoard: practice.healthBoard,
-                city: practice.city,
-                date: date,
-                startTime: startTime,
-                endTime: endTime,
-                sessionType: sessionType,
-                shiftType: shiftType,
-                housecalls: housecalls,
-                computerSystem: practice.computerSystem,
-                morningPatients: morningPatients,
-                afternoonPatients: afternoonPatients,
-                comment: comments,
-                applicants: 0,
-                urgent: false,
-                status: 'open'
-            };
+            // Save as template if checked
+            if (document.getElementById('saveAsTemplate').checked) {
+                const tName = document.getElementById('templateName').value.trim();
+                if (!tName) {
+                    Toast.show('Please enter a template name.', 'error');
+                    return;
+                }
+                const data = getMockData();
+                if (!data.shiftTemplates) data.shiftTemplates = {};
+                if (!data.shiftTemplates[session.id]) data.shiftTemplates[session.id] = [];
+                data.shiftTemplates[session.id].push({
+                    name: tName,
+                    sessionType: sessionType,
+                    startTime: startTime,
+                    endTime: endTime,
+                    shiftType: shiftType,
+                    housecalls: housecalls,
+                    morningPatients: morningPatients,
+                    afternoonPatients: afternoonPatients,
+                    comments: comments
+                });
+                saveMockData(data);
+            }
+
+            // Determine how many shifts to create
+            const repeat = document.getElementById('repeatShift').checked;
+            const repeatWeeks = repeat ? parseInt(document.getElementById('repeatWeeks').value) : 0;
+            const totalShifts = 1 + repeatWeeks;
 
             const data = getMockData();
-            data.shifts.push(newShift);
+            for (let w = 0; w < totalShifts; w++) {
+                const shiftDate = new Date(date);
+                shiftDate.setDate(shiftDate.getDate() + (w * 7));
+                const dateStr = shiftDate.toISOString().split('T')[0];
+
+                data.shifts.push({
+                    id: 'shift-' + Date.now() + '-' + w,
+                    practiceId: session.id,
+                    practiceName: practice.practiceName,
+                    healthBoard: practice.healthBoard,
+                    city: practice.city,
+                    date: dateStr,
+                    startTime: startTime,
+                    endTime: endTime,
+                    sessionType: sessionType,
+                    shiftType: shiftType,
+                    housecalls: housecalls,
+                    computerSystem: practice.computerSystem,
+                    morningPatients: morningPatients,
+                    afternoonPatients: afternoonPatients,
+                    comment: comments,
+                    applicants: 0,
+                    urgent: false,
+                    status: 'open'
+                });
+            }
             saveMockData(data);
 
-            Toast.show('Shift posted successfully!', 'success');
+            const shiftWord = totalShifts === 1 ? 'Shift' : totalShifts + ' Shifts';
+            Toast.show(shiftWord + ' posted successfully!', 'success');
+
+            const repeatMsg = totalShifts > 1
+                ? `<p style="font-size: 0.9rem; color: var(--dark-600); margin-top: 8px;">${totalShifts} shifts created (original + ${repeatWeeks} weekly repeats).</p>`
+                : '';
+            const templateMsg = document.getElementById('saveAsTemplate').checked
+                ? `<p style="font-size: 0.9rem; color: var(--success); margin-top: 8px;">Template saved for future use.</p>`
+                : '';
 
             Modal.show({
-                title: 'Shift Posted',
-                body: `<p style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 8px;">Your shift for <strong>${DateUtils.format(date, 'full')}</strong> (${sessionType}) has been posted.</p><p style="font-size: 0.9rem; color: var(--dark-600);">Matching locums will be notified.</p>`,
+                title: shiftWord + ' Posted',
+                body: `<p style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 8px;">Your shift for <strong>${DateUtils.format(date, 'full')}</strong> (${sessionType}) has been posted.</p><p style="font-size: 0.9rem; color: var(--dark-600);">Matching locums will be notified.</p>${repeatMsg}${templateMsg}`,
                 footer: `
-                    <button class="btn btn-secondary" onclick="Modal.close(); document.getElementById('postShiftForm').reset();">Post Another</button>
+                    <button class="btn btn-secondary" onclick="Modal.close(); document.getElementById('postShiftForm').reset(); document.getElementById('repeatOptions').style.display='none'; document.getElementById('templateNameGroup').style.display='none'; document.getElementById('housecallsToggle').classList.remove('active'); document.getElementById('housecallsLabel').textContent='No';">Post Another</button>
                     <a href="view-requested-shifts.html" class="btn btn-primary">View My Shifts</a>
                 `
             });

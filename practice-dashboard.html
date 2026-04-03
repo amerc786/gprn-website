@@ -24,12 +24,11 @@
         // Compute stats
         const practiceShifts = data.shifts.filter(s => s.practiceId === session.id);
         const openShifts = practiceShifts.filter(s => s.status === 'open');
-        const pendingOffers = data.offers.filter(o => o.practiceId === session.id && o.status === 'pending');
+        const practiceOffers = data.offers.filter(o => o.practiceId === session.id);
         const now = new Date();
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        const filledThisMonth = data.offers.filter(o =>
-            o.practiceId === session.id &&
+        const filledThisMonth = practiceOffers.filter(o =>
             (o.status === 'accepted' || o.status === 'completed') &&
             new Date(o.shiftDate) >= monthStart && new Date(o.shiftDate) <= monthEnd
         );
@@ -37,6 +36,13 @@
             if (o.sessionType === 'Full Day') return sum + (o.rateFullDay || 820);
             return sum + (o.rateAM || 430);
         }, 0);
+
+        // Fill rate metric
+        const totalShiftCount = practiceShifts.length;
+        const filledShiftCount = practiceShifts.filter(s => s.status === 'filled').length;
+        const completedOfferCount = practiceOffers.filter(o => o.status === 'completed' || o.status === 'accepted' || o.status === 'confirmed').length;
+        const fillRate = totalShiftCount > 0 ? Math.round(((filledShiftCount + completedOfferCount) / Math.max(totalShiftCount, 1)) * 100) : 0;
+        const fillRateDisplay = Math.min(fillRate, 100);
 
         // Coverage data for Mon-Fri
         const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
@@ -50,8 +56,7 @@
             d.setDate(monday.getDate() + i);
             const dateStr = d.toISOString().split('T')[0];
             const totalShifts = practiceShifts.filter(s => s.date === dateStr).length;
-            const filledShifts = data.offers.filter(o =>
-                o.practiceId === session.id &&
+            const filledShifts = practiceOffers.filter(o =>
                 o.shiftDate === dateStr &&
                 (o.status === 'accepted' || o.status === 'completed')
             ).length;
@@ -59,21 +64,106 @@
             return { day, pct: Math.min(pct || [80, 60, 100, 40, 20][i], 100) };
         });
 
-        // Pending application mock data
-        const pendingApps = [];
-        const locums = data.locums;
-        for (let i = 0; i < Math.min(3, locums.length); i++) {
-            const loc = locums[i];
-            const futureDate = new Date(today);
-            futureDate.setDate(today.getDate() + (i + 2) * 2);
-            pendingApps.push({
-                locumName: `${loc.title} ${loc.firstName} ${loc.lastName}`,
-                locumId: loc.id,
-                shiftDate: futureDate.toISOString().split('T')[0],
-                rate: loc.rates.am,
-                reliability: loc.bookingReliability
+        // Top locums - most used based on completed offers
+        const locumUsage = {};
+        practiceOffers.filter(o => o.status === 'completed' || o.status === 'accepted').forEach(o => {
+            locumUsage[o.locumId] = (locumUsage[o.locumId] || 0) + 1;
+        });
+        const topLocums = Object.entries(locumUsage)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([locumId, count]) => {
+                const locum = data.locums.find(l => l.id === locumId);
+                const avgRating = FeedbackManager.getAverageRating(locumId);
+                return {
+                    id: locumId,
+                    name: locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown',
+                    count: count,
+                    reliability: locum ? locum.bookingReliability : 0,
+                    rating: avgRating
+                };
             });
+
+        // Spending trend mini chart - last 6 months
+        const invoices = InvoiceManager.getForPractice(session.id);
+        const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const spendingData = [];
+        for (let i = 5; i >= 0; i--) {
+            const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const mMonth = m.getMonth();
+            const mYear = m.getFullYear();
+            const total = invoices
+                .filter(inv => {
+                    const d = new Date(inv.shiftDate);
+                    return d.getMonth() === mMonth && d.getFullYear() === mYear;
+                })
+                .reduce((s, inv) => s + inv.total, 0);
+            spendingData.push({ label: monthsShort[mMonth], value: total });
         }
+        const maxSpend = Math.max(...spendingData.map(e => e.value), 1);
+
+        // Pending feedback reminders
+        const completedNoFeedback = practiceOffers
+            .filter(o => o.status === 'completed' && !FeedbackManager.hasReviewed(session.id, o.id));
+
+        // Unread messages
+        const unreadMsgCount = MessageManager.getUnreadCount(session.id);
+
+        // Get real pending offers for this practice, or create mock ones
+        const locums = data.locums;
+        let realPendingOffers = data.offers.filter(o => o.practiceId === session.id && o.status === 'pending');
+
+        if (realPendingOffers.length === 0) {
+            const openShiftsForMock = practiceShifts.filter(s => s.status === 'open').slice(0, 3);
+            openShiftsForMock.forEach((shift, i) => {
+                if (i < locums.length) {
+                    const loc = locums[i];
+                    const exists = data.offers.find(o => o.shiftId === shift.id && o.locumId === loc.id);
+                    if (!exists) {
+                        data.offers.push({
+                            id: 'offer-dash-' + Date.now() + '-' + i,
+                            shiftId: shift.id,
+                            locumId: loc.id,
+                            practiceId: session.id,
+                            practiceName: session.name,
+                            healthBoard: shift.healthBoard,
+                            shiftDate: shift.date,
+                            startTime: shift.startTime,
+                            endTime: shift.endTime,
+                            sessionType: shift.sessionType,
+                            rateAM: loc.rates.am,
+                            ratePM: loc.rates.pm,
+                            rateFullDay: loc.rates.fullDay,
+                            rateHousecall: loc.rates.housecall || 0,
+                            status: 'pending',
+                            offerDate: DateUtils.toISO(new Date()),
+                            comment: '',
+                            housecalls: shift.housecalls
+                        });
+                    }
+                }
+            });
+            saveMockData(data);
+            realPendingOffers = data.offers.filter(o => o.practiceId === session.id && o.status === 'pending');
+        }
+
+        const pendingApps = realPendingOffers.slice(0, 5).map(offer => {
+            const loc = locums.find(l => l.id === offer.locumId);
+            return {
+                offerId: offer.id,
+                locumName: loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown',
+                locumId: offer.locumId,
+                shiftDate: offer.shiftDate,
+                sessionType: offer.sessionType,
+                rate: loc ? loc.rates.am : 0,
+                reliability: loc ? loc.bookingReliability : 0,
+                isBarred: BarredList.isBarred(session.id, offer.locumId),
+                isPreferred: BarredList.isPreferred(session.id, offer.locumId)
+            };
+        });
+
+        // Notifications - filtered for current user
+        const notifications = (data.notifications || []).filter(n => n.userId === session.id || !n.userId);
 
         let html = `
             <div style="margin-bottom: 32px;">
@@ -86,7 +176,7 @@
             <div class="dash-stats-row">
                 ${renderStatCard('search', 'Open Shifts', openShifts.length, null, null)}
                 ${renderStatCard('file-text', 'Pending Applications', pendingApps.length, null, null)}
-                ${renderStatCard('check', 'Filled This Month', filledThisMonth.length, null, null)}
+                ${renderStatCard('check', 'Fill Rate', fillRateDisplay + '%', null, null)}
                 ${renderStatCard('pound', 'Monthly Spend', formatCurrency(monthlySpend), null, null)}
             </div>
 
@@ -115,6 +205,49 @@
 
                 <div class="content-card">
                     <div class="content-card-header">
+                        <h2>Spending Trend (6 Months)</h2>
+                    </div>
+                    <div class="content-card-body">
+                        <div class="bar-chart">
+                            ${spendingData.map(e => `
+                                <div class="bar-chart-item">
+                                    <div class="bar-chart-value">${e.value > 0 ? formatCurrency(e.value) : '-'}</div>
+                                    <div class="bar-chart-bar" style="height: ${e.value > 0 ? Math.max((e.value / maxSpend) * 120, 4) : 4}px;"></div>
+                                    <div class="bar-chart-label">${e.label}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            ${topLocums.length > 0 ? `
+            <div class="content-card" style="margin-bottom: 24px;">
+                <div class="content-card-header">
+                    <h2>Top Locums</h2>
+                    <a href="find-locums.html" class="btn btn-ghost btn-small">Find Locums</a>
+                </div>
+                <div class="content-card-body">
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                        ${topLocums.map((loc, idx) => `
+                            <div style="text-align: center; padding: 16px; background: var(--gray-50); border-radius: var(--radius);">
+                                <div class="header-avatar" style="width: 48px; height: 48px; font-size: 0.9rem; margin: 0 auto 8px;">${getInitials(loc.name)}</div>
+                                <strong style="display: block; font-size: 0.9rem;">${loc.name}</strong>
+                                <span style="font-size: 0.82rem; color: var(--dark-600);">${loc.count} shift${loc.count !== 1 ? 's' : ''} completed</span>
+                                <div style="margin-top: 6px;">
+                                    <span class="badge badge-success" style="font-size: 0.75rem;">${loc.reliability}% reliable</span>
+                                    ${loc.rating ? `<span style="font-size: 0.78rem; color: var(--coral); margin-left: 4px;">&#9733; ${loc.rating}</span>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                <div class="content-card">
+                    <div class="content-card-header">
                         <h2>Pending Applications</h2>
                     </div>
                     <div class="content-card-body">
@@ -123,43 +256,150 @@
                                 <p style="color: var(--dark-600);">No pending applications</p>
                             </div>
                         ` : pendingApps.map(app => `
-                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--gray-100);">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="header-avatar" style="width: 40px; height: 40px; font-size: 0.8rem;">${getInitials(app.locumName)}</div>
-                                    <div>
-                                        <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${app.locumName}</strong>
-                                        <span style="font-size: 0.82rem; color: var(--dark-600);">${DateUtils.format(app.shiftDate, 'medium')} &bull; ${formatCurrency(app.rate)}/session</span>
+                            <div style="padding: 14px 0; border-bottom: 1px solid var(--gray-100);">
+                                ${(app.isBarred || app.isPreferred) ? renderBarredWarning(session.id, app.locumId) : ''}
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div class="header-avatar" style="width: 40px; height: 40px; font-size: 0.8rem;">${getInitials(app.locumName)}</div>
+                                        <div>
+                                            <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${app.locumName}</strong>
+                                            <span style="font-size: 0.82rem; color: var(--dark-600);">${DateUtils.format(app.shiftDate, 'medium')} &bull; ${app.sessionType || 'AM'} &bull; ${formatCurrency(app.rate)}/session</span>
+                                            <span style="font-size: 0.78rem; color: var(--dark-600); margin-left: 6px;">(${app.reliability}% reliable)</span>
+                                        </div>
                                     </div>
-                                </div>
-                                <div style="display: flex; gap: 8px;">
-                                    <button class="btn btn-primary btn-small" onclick="acceptApp('${app.locumId}', '${app.shiftDate}')">Accept</button>
-                                    <button class="btn btn-ghost btn-small" onclick="declineApp('${app.locumId}', '${app.shiftDate}')">Decline</button>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="btn btn-primary btn-small" onclick="acceptApp('${app.offerId}')" ${app.isBarred ? 'disabled style="opacity:0.5"' : ''}>Accept</button>
+                                        <button class="btn btn-ghost btn-small" onclick="declineApp('${app.offerId}')">Decline</button>
+                                    </div>
                                 </div>
                             </div>
                         `).join('')}
                     </div>
                 </div>
+
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2>Recent Notifications</h2>
+                    </div>
+                    <div class="content-card-body">
+                        ${notifications.length === 0
+                            ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No notifications.</p>'
+                            : notifications.slice(0, 6).map(n => `
+                                <div class="notif-item">
+                                    <div class="notif-dot ${n.read ? 'read' : 'unread'}"></div>
+                                    <div>
+                                        <div class="notif-title">${n.title}</div>
+                                        <div class="notif-message">${n.message}</div>
+                                        <div class="notif-time">${DateUtils.relative(n.date)}</div>
+                                    </div>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                </div>
             </div>
 
-            <div style="text-align: center; padding: 20px 0;">
+            ${completedNoFeedback.length > 0 ? `
+            <div class="content-card" style="margin-bottom: 24px;">
+                <div class="content-card-header">
+                    <h2>Pending Feedback</h2>
+                    <span class="badge badge-info">${completedNoFeedback.length}</span>
+                </div>
+                <div class="content-card-body">
+                    ${completedNoFeedback.slice(0, 5).map(offer => {
+                        const locum = data.locums.find(l => l.id === offer.locumId);
+                        const locumName = locum ? locum.title + ' ' + locum.firstName + ' ' + locum.lastName : 'Unknown';
+                        return `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+                            <div>
+                                <strong style="font-size: 0.9rem;">${locumName}</strong>
+                                <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${DateUtils.format(offer.shiftDate, 'medium')} &bull; ${offer.sessionType}</span>
+                            </div>
+                            <button class="btn btn-secondary btn-small" onclick="leaveFeedback('${offer.id}', '${offer.locumId}')">
+                                ${getIcon('award')} Rate Locum
+                            </button>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+            ` : ''}
+
+            <div style="display: flex; gap: 12px; justify-content: center; padding: 20px 0;">
                 <a href="post-shift.html" class="btn btn-primary btn-large">
                     ${getIcon('plus-circle')} Post a Shift
+                </a>
+                <a href="messages.html" class="btn btn-secondary btn-large">
+                    ${getIcon('mail')} Messages${unreadMsgCount > 0 ? ' (' + unreadMsgCount + ')' : ''}
                 </a>
             </div>
         `;
 
         pageContent.innerHTML = html;
 
-        function acceptApp(locumId, shiftDate) {
-            Toast.show('Application accepted! Locum has been notified.', 'success');
-            const card = event.target.closest('[style*="border-bottom"]');
-            if (card) card.style.opacity = '0.5';
+        function acceptApp(offerId) {
+            const success = Booking.acceptOffer(offerId);
+            if (success) {
+                Toast.show('Application accepted! Locum has been notified. Shift marked as filled.', 'success');
+            } else {
+                Toast.show('Failed to accept application. Please try again.', 'error');
+            }
+            setTimeout(() => window.location.reload(), 800);
         }
 
-        function declineApp(locumId, shiftDate) {
-            Toast.show('Application declined.', 'info');
-            const card = event.target.closest('[style*="border-bottom"]');
-            if (card) card.style.opacity = '0.5';
+        function declineApp(offerId) {
+            const success = Booking.declineOffer(offerId);
+            if (success) {
+                Toast.show('Application declined. Locum has been notified.', 'info');
+            } else {
+                Toast.show('Failed to decline application. Please try again.', 'error');
+            }
+            setTimeout(() => window.location.reload(), 800);
+        }
+
+        function leaveFeedback(offerId, locumId) {
+            const locum = data.locums.find(l => l.id === locumId);
+            const locumName = locum ? locum.title + ' ' + locum.firstName + ' ' + locum.lastName : 'Unknown';
+            Modal.show({
+                title: 'Rate ' + locumName,
+                size: 'medium',
+                body: `
+                    <div style="margin-bottom: 16px;">
+                        <label class="form-label">Overall Rating</label>
+                        <div id="ratingStars" style="display: flex; gap: 8px; cursor: pointer;">
+                            ${[1,2,3,4,5].map(i => `<svg data-star="${i}" width="28" height="28" viewBox="0 0 24 24" fill="#E2E8F0" stroke="#E2E8F0" stroke-width="1" style="cursor:pointer;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`).join('')}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Comment (optional)</label>
+                        <textarea id="feedbackComment" class="form-textarea" rows="3" placeholder="How was the locum's performance?"></textarea>
+                    </div>
+                `,
+                footer: `<button class="btn btn-primary" id="submitFeedbackBtn">Submit Feedback</button>`,
+                onOpen: (overlay) => {
+                    let selectedRating = 0;
+                    const stars = overlay.querySelectorAll('#ratingStars svg');
+                    stars.forEach(star => {
+                        star.addEventListener('click', () => {
+                            selectedRating = parseInt(star.dataset.star);
+                            stars.forEach((s, idx) => {
+                                s.setAttribute('fill', idx < selectedRating ? '#F97316' : '#E2E8F0');
+                                s.setAttribute('stroke', idx < selectedRating ? '#F97316' : '#E2E8F0');
+                            });
+                        });
+                    });
+                    overlay.querySelector('#submitFeedbackBtn').addEventListener('click', () => {
+                        if (selectedRating === 0) {
+                            Toast.show('Please select a rating.', 'warning');
+                            return;
+                        }
+                        const comment = overlay.querySelector('#feedbackComment').value;
+                        FeedbackManager.submit(session.id, locumId, offerId, { overall: selectedRating }, comment, 'practice');
+                        Modal.close(overlay);
+                        Toast.show('Feedback submitted. Thank you!', 'success');
+                        setTimeout(() => location.reload(), 500);
+                    });
+                }
+            });
         }
     </script>
 </body>

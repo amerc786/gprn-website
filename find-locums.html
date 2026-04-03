@@ -21,6 +21,7 @@
         const pageContent = initAppLayout('practice', 'find-locums', 'Find Locums');
 
         let sortBy = 'reliability';
+        let openDropdown = null;
 
         function getHealthBoards() {
             return [...new Set(data.locums.flatMap(l => l.healthBoards))].sort();
@@ -28,6 +29,78 @@
 
         function getComputerSystems() {
             return [...new Set(data.locums.flatMap(l => l.computerSystems))].sort();
+        }
+
+        function toggleDropdown(locumId, event) {
+            event.stopPropagation();
+            if (openDropdown === locumId) {
+                openDropdown = null;
+            } else {
+                openDropdown = locumId;
+            }
+            renderLocumsGrid();
+        }
+
+        function barLocum(locumId, locumName) {
+            openDropdown = null;
+            Modal.show({
+                title: 'Bar Locum',
+                body: `
+                    <p style="font-size: 0.92rem; color: var(--dark-600); margin-bottom: 16px;">
+                        Are you sure you want to bar <strong>${locumName}</strong>? They will no longer appear in your search results by default.
+                    </p>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Reason for barring</label>
+                        <textarea id="barReason" class="form-input" rows="3" placeholder="Enter reason..." style="resize: vertical;"></textarea>
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-coral" onclick="confirmBar('${locumId}')">Bar Locum</button>
+                `
+            });
+        }
+
+        function confirmBar(locumId) {
+            const reason = document.getElementById('barReason') ? document.getElementById('barReason').value.trim() : '';
+            BarredList.bar(session.id, locumId, reason || 'No reason provided');
+            Modal.close();
+            Toast.show('Locum has been added to your barred list.', 'warning');
+            render();
+        }
+
+        function unbarLocum(locumId) {
+            openDropdown = null;
+            BarredList.unbar(session.id, locumId);
+            Toast.show('Locum has been removed from your barred list.', 'success');
+            render();
+        }
+
+        function markPreferred(locumId) {
+            openDropdown = null;
+            BarredList.addPreferred(session.id, locumId);
+            Toast.show('Locum marked as preferred.', 'success');
+            render();
+        }
+
+        function removePreferred(locumId) {
+            openDropdown = null;
+            BarredList.removePreferred(session.id, locumId);
+            Toast.show('Locum removed from preferred list.', 'info');
+            render();
+        }
+
+        // Close dropdown on outside click
+        document.addEventListener('click', function() {
+            if (openDropdown) {
+                openDropdown = null;
+                renderLocumsGrid();
+            }
+        });
+
+        function renderLocumsGrid() {
+            const grid = document.getElementById('locumsGrid');
+            if (grid) grid.innerHTML = renderLocums();
         }
 
         function renderLocums() {
@@ -61,6 +134,13 @@
                 case 'experience':
                     locums.sort((a, b) => b.totalShifts - a.totalShifts);
                     break;
+                case 'rating':
+                    locums.sort((a, b) => {
+                        const rA = FeedbackManager.getAverageRating(a.id);
+                        const rB = FeedbackManager.getAverageRating(b.id);
+                        return (rB || 0) - (rA || 0);
+                    });
+                    break;
             }
 
             if (locums.length === 0) {
@@ -71,18 +151,56 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
                     ${locums.map(loc => {
                         const reliabilityColor = loc.bookingReliability >= 95 ? 'var(--success)' : (loc.bookingReliability >= 85 ? 'var(--warning)' : 'var(--danger)');
+                        const isBarred = BarredList.isBarred(session.id, loc.id);
+                        const isPreferred = BarredList.isPreferred(session.id, loc.id);
+                        const avgRating = FeedbackManager.getAverageRating(loc.id);
+                        const reviews = FeedbackManager.getForUser(loc.id);
+                        const locName = `${loc.title} ${loc.firstName} ${loc.lastName}`;
+                        const isOpen = openDropdown === loc.id;
+
                         return `
-                        <div class="content-card" style="margin-bottom: 0;">
+                        <div class="content-card" style="margin-bottom: 0; position: relative; ${isBarred ? 'opacity: 0.65;' : ''}">
                             <div class="content-card-body" style="padding: 20px;">
-                                <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+                                ${renderBarredWarning(session.id, loc.id)}
+
+                                <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
                                     <div class="header-avatar" style="width: 48px; height: 48px; font-size: 0.9rem; flex-shrink: 0;">${getInitials(loc.firstName + ' ' + loc.lastName)}</div>
-                                    <div>
-                                        <h3 style="font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: 2px;">${loc.title} ${loc.firstName} ${loc.lastName}</h3>
+                                    <div style="flex: 1;">
+                                        <h3 style="font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: 2px;">
+                                            ${locName}
+                                            ${isPreferred ? '<span style="color: var(--success); font-size: 0.75rem; margin-left: 4px;">&#9733; Preferred</span>' : ''}
+                                        </h3>
                                         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                             ${loc.computerSystems.map(cs => `<span class="badge badge-primary">${cs}</span>`).join('')}
                                         </div>
                                     </div>
+                                    <!-- Actions dropdown -->
+                                    <div style="position: relative;">
+                                        <button onclick="toggleDropdown('${loc.id}', event)" style="background: none; border: 1px solid var(--gray-200); border-radius: 8px; padding: 6px 8px; cursor: pointer; color: var(--dark-600);">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                                        </button>
+                                        ${isOpen ? `
+                                        <div style="position: absolute; right: 0; top: 100%; margin-top: 4px; background: white; border: 1px solid var(--gray-200); border-radius: 10px; box-shadow: var(--shadow-lg); z-index: 100; min-width: 180px; overflow: hidden;">
+                                            ${isBarred
+                                                ? `<button onclick="unbarLocum('${loc.id}')" style="display: block; width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; cursor: pointer; font-size: 0.85rem; color: var(--success);">Remove from Barred List</button>`
+                                                : `<button onclick="barLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')" style="display: block; width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; cursor: pointer; font-size: 0.85rem; color: var(--danger);">Bar Locum</button>`
+                                            }
+                                            ${isPreferred
+                                                ? `<button onclick="removePreferred('${loc.id}')" style="display: block; width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; cursor: pointer; font-size: 0.85rem; color: var(--dark-600); border-top: 1px solid var(--gray-100);">Remove Preferred</button>`
+                                                : `<button onclick="markPreferred('${loc.id}')" style="display: block; width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; cursor: pointer; font-size: 0.85rem; color: var(--success); border-top: 1px solid var(--gray-100);">Mark as Preferred</button>`
+                                            }
+                                        </div>` : ''}
+                                    </div>
                                 </div>
+
+                                <!-- Average Rating -->
+                                ${avgRating ? `
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                    ${renderRatingStars(parseFloat(avgRating))}
+                                    <span style="font-weight: 700; font-size: 0.88rem; color: var(--dark);">${avgRating}</span>
+                                    <span style="font-size: 0.78rem; color: var(--gray-400);">(${reviews.length} review${reviews.length !== 1 ? 's' : ''})</span>
+                                </div>` : `
+                                <div style="font-size: 0.82rem; color: var(--gray-400); margin-bottom: 12px;">No ratings yet</div>`}
 
                                 <div style="margin-bottom: 12px;">
                                     <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
@@ -150,6 +268,7 @@
                             <option value="reliability" ${sortVal === 'reliability' ? 'selected' : ''}>Reliability</option>
                             <option value="name" ${sortVal === 'name' ? 'selected' : ''}>Name</option>
                             <option value="experience" ${sortVal === 'experience' ? 'selected' : ''}>Experience</option>
+                            <option value="rating" ${sortVal === 'rating' ? 'selected' : ''}>Rating</option>
                         </select>
                     </div>
                 </div>

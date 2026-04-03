@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice - GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+        if (!initPage()) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const role = Auth.getRole();
+        const data = getMockData();
+        const activePage = role === 'locum' ? 'invoices' : 'billing';
+        const pageContent = initAppLayout(role, activePage, 'Invoice', [
+            { label: role === 'locum' ? 'My Invoices' : 'Billing', href: role === 'locum' ? 'my-invoices.html' : 'billing.html' },
+            { label: 'Invoice' }
+        ]);
+
+        // Get invoice ID from URL
+        const params = new URLSearchParams(window.location.search);
+        const invoiceId = params.get('id');
+
+        if (!data.invoices) data.invoices = [];
+        const invoice = data.invoices.find(i => i.id === invoiceId);
+
+        function getInvoiceStatusBadge(status) {
+            const map = {
+                pending: 'badge-warning',
+                paid: 'badge-success',
+                overdue: 'badge-danger',
+                disputed: 'badge-info'
+            };
+            return map[status] || 'badge-neutral';
+        }
+
+        function handleMarkPaid() {
+            if (InvoiceManager.updateStatus(invoiceId, 'paid')) {
+                Toast.show('Invoice marked as paid. Locum has been notified.', 'success');
+                setTimeout(() => location.reload(), 800);
+            }
+        }
+
+        function handleDispute() {
+            Modal.show({
+                title: 'Dispute Invoice',
+                size: 'medium',
+                body: `
+                    <p style="margin-bottom: 16px; color: var(--dark-600);">Please provide a reason for disputing this invoice. The locum will be notified.</p>
+                    <div class="form-group">
+                        <label class="form-label">Dispute Reason</label>
+                        <textarea id="disputeReason" class="form-textarea" rows="4" placeholder="Describe the reason for the dispute..." required></textarea>
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-danger" id="submitDispute">Submit Dispute</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#submitDispute').addEventListener('click', () => {
+                        const reason = overlay.querySelector('#disputeReason').value.trim();
+                        if (!reason) {
+                            Toast.show('Please provide a dispute reason.', 'warning');
+                            return;
+                        }
+                        if (InvoiceManager.updateStatus(invoiceId, 'disputed', reason)) {
+                            Modal.close(overlay);
+                            Toast.show('Invoice has been disputed. The locum will be notified.', 'info');
+                            setTimeout(() => location.reload(), 800);
+                        }
+                    });
+                }
+            });
+        }
+
+        function handleChasePayment() {
+            if (InvoiceManager.chasePayment(invoiceId)) {
+                Toast.show('Payment reminder sent to the practice.', 'success');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                Toast.show('Could not send reminder. Please try again.', 'error');
+            }
+        }
+
+        function render() {
+            if (!invoice) {
+                pageContent.innerHTML = `
+                    <div class="empty-state" style="padding: 60px;">
+                        <div class="empty-state-icon">${getIcon('file-text')}</div>
+                        <h3>Invoice Not Found</h3>
+                        <p>The requested invoice could not be found.</p>
+                        <a href="${role === 'locum' ? 'my-invoices.html' : 'billing.html'}" class="btn btn-primary">Back to ${role === 'locum' ? 'Invoices' : 'Billing'}</a>
+                    </div>
+                `;
+                return;
+            }
+
+            // Look up full locum and practice details
+            const locum = data.locums.find(l => l.id === invoice.locumId);
+            const practice = data.practices.find(p => p.id === invoice.practiceId);
+
+            const statusLabel = invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
+
+            // Build line items
+            const lineItems = [];
+            lineItems.push({
+                description: `${invoice.sessionType} Session - ${DateUtils.format(invoice.shiftDate, 'full')}`,
+                time: `${invoice.startTime || '08:30'} - ${invoice.endTime || '17:00'}`,
+                amount: invoice.sessionRate || invoice.total
+            });
+            if (invoice.housecallFee && invoice.housecallFee > 0) {
+                lineItems.push({
+                    description: 'Housecall Fee',
+                    time: '',
+                    amount: invoice.housecallFee
+                });
+            }
+
+            const subtotal = lineItems.reduce((s, item) => s + item.amount, 0);
+
+            // Action buttons based on role and status
+            let actionButtons = '';
+            if (role === 'practice' && (invoice.status === 'pending' || invoice.status === 'overdue')) {
+                actionButtons = `
+                    <button class="btn btn-primary" onclick="handleMarkPaid()">Mark as Paid</button>
+                    <button class="btn btn-danger btn-ghost" onclick="handleDispute()">Dispute</button>
+                `;
+            }
+            if (role === 'locum' && (invoice.status === 'pending' || invoice.status === 'overdue')) {
+                actionButtons = `
+                    <button class="btn btn-warning" onclick="handleChasePayment()">Chase Payment</button>
+                `;
+            }
+
+            pageContent.innerHTML = `
+                <div class="no-print" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <a href="${role === 'locum' ? 'my-invoices.html' : 'billing.html'}" class="btn btn-ghost">
+                        ${getIcon('arrow-left')} Back
+                    </a>
+                    <div style="display: flex; gap: 8px;">
+                        ${actionButtons}
+                        <button class="btn btn-ghost" onclick="window.print()">
+                            ${getIcon('download')} Print Invoice
+                        </button>
+                    </div>
+                </div>
+
+                <div class="content-card invoice-page">
+                    <div class="content-card-body" style="padding: 40px;">
+                        <div class="invoice-header-row">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                    <span class="logo-icon" style="width: 44px; height: 44px; font-size: 1rem;">GP</span>
+                                    <span class="logo-text" style="font-size: 1.2rem;">RN</span>
+                                </div>
+                                <h1 class="invoice-title">INVOICE</h1>
+                            </div>
+                            <div class="invoice-meta">
+                                <p><strong>Invoice #:</strong> ${invoice.invoiceNumber}</p>
+                                <p><strong>Date:</strong> ${DateUtils.format(invoice.generatedDate, 'full')}</p>
+                                <p><strong>Due Date:</strong> ${DateUtils.format(invoice.dueDate, 'full')}</p>
+                                <p style="margin-top: 8px;">
+                                    <span class="badge ${getInvoiceStatusBadge(invoice.status)}" style="font-size: 0.85rem; padding: 4px 14px;">
+                                        ${statusLabel}
+                                    </span>
+                                </p>
+                                ${invoice.paidDate ? `<p style="margin-top: 4px;"><strong>Paid:</strong> ${DateUtils.format(invoice.paidDate, 'full')}</p>` : ''}
+                            </div>
+                        </div>
+
+                        <div class="invoice-parties">
+                            <div class="invoice-party">
+                                <h4>From</h4>
+                                <p><strong>${invoice.locumName}</strong></p>
+                                ${locum ? `
+                                    <p>GMC: ${locum.gmcNumber}</p>
+                                    <p>${locum.email}</p>
+                                    <p>${locum.phone}</p>
+                                ` : ''}
+                            </div>
+                            <div class="invoice-party">
+                                <h4>To</h4>
+                                <p><strong>${invoice.practiceName}</strong></p>
+                                ${practice ? `
+                                    <p>${practice.address}</p>
+                                    <p>${practice.city} ${practice.postcode}</p>
+                                    <p>${practice.phone}</p>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <table class="data-table" style="margin-bottom: 24px;">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Time</th>
+                                    <th style="text-align: right;">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${lineItems.map(item => `
+                                    <tr>
+                                        <td>${item.description}</td>
+                                        <td>${item.time}</td>
+                                        <td style="text-align: right;"><strong>${formatCurrency(item.amount)}</strong></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+
+                        <div class="invoice-total-row">
+                            <div style="text-align: right;">
+                                <p style="color: var(--dark-600); margin-bottom: 4px;">Total Amount</p>
+                                <span class="invoice-total" style="color: var(--primary);">${formatCurrency(subtotal)}</span>
+                            </div>
+                        </div>
+
+                        ${invoice.status === 'disputed' && invoice.disputeReason ? `
+                            <div style="margin-top: 24px; padding: 16px; background: rgba(239,68,68,0.05); border-radius: 8px; border-left: 3px solid var(--danger);">
+                                <p style="font-weight: 600; color: var(--danger); margin-bottom: 4px;">Dispute Reason</p>
+                                <p style="color: var(--dark-700);">${invoice.disputeReason}</p>
+                            </div>
+                        ` : ''}
+
+                        <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--gray-100); text-align: center;">
+                            <p style="font-size: 0.8rem; color: var(--gray-400);">Generated by GPRN - GP Relief Network Wales</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        render();
+    </script>
+</body>
+</html>

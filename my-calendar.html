@@ -24,22 +24,41 @@
         let viewYear = today.getFullYear();
         let viewMonth = today.getMonth();
         let selectedDate = null;
+        let availabilityMode = false;
 
         const myOffers = data.offers.filter(o => o.locumId === session.id);
         const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+        // Availability cycle: none -> available -> unavailable -> preferred -> none
+        const availCycle = ['none', 'available', 'unavailable', 'preferred'];
+
+        function toggleAvailabilityMode() {
+            availabilityMode = !availabilityMode;
+            if (availabilityMode) {
+                selectedDate = null;
+                Toast.show('Availability mode enabled. Click days to set your availability.', 'info');
+            }
+            renderCalendar();
+        }
+
+        function cycleAvailability(dateStr) {
+            const current = Availability.get(session.id, dateStr);
+            const currentIdx = availCycle.indexOf(current);
+            const nextIdx = (currentIdx + 1) % availCycle.length;
+            const nextStatus = availCycle[nextIdx];
+            Availability.set(session.id, dateStr, nextStatus);
+            renderCalendar();
+        }
+
         function getEventsForDate(dateStr) {
             const events = [];
-            // Accepted/booked offers
             myOffers.filter(o => o.shiftDate === dateStr && o.status === 'accepted').forEach(o => {
                 events.push({ type: 'booked', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
             });
-            // Pending offers
             myOffers.filter(o => o.shiftDate === dateStr && o.status === 'pending').forEach(o => {
                 events.push({ type: 'pending', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
             });
-            // Available shifts (not already offered on)
             const offeredShiftDates = myOffers.map(o => o.shiftDate + '|' + o.practiceName);
             data.shifts.filter(s => s.date === dateStr && s.status === 'open').forEach(s => {
                 const key = s.date + '|' + s.practiceName;
@@ -52,10 +71,9 @@
 
         function renderCalendar() {
             const daysInMonth = DateUtils.getDaysInMonth(viewYear, viewMonth);
-            const firstDay = DateUtils.getFirstDayOfMonth(viewYear, viewMonth); // Monday = 0
+            const firstDay = DateUtils.getFirstDayOfMonth(viewYear, viewMonth);
             const todayStr = DateUtils.toISO(today);
 
-            // Previous month days to fill
             const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
             const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
             const daysInPrevMonth = DateUtils.getDaysInMonth(prevYear, prevMonth);
@@ -67,10 +85,13 @@
                 const day = daysInPrevMonth - i;
                 const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const events = getEventsForDate(dateStr);
+                const avail = Availability.get(session.id, dateStr);
+                const availClass = avail !== 'none' ? `avail-${avail}` : '';
                 cells += `
-                    <div class="calendar-day-cell other-month" data-date="${dateStr}">
+                    <div class="calendar-day-cell other-month ${availabilityMode ? 'cal-day-avail' : ''} ${availClass}" data-date="${dateStr}">
                         <div class="cal-date">${day}</div>
-                        ${events.slice(0, 2).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('')}
+                        ${!availabilityMode ? events.slice(0, 2).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('') : ''}
+                        ${availabilityMode && avail !== 'none' ? `<div style="font-size: 0.65rem; font-weight: 600; text-transform: capitalize;">${avail}</div>` : ''}
                     </div>`;
             }
 
@@ -78,17 +99,21 @@
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const isToday = dateStr === todayStr;
-                const isSelected = dateStr === selectedDate;
+                const isSelected = dateStr === selectedDate && !availabilityMode;
                 const events = getEventsForDate(dateStr);
+                const avail = Availability.get(session.id, dateStr);
+                const availClass = avail !== 'none' ? `avail-${avail}` : '';
+
                 cells += `
-                    <div class="calendar-day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-date="${dateStr}" style="${isSelected ? 'background: rgba(79,70,229,0.1); outline: 2px solid var(--primary); outline-offset: -2px;' : ''}">
+                    <div class="calendar-day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${availabilityMode ? 'cal-day-avail' : ''} ${availClass}" data-date="${dateStr}" style="${isSelected ? 'background: rgba(79,70,229,0.1); outline: 2px solid var(--primary); outline-offset: -2px;' : ''}">
                         <div class="cal-date">${d}</div>
-                        ${events.slice(0, 3).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('')}
-                        ${events.length > 3 ? `<div style="font-size: 0.65rem; color: var(--dark-600);">+${events.length - 3} more</div>` : ''}
+                        ${!availabilityMode ? events.slice(0, 3).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('') : ''}
+                        ${!availabilityMode && events.length > 3 ? `<div style="font-size: 0.65rem; color: var(--dark-600);">+${events.length - 3} more</div>` : ''}
+                        ${availabilityMode && avail !== 'none' ? `<div style="font-size: 0.65rem; font-weight: 600; text-transform: capitalize;">${avail}</div>` : ''}
                     </div>`;
             }
 
-            // Next month fill to complete the grid
+            // Next month fill
             const totalCells = firstDay + daysInMonth;
             const remainder = totalCells % 7;
             if (remainder > 0) {
@@ -97,17 +122,20 @@
                 for (let d = 1; d <= (7 - remainder); d++) {
                     const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                     const events = getEventsForDate(dateStr);
+                    const avail = Availability.get(session.id, dateStr);
+                    const availClass = avail !== 'none' ? `avail-${avail}` : '';
                     cells += `
-                        <div class="calendar-day-cell other-month" data-date="${dateStr}">
+                        <div class="calendar-day-cell other-month ${availabilityMode ? 'cal-day-avail' : ''} ${availClass}" data-date="${dateStr}">
                             <div class="cal-date">${d}</div>
-                            ${events.slice(0, 2).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('')}
+                            ${!availabilityMode ? events.slice(0, 2).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('') : ''}
+                            ${availabilityMode && avail !== 'none' ? `<div style="font-size: 0.65rem; font-weight: 600; text-transform: capitalize;">${avail}</div>` : ''}
                         </div>`;
                 }
             }
 
-            // Day detail section
+            // Day detail section (only in normal mode)
             let dayDetail = '';
-            if (selectedDate) {
+            if (selectedDate && !availabilityMode) {
                 const selEvents = getEventsForDate(selectedDate);
                 dayDetail = `
                     <div class="content-card" style="margin-top: 24px;">
@@ -142,21 +170,42 @@
                             <span class="calendar-title">${monthNames[viewMonth]} ${viewYear}</span>
                             <button id="calNext">${getIcon('chevron-right')}</button>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <button class="btn ${availabilityMode ? 'btn-coral' : 'btn-secondary'} btn-small" id="availToggle">
+                                ${availabilityMode ? 'Exit Availability Mode' : 'Set Availability'}
+                            </button>
                             <button class="btn btn-secondary btn-small" id="calToday">Today</button>
-                            <div style="display: flex; align-items: center; gap: 16px; font-size: 0.78rem;">
-                                <span style="display: flex; align-items: center; gap: 4px;">
-                                    <span style="width: 10px; height: 10px; border-radius: 3px; background: var(--primary);"></span> Booked
-                                </span>
-                                <span style="display: flex; align-items: center; gap: 4px;">
-                                    <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(16,185,129,0.5);"></span> Available
-                                </span>
-                                <span style="display: flex; align-items: center; gap: 4px;">
-                                    <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(245,158,11,0.5);"></span> Pending
-                                </span>
+                            <div style="display: flex; align-items: center; gap: 16px; font-size: 0.78rem; flex-wrap: wrap;">
+                                ${availabilityMode ? `
+                                    <span style="display: flex; align-items: center; gap: 4px;">
+                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(16,185,129,0.5); border: 2px solid var(--success);"></span> Available
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 4px;">
+                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(239,68,68,0.3); border: 2px solid var(--danger);"></span> Unavailable
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 4px;">
+                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(79,70,229,0.3); border: 2px solid var(--primary);"></span> Preferred
+                                    </span>
+                                ` : `
+                                    <span style="display: flex; align-items: center; gap: 4px;">
+                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: var(--primary);"></span> Booked
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 4px;">
+                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(16,185,129,0.5);"></span> Available
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 4px;">
+                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(245,158,11,0.5);"></span> Pending
+                                    </span>
+                                `}
                             </div>
                         </div>
                     </div>
+
+                    ${availabilityMode ? `
+                    <div style="background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.2); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; font-size: 0.85rem; color: var(--coral-dark);">
+                        Click on any day to cycle through availability: None &rarr; Available &rarr; Unavailable &rarr; Preferred &rarr; None
+                    </div>` : ''}
+
                     <div class="calendar-grid-full">
                         ${dayNames.map(d => `<div class="calendar-day-header">${d}</div>`).join('')}
                         ${cells}
@@ -179,15 +228,21 @@
             document.getElementById('calToday').addEventListener('click', function() {
                 viewYear = today.getFullYear();
                 viewMonth = today.getMonth();
-                selectedDate = todayStr;
+                if (!availabilityMode) selectedDate = todayStr;
                 renderCalendar();
             });
+            document.getElementById('availToggle').addEventListener('click', toggleAvailabilityMode);
 
             // Bind day click
             document.querySelectorAll('.calendar-day-cell').forEach(cell => {
                 cell.addEventListener('click', function() {
-                    selectedDate = this.dataset.date;
-                    renderCalendar();
+                    const dateStr = this.dataset.date;
+                    if (availabilityMode) {
+                        cycleAvailability(dateStr);
+                    } else {
+                        selectedDate = dateStr;
+                        renderCalendar();
+                    }
                 });
             });
         }
