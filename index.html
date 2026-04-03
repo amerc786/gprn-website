@@ -267,6 +267,36 @@
             transition: all 0.3s;
         }
 
+        /* ===== FLOATING PATHS ANIMATION ===== */
+        .hero-paths-container {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hero-paths-container svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .hero-paths-container path {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 700;
+            animation: pathFlow var(--path-duration, 22s) linear infinite,
+                       pathPulse var(--path-duration, 22s) ease-in-out infinite;
+        }
+
+        @keyframes pathFlow {
+            0% { stroke-dashoffset: 1000; }
+            100% { stroke-dashoffset: -1000; }
+        }
+
+        @keyframes pathPulse {
+            0%, 100% { opacity: var(--path-opacity-min, 0.08); }
+            50% { opacity: var(--path-opacity-max, 0.18); }
+        }
+
         /* ===== HERO ===== */
         .hero {
             background: var(--navy);
@@ -1313,6 +1343,10 @@
 
     <!-- ===== HERO ===== -->
     <section class="hero">
+        <!-- Animated Floating Paths (left set) -->
+        <div class="hero-paths-container" id="hero-paths-left"></div>
+        <!-- Animated Floating Paths (right set) -->
+        <div class="hero-paths-container" id="hero-paths-right"></div>
         <div class="container">
             <div class="hero-layout">
                 <div class="hero-content">
@@ -1882,6 +1916,51 @@
                 }
             });
         });
+
+        // Generate animated floating paths (vanilla JS version of framer-motion BackgroundPaths)
+        function generateFloatingPaths(containerId, position) {
+            var container = document.getElementById(containerId);
+            if (!container) return;
+
+            var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 696 316');
+            svg.setAttribute('fill', 'none');
+            svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+
+            for (var i = 0; i < 36; i++) {
+                var p = position;
+                var d = 'M-' + (380 - i * 5 * p) + ' -' + (189 + i * 6) +
+                    'C-' + (380 - i * 5 * p) + ' -' + (189 + i * 6) +
+                    ' -' + (312 - i * 5 * p) + ' ' + (216 - i * 6) +
+                    ' ' + (152 - i * 5 * p) + ' ' + (343 - i * 6) +
+                    'C' + (616 - i * 5 * p) + ' ' + (470 - i * 6) +
+                    ' ' + (684 - i * 5 * p) + ' ' + (875 - i * 6) +
+                    ' ' + (684 - i * 5 * p) + ' ' + (875 - i * 6);
+
+                var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', d);
+                path.setAttribute('stroke', 'rgba(217, 198, 255,' + (0.06 + i * 0.012) + ')');
+                path.setAttribute('stroke-width', (0.5 + i * 0.03).toFixed(2));
+                path.setAttribute('fill', 'none');
+
+                var duration = (20 + Math.random() * 10).toFixed(1);
+                var delay = (Math.random() * -20).toFixed(1);
+                var opMin = (0.04 + i * 0.008).toFixed(3);
+                var opMax = (0.12 + i * 0.015).toFixed(3);
+
+                path.style.setProperty('--path-duration', duration + 's');
+                path.style.setProperty('--path-opacity-min', opMin);
+                path.style.setProperty('--path-opacity-max', opMax);
+                path.style.animationDelay = delay + 's, ' + delay + 's';
+
+                svg.appendChild(path);
+            }
+
+            container.appendChild(svg);
+        }
+
+        generateFloatingPaths('hero-paths-left', 1);
+        generateFloatingPaths('hero-paths-right', -1);
     </script>
 
 </body>
