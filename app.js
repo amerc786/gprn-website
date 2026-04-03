@@ -727,10 +727,13 @@ const InvoiceManager = {
         inv.status = status;
         if (status === 'paid') inv.paidDate = DateUtils.toISO(new Date());
         if (status === 'disputed') inv.disputeReason = reason;
-        if (status === 'paid') {
-            EmailManager.send(data, inv.locumId, 'Payment Received', `Payment of ${formatCurrency(inv.total)} for shift on ${DateUtils.format(inv.shiftDate, 'medium')} at ${inv.practiceName} has been received.`, 'payment_received');
-        }
         saveMockData(data);
+        try {
+            if (status === 'paid') {
+                EmailManager.send(data, inv.locumId, 'Payment Received', `Payment of ${formatCurrency(inv.total)} for shift on ${DateUtils.format(inv.shiftDate, 'medium')} at ${inv.practiceName} has been received.`, 'payment_received');
+                saveMockData(data);
+            }
+        } catch(e) { /* email notification is non-critical */ }
         return true;
     },
 
