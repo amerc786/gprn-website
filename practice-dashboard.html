@@ -64,10 +64,10 @@
             const totalShifts = practiceShifts.filter(s => s.date === dateStr).length;
             const filledShifts = practiceOffers.filter(o =>
                 o.shiftDate === dateStr &&
-                (o.status === 'accepted' || o.status === 'completed')
+                (o.status === 'accepted' || o.status === 'acknowledged' || o.status === 'confirmed' || o.status === 'completed')
             ).length;
-            const pct = totalShifts > 0 ? Math.round((filledShifts / totalShifts) * 100) : (i < 3 ? [80, 60, 100, 40, 0][i] : 0);
-            return { day, pct: Math.min(pct || [80, 60, 100, 40, 20][i], 100), dateStr };
+            const pct = totalShifts > 0 ? Math.round((filledShifts / totalShifts) * 100) : 0;
+            return { day, pct, totalShifts, filledShifts, dateStr };
         });
 
         // Top locums - most used based on completed offers
@@ -230,13 +230,25 @@
                     </div>
                     <div class="content-card-body">
                         ${coverageData.map((c, i) => {
+                            if (c.totalShifts === 0) {
+                                return `
+                                <div class="coverage-bar-container" style="cursor: pointer;" onclick="showDayCoverage(${i})">
+                                    <div class="coverage-label">
+                                        <span>${c.day}</span>
+                                        <span class="coverage-pct" style="color: var(--gray-400);">No shifts</span>
+                                    </div>
+                                    <div class="coverage-bar">
+                                        <div class="coverage-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>`;
+                            }
                             const colorClass = c.pct >= 80 ? '' : (c.pct >= 50 ? 'warn' : 'danger');
                             const fillClass = c.pct < 50 ? 'warning' : '';
                             return `
                                 <div class="coverage-bar-container" style="cursor: pointer;" onclick="showDayCoverage(${i})">
                                     <div class="coverage-label">
                                         <span>${c.day}</span>
-                                        <span class="coverage-pct ${colorClass}">${c.pct}%</span>
+                                        <span class="coverage-pct ${colorClass}">${c.filledShifts}/${c.totalShifts} (${c.pct}%)</span>
                                     </div>
                                     <div class="coverage-bar">
                                         <div class="coverage-fill ${fillClass}" style="width: ${c.pct}%"></div>
