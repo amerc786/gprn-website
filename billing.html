@@ -17,44 +17,51 @@
         if (!initPage('practice')) throw new Error('Auth required');
 
         const session = Auth.getSession();
-        const data = getMockData();
         const pageContent = initAppLayout('practice', 'billing', 'Billing');
 
-        // Seed invoices from completed offers if none exist for this practice
-        let invoices = InvoiceManager.getForPractice(session.id);
-        if (invoices.length === 0) {
-            const completedOffers = data.offers.filter(o => o.practiceId === session.id && o.status === 'completed');
+        // Seed invoices if none exist for this practice
+        (function seedInvoices() {
+            var raw = localStorage.getItem('gprn_data');
+            var d = JSON.parse(raw);
+            if (!d.invoices) d.invoices = [];
+            var practiceInvoices = d.invoices.filter(function(i) { return i.practiceId === session.id; });
+            if (practiceInvoices.length > 0) return;
+
+            // Try from completed offers
+            var completedOffers = (d.offers || []).filter(function(o) { return o.practiceId === session.id && o.status === 'completed'; });
             if (completedOffers.length > 0) {
-                completedOffers.forEach(offer => InvoiceManager.generateFromOffer(data, offer));
-                saveMockData(data);
-                invoices = InvoiceManager.getForPractice(session.id);
+                completedOffers.forEach(function(offer) { InvoiceManager.generateFromOffer(d, offer); });
+                localStorage.setItem('gprn_data', JSON.stringify(d));
+                d = JSON.parse(localStorage.getItem('gprn_data'));
+                practiceInvoices = d.invoices.filter(function(i) { return i.practiceId === session.id; });
             }
-            // If still no invoices, seed some manually
-            if (invoices.length === 0) {
-                const today = new Date();
-                const locums = data.locums;
-                if (!data.invoices) data.invoices = [];
-                const seedStatuses = ['paid', 'pending', 'paid', 'overdue', 'paid', 'paid', 'pending', 'paid', 'paid', 'pending', 'paid', 'paid'];
-                const sessionTypes = ['AM', 'PM', 'Full Day'];
-                for (let i = 0; i < 12; i++) {
-                    const loc = locums[i % locums.length];
-                    const genDate = new Date(today);
+
+            // If still none, seed manually
+            if (practiceInvoices.length === 0) {
+                var today = new Date();
+                var locums = d.locums || [];
+                var seedStatuses = ['paid', 'pending', 'paid', 'overdue', 'paid', 'paid', 'pending', 'paid', 'paid', 'pending', 'paid', 'paid'];
+                var sessionTypes = ['AM', 'PM', 'Full Day'];
+                for (var i = 0; i < 12; i++) {
+                    var loc = locums[i % locums.length];
+                    if (!loc) continue;
+                    var genDate = new Date(today);
                     genDate.setDate(today.getDate() - (i * 5 + 2));
-                    const shiftDate = new Date(genDate);
+                    var shiftDate = new Date(genDate);
                     shiftDate.setDate(genDate.getDate() - 1);
-                    const dueDate = new Date(genDate);
+                    var dueDate = new Date(genDate);
                     dueDate.setDate(genDate.getDate() + 30);
-                    const sType = sessionTypes[i % 3];
-                    const rate = sType === 'Full Day' ? loc.rates.fullDay : (sType === 'AM' ? loc.rates.am : loc.rates.pm);
-                    const housecallFee = i % 3 === 0 ? 0 : (loc.rates.housecall || 0);
-                    const total = rate + housecallFee;
-                    const status = seedStatuses[i];
-                    data.invoices.push({
-                        id: 'inv-prac-seed-' + Date.now() + '-' + i,
-                        invoiceNumber: 'INV-' + String(data.invoices.length + 1001).padStart(4, '0'),
+                    var sType = sessionTypes[i % 3];
+                    var rate = sType === 'Full Day' ? loc.rates.fullDay : (sType === 'AM' ? loc.rates.am : loc.rates.pm);
+                    var housecallFee = i % 3 === 0 ? 0 : (loc.rates.housecall || 0);
+                    var total = rate + housecallFee;
+                    var status = seedStatuses[i];
+                    d.invoices.push({
+                        id: 'inv-seed-' + Date.now() + '-' + i,
+                        invoiceNumber: 'INV-' + String(d.invoices.length + 1001).padStart(4, '0'),
                         offerId: null,
                         locumId: loc.id,
-                        locumName: `${loc.title} ${loc.firstName} ${loc.lastName}`,
+                        locumName: loc.title + ' ' + loc.firstName + ' ' + loc.lastName,
                         practiceId: session.id,
                         practiceName: session.name,
                         shiftDate: shiftDate.toISOString().split('T')[0],
@@ -71,211 +78,260 @@
                         disputeReason: null
                     });
                 }
-                saveMockData(data);
-                invoices = InvoiceManager.getForPractice(session.id);
+                localStorage.setItem('gprn_data', JSON.stringify(d));
             }
+        })();
+
+        var billingFilterMonth = '';
+        var billingFilterStatus = '';
+
+        function readInvoicesFromStorage() {
+            var raw = localStorage.getItem('gprn_data');
+            var d = JSON.parse(raw);
+            if (!d || !d.invoices) return [];
+            return d.invoices.filter(function(i) { return i.practiceId === session.id; })
+                .sort(function(a, b) { return new Date(b.generatedDate) - new Date(a.generatedDate); });
         }
 
-        let filterMonth = '';
-        let filterStatus = '';
-
-        function getFilteredInvoices() {
-            let filtered = InvoiceManager.getForPractice(session.id);
-            if (filterMonth !== '') {
-                filtered = filtered.filter(inv => new Date(inv.generatedDate).getMonth() === parseInt(filterMonth));
-            }
-            if (filterStatus) {
-                filtered = filtered.filter(inv => inv.status === filterStatus);
-            }
-            return filtered;
-        }
-
-        function getInvoiceStatusBadge(status) {
-            const map = {
-                pending: 'badge-warning',
-                paid: 'badge-success',
-                overdue: 'badge-danger',
-                disputed: 'badge-info'
-            };
-            return map[status] || 'badge-neutral';
+        function getStatusBadgeClass(status) {
+            if (status === 'pending') return 'badge-warning';
+            if (status === 'paid') return 'badge-success';
+            if (status === 'overdue') return 'badge-danger';
+            if (status === 'disputed') return 'badge-info';
+            return 'badge-neutral';
         }
 
         function handleMarkPaid(invoiceId) {
-            // Direct localStorage update + immediate DOM re-render (no page reload)
-            try {
-                const raw = localStorage.getItem('gprn_data');
-                if (!raw) { Toast.show('Data not found.', 'error'); return; }
-                const d = JSON.parse(raw);
-                if (!d.invoices || !Array.isArray(d.invoices)) { Toast.show('No invoices found.', 'error'); return; }
-                const inv = d.invoices.find(i => i.id === invoiceId);
-                if (!inv) {
-                    Toast.show('Invoice not found (ID: ' + invoiceId + '). Try refreshing the page.', 'error');
-                    return;
+            // Step 1: Read raw data from localStorage
+            var raw = localStorage.getItem('gprn_data');
+            var d = JSON.parse(raw);
+            var inv = null;
+            for (var i = 0; i < d.invoices.length; i++) {
+                if (d.invoices[i].id === invoiceId) {
+                    inv = d.invoices[i];
+                    break;
                 }
-                inv.status = 'paid';
-                inv.paidDate = new Date().toISOString().split('T')[0];
-                const saved = JSON.stringify(d);
-                localStorage.setItem('gprn_data', saved);
-                // Verify the save worked
-                const verify = JSON.parse(localStorage.getItem('gprn_data'));
-                const check = verify.invoices.find(i => i.id === invoiceId);
-                if (!check || check.status !== 'paid') {
-                    Toast.show('Save failed — please try again.', 'error');
-                    return;
-                }
-                Toast.show('Invoice marked as paid. Locum has been notified.', 'success');
-                // Re-render the page immediately from updated localStorage (no reload)
-                render(true);
-            } catch(e) {
-                Toast.show('Error: ' + e.message, 'error');
             }
+            if (!inv) {
+                alert('Invoice not found: ' + invoiceId);
+                return;
+            }
+
+            // Step 2: Update status
+            inv.status = 'paid';
+            inv.paidDate = new Date().toISOString().split('T')[0];
+
+            // Step 3: Save back to localStorage
+            localStorage.setItem('gprn_data', JSON.stringify(d));
+
+            // Step 4: Directly update the DOM row for this invoice
+            var row = document.getElementById('inv-row-' + invoiceId);
+            if (row) {
+                // Update the status badge
+                var badge = row.querySelector('.badge');
+                if (badge) {
+                    badge.className = 'badge badge-success';
+                    badge.textContent = 'Paid';
+                }
+                // Remove the Mark Paid and Dispute buttons, keep View
+                var actionsCell = row.querySelector('.inv-actions');
+                if (actionsCell) {
+                    var viewBtn = actionsCell.querySelector('a');
+                    actionsCell.innerHTML = '';
+                    if (viewBtn) actionsCell.appendChild(viewBtn);
+                }
+            }
+
+            // Step 5: Update the summary stats at the top
+            updateBillingSummary();
+
+            // Step 6: Show success toast
+            Toast.show('Invoice marked as paid. Locum has been notified.', 'success');
+        }
+
+        function updateBillingSummary() {
+            var allInvoices = readInvoicesFromStorage();
+            var now = new Date();
+            var totalThisMonth = 0;
+            var outstanding = 0;
+            var paid = 0;
+            for (var i = 0; i < allInvoices.length; i++) {
+                var inv = allInvoices[i];
+                var gd = new Date(inv.generatedDate);
+                if (gd.getFullYear() === now.getFullYear() && gd.getMonth() === now.getMonth()) {
+                    totalThisMonth += inv.total;
+                }
+                if (inv.status === 'pending' || inv.status === 'overdue') {
+                    outstanding += inv.total;
+                }
+                if (inv.status === 'paid') {
+                    paid += inv.total;
+                }
+            }
+            var el1 = document.getElementById('billing-stat-total');
+            var el2 = document.getElementById('billing-stat-outstanding');
+            var el3 = document.getElementById('billing-stat-paid');
+            if (el1) el1.textContent = formatCurrency(totalThisMonth);
+            if (el2) el2.textContent = formatCurrency(outstanding);
+            if (el3) el3.textContent = formatCurrency(paid);
         }
 
         function handleDispute(invoiceId) {
             Modal.show({
                 title: 'Dispute Invoice',
                 size: 'medium',
-                body: `
-                    <p style="margin-bottom: 16px; color: var(--dark-600);">Please provide a reason for disputing this invoice. The locum will be notified.</p>
-                    <div class="form-group">
-                        <label class="form-label">Dispute Reason</label>
-                        <textarea id="disputeReason" class="form-textarea" rows="4" placeholder="Describe the reason for the dispute..." required></textarea>
-                    </div>
-                `,
-                footer: `
-                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
-                    <button class="btn btn-danger" id="submitDispute">Submit Dispute</button>
-                `,
-                onOpen(overlay) {
-                    overlay.querySelector('#submitDispute').addEventListener('click', () => {
-                        const reason = overlay.querySelector('#disputeReason').value.trim();
+                body: '<p style="margin-bottom: 16px; color: var(--dark-600);">Please provide a reason for disputing this invoice. The locum will be notified.</p><div class="form-group"><label class="form-label">Dispute Reason</label><textarea id="disputeReason" class="form-textarea" rows="4" placeholder="Describe the reason for the dispute..." required></textarea></div>',
+                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-danger" id="submitDispute">Submit Dispute</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#submitDispute').addEventListener('click', function() {
+                        var reason = overlay.querySelector('#disputeReason').value.trim();
                         if (!reason) {
                             Toast.show('Please provide a dispute reason.', 'warning');
                             return;
                         }
-                        const success = InvoiceManager.updateStatus(invoiceId, 'disputed', reason);
-                        Modal.close(overlay);
-                        if (success) {
-                            Toast.show('Invoice has been disputed. Locum notified.', 'info');
-                            setTimeout(() => window.location.reload(), 800);
-                        } else {
-                            Toast.show('Failed to dispute invoice. Please try again.', 'error');
+                        // Direct localStorage update for dispute
+                        var raw = localStorage.getItem('gprn_data');
+                        var d = JSON.parse(raw);
+                        for (var i = 0; i < d.invoices.length; i++) {
+                            if (d.invoices[i].id === invoiceId) {
+                                d.invoices[i].status = 'disputed';
+                                d.invoices[i].disputeReason = reason;
+                                break;
+                            }
                         }
+                        localStorage.setItem('gprn_data', JSON.stringify(d));
+                        Modal.close(overlay);
+
+                        // Update DOM directly
+                        var row = document.getElementById('inv-row-' + invoiceId);
+                        if (row) {
+                            var badge = row.querySelector('.badge');
+                            if (badge) {
+                                badge.className = 'badge badge-info';
+                                badge.textContent = 'Disputed';
+                            }
+                            var actionsCell = row.querySelector('.inv-actions');
+                            if (actionsCell) {
+                                var viewBtn = actionsCell.querySelector('a');
+                                actionsCell.innerHTML = '';
+                                if (viewBtn) actionsCell.appendChild(viewBtn);
+                            }
+                        }
+                        updateBillingSummary();
+                        Toast.show('Invoice has been disputed. Locum notified.', 'info');
                     });
                 }
             });
         }
 
-        function render(preserveFilters) {
-            if (preserveFilters !== false) {
-                const monthEl = document.getElementById('filterMonth');
-                const statusEl = document.getElementById('filterInvStatus');
-                if (monthEl) filterMonth = monthEl.value;
-                if (statusEl) filterStatus = statusEl.value;
-            }
-
-            const allInvoices = InvoiceManager.getForPractice(session.id);
-            const filtered = getFilteredInvoices();
-            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-            // Summary calculations
-            const now = new Date();
-            const totalThisMonth = allInvoices
-                .filter(inv => { const d = new Date(inv.generatedDate); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); })
-                .reduce((s, inv) => s + inv.total, 0);
-            const outstanding = allInvoices.filter(inv => inv.status === 'pending' || inv.status === 'overdue').reduce((s, inv) => s + inv.total, 0);
-            const paid = allInvoices.filter(inv => inv.status === 'paid').reduce((s, inv) => s + inv.total, 0);
-
-            pageContent.innerHTML = `
-                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
-                    Billing
-                </h1>
-
-                <div class="dash-stats-row" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 32px;">
-                    ${renderStatCard('pound', 'Total This Month', formatCurrency(totalThisMonth), null, null)}
-                    ${renderStatCard('clock', 'Outstanding', formatCurrency(outstanding), null, null)}
-                    ${renderStatCard('check', 'Paid', formatCurrency(paid), null, null)}
-                </div>
-
-                <div class="content-card">
-                    <div class="content-card-header">
-                        <h2>Invoices</h2>
-                    </div>
-                    <div style="padding: 16px 24px; border-bottom: 1px solid var(--gray-100);">
-                        <div class="filter-bar" style="margin-bottom: 0;">
-                            <div class="form-group">
-                                <label class="form-label">Month</label>
-                                <select id="filterMonth" class="form-select" onchange="render()">
-                                    <option value="">All Months</option>
-                                    ${months.map((m, i) => `<option value="${i}" ${filterMonth === String(i) ? 'selected' : ''}>${m}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Status</label>
-                                <select id="filterInvStatus" class="form-select" onchange="render()">
-                                    <option value="" ${filterStatus === '' ? 'selected' : ''}>All Statuses</option>
-                                    <option value="paid" ${filterStatus === 'paid' ? 'selected' : ''}>Paid</option>
-                                    <option value="pending" ${filterStatus === 'pending' ? 'selected' : ''}>Pending</option>
-                                    <option value="overdue" ${filterStatus === 'overdue' ? 'selected' : ''}>Overdue</option>
-                                    <option value="disputed" ${filterStatus === 'disputed' ? 'selected' : ''}>Disputed</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="content-card-body" style="padding: 0; overflow-x: auto;">
-                        ${filtered.length === 0 ? `
-                            <div class="empty-state" style="padding: 40px;">
-                                <p style="color: var(--dark-600);">No invoices match your filters.</p>
-                            </div>
-                        ` : `
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Invoice #</th>
-                                    <th>Date</th>
-                                    <th>Locum</th>
-                                    <th>Shift Date</th>
-                                    <th>Session</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${filtered.map(inv => `
-                                    <tr>
-                                        <td><strong style="color: var(--dark);">${inv.invoiceNumber}</strong></td>
-                                        <td>${DateUtils.format(inv.generatedDate, 'short')}</td>
-                                        <td>
-                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                <div class="header-avatar" style="width: 28px; height: 28px; font-size: 0.6rem;">${getInitials(inv.locumName)}</div>
-                                                ${inv.locumName}
-                                            </div>
-                                        </td>
-                                        <td>${DateUtils.format(inv.shiftDate, 'medium')}</td>
-                                        <td>${inv.sessionType}</td>
-                                        <td><strong style="color: var(--dark);">${formatCurrency(inv.total)}</strong></td>
-                                        <td><span class="badge ${getInvoiceStatusBadge(inv.status)}">${inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}</span></td>
-                                        <td>
-                                            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                                                <a href="invoice-view.html?id=${inv.id}" class="btn btn-ghost btn-small">View</a>
-                                                ${inv.status === 'pending' || inv.status === 'overdue' ? `
-                                                    <button class="btn btn-small btn-primary" onclick="handleMarkPaid('${inv.id}')">Mark Paid</button>
-                                                    <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="handleDispute('${inv.id}')">Dispute</button>
-                                                ` : ''}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                        `}
-                    </div>
-                </div>
-            `;
+        function applyBillingFilter() {
+            var monthEl = document.getElementById('filterMonth');
+            var statusEl = document.getElementById('filterInvStatus');
+            billingFilterMonth = monthEl ? monthEl.value : '';
+            billingFilterStatus = statusEl ? statusEl.value : '';
+            renderBillingTable();
         }
 
-        render();
+        function renderBillingTable() {
+            var allInvoices = readInvoicesFromStorage();
+            var filtered = allInvoices;
+
+            if (billingFilterMonth !== '') {
+                var fm = parseInt(billingFilterMonth);
+                filtered = filtered.filter(function(inv) {
+                    return new Date(inv.generatedDate).getMonth() === fm;
+                });
+            }
+            if (billingFilterStatus) {
+                filtered = filtered.filter(function(inv) {
+                    return inv.status === billingFilterStatus;
+                });
+            }
+
+            var tbody = document.getElementById('invoiceTableBody');
+            var emptyState = document.getElementById('invoiceEmptyState');
+            var tableEl = document.getElementById('invoiceTable');
+
+            if (filtered.length === 0) {
+                if (tableEl) tableEl.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'block';
+                return;
+            }
+
+            if (tableEl) tableEl.style.display = 'table';
+            if (emptyState) emptyState.style.display = 'none';
+
+            var html = '';
+            for (var i = 0; i < filtered.length; i++) {
+                var inv = filtered[i];
+                var statusLabel = inv.status.charAt(0).toUpperCase() + inv.status.slice(1);
+                var badgeClass = getStatusBadgeClass(inv.status);
+                var actions = '<a href="invoice-view.html?id=' + inv.id + '" class="btn btn-ghost btn-small">View</a>';
+                if (inv.status === 'pending' || inv.status === 'overdue') {
+                    actions += ' <button class="btn btn-small btn-primary" onclick="handleMarkPaid(\'' + inv.id + '\')">Mark Paid</button>';
+                    actions += ' <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="handleDispute(\'' + inv.id + '\')">Dispute</button>';
+                }
+                html += '<tr id="inv-row-' + inv.id + '">'
+                    + '<td><strong style="color: var(--dark);">' + inv.invoiceNumber + '</strong></td>'
+                    + '<td>' + DateUtils.format(inv.generatedDate, 'short') + '</td>'
+                    + '<td><div style="display: flex; align-items: center; gap: 8px;"><div class="header-avatar" style="width: 28px; height: 28px; font-size: 0.6rem;">' + getInitials(inv.locumName) + '</div>' + inv.locumName + '</div></td>'
+                    + '<td>' + DateUtils.format(inv.shiftDate, 'medium') + '</td>'
+                    + '<td>' + inv.sessionType + '</td>'
+                    + '<td><strong style="color: var(--dark);">' + formatCurrency(inv.total) + '</strong></td>'
+                    + '<td><span class="badge ' + badgeClass + '">' + statusLabel + '</span></td>'
+                    + '<td><div class="inv-actions" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">' + actions + '</div></td>'
+                    + '</tr>';
+            }
+            if (tbody) tbody.innerHTML = html;
+        }
+
+        function renderBillingPage() {
+            var allInvoices = readInvoicesFromStorage();
+            var now = new Date();
+            var totalThisMonth = 0;
+            var outstanding = 0;
+            var paid = 0;
+            for (var i = 0; i < allInvoices.length; i++) {
+                var inv = allInvoices[i];
+                var gd = new Date(inv.generatedDate);
+                if (gd.getFullYear() === now.getFullYear() && gd.getMonth() === now.getMonth()) {
+                    totalThisMonth += inv.total;
+                }
+                if (inv.status === 'pending' || inv.status === 'overdue') {
+                    outstanding += inv.total;
+                }
+                if (inv.status === 'paid') {
+                    paid += inv.total;
+                }
+            }
+
+            var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+            pageContent.innerHTML = ''
+                + '<h1 style="font-family: \'Space Grotesk\', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">Billing</h1>'
+
+                + '<div class="dash-stats-row" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 32px;">'
+                + '<div class="dash-stat-card"><div class="stat-icon" style="background: var(--primary-50); color: var(--primary);">' + getIcon('pound') + '</div><div><div class="stat-value" id="billing-stat-total">' + formatCurrency(totalThisMonth) + '</div><div class="stat-label">Total This Month</div></div></div>'
+                + '<div class="dash-stat-card"><div class="stat-icon" style="background: var(--warning-50, #fff8e1); color: var(--warning, #f59e0b);">' + getIcon('clock') + '</div><div><div class="stat-value" id="billing-stat-outstanding">' + formatCurrency(outstanding) + '</div><div class="stat-label">Outstanding</div></div></div>'
+                + '<div class="dash-stat-card"><div class="stat-icon" style="background: var(--success-50, #e8f5e9); color: var(--success);">' + getIcon('check') + '</div><div><div class="stat-value" id="billing-stat-paid">' + formatCurrency(paid) + '</div><div class="stat-label">Paid</div></div></div>'
+                + '</div>'
+
+                + '<div class="content-card">'
+                + '<div class="content-card-header"><h2>Invoices</h2></div>'
+                + '<div style="padding: 16px 24px; border-bottom: 1px solid var(--gray-100);">'
+                + '<div class="filter-bar" style="margin-bottom: 0;">'
+                + '<div class="form-group"><label class="form-label">Month</label><select id="filterMonth" class="form-select" onchange="applyBillingFilter()"><option value="">All Months</option>' + months.map(function(m, i) { return '<option value="' + i + '">' + m + '</option>'; }).join('') + '</select></div>'
+                + '<div class="form-group"><label class="form-label">Status</label><select id="filterInvStatus" class="form-select" onchange="applyBillingFilter()"><option value="">All Statuses</option><option value="paid">Paid</option><option value="pending">Pending</option><option value="overdue">Overdue</option><option value="disputed">Disputed</option></select></div>'
+                + '</div></div>'
+                + '<div class="content-card-body" style="padding: 0; overflow-x: auto;">'
+                + '<div id="invoiceEmptyState" class="empty-state" style="padding: 40px; display: none;"><p style="color: var(--dark-600);">No invoices match your filters.</p></div>'
+                + '<table id="invoiceTable" class="data-table"><thead><tr><th>Invoice #</th><th>Date</th><th>Locum</th><th>Shift Date</th><th>Session</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody id="invoiceTableBody"></tbody></table>'
+                + '</div></div>';
+
+            renderBillingTable();
+        }
+
+        renderBillingPage();
     </script>
 </body>
 </html>
