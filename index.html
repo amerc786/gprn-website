@@ -281,15 +281,15 @@
         }
 
         .hero-paths-container path {
-            stroke-dasharray: 1000;
-            stroke-dashoffset: 700;
-            animation: pathFlow var(--path-duration, 22s) linear infinite,
-                       pathPulse var(--path-duration, 22s) ease-in-out infinite;
+            stroke-dasharray: 0.3 0.7;
+            stroke-dashoffset: 0;
+            animation: pathFlow var(--path-duration, 28s) linear infinite,
+                       pathPulse var(--pulse-duration, 8s) ease-in-out infinite;
         }
 
         @keyframes pathFlow {
-            0% { stroke-dashoffset: 1000; }
-            100% { stroke-dashoffset: -1000; }
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -1; }
         }
 
         @keyframes pathPulse {
@@ -1942,16 +1942,19 @@
                 path.setAttribute('stroke', 'rgba(217, 198, 255,' + (0.06 + i * 0.012) + ')');
                 path.setAttribute('stroke-width', (0.5 + i * 0.03).toFixed(2));
                 path.setAttribute('fill', 'none');
+                path.setAttribute('pathLength', '1');
 
                 var opMin = (0.04 + i * 0.008).toFixed(3);
                 var opMax = (0.12 + i * 0.015).toFixed(3);
 
                 var stagger = -(i * 0.8).toFixed(1);
+                var pulseStagger = -(i * 0.25).toFixed(1);
 
                 path.style.setProperty('--path-duration', '28s');
+                path.style.setProperty('--pulse-duration', '8s');
                 path.style.setProperty('--path-opacity-min', opMin);
                 path.style.setProperty('--path-opacity-max', opMax);
-                path.style.animationDelay = stagger + 's, ' + stagger + 's';
+                path.style.animationDelay = stagger + 's, ' + pulseStagger + 's';
 
                 svg.appendChild(path);
             }
