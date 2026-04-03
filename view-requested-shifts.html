@@ -20,247 +20,565 @@
         if (!initPage('practice')) throw new Error('Auth required');
 
         const session = Auth.getSession();
-        const data = getMockData();
         const pageContent = initAppLayout('practice', 'view-shifts', 'View Shifts');
+
+        // Calendar state
+        var calYear = new Date().getFullYear();
+        var calMonth = new Date().getMonth();
+        var viewMode = 'calendar';
+        var currentStatusFilter = 'all';
+        var currentDateFrom = '';
+        var currentDateTo = '';
+
+        var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        var dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
         // Ensure each shift's applicants have corresponding offer records
         function ensureOfferExists(currentData, shift, locum) {
-            const existing = currentData.offers.find(o => o.shiftId === shift.id && o.locumId === locum.id && o.status === 'pending');
+            var existing = currentData.offers.find(function(o) { return o.shiftId === shift.id && o.locumId === locum.id && o.status === 'pending'; });
             if (existing) return existing.id;
-            const offerId = 'offer-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+            var offerId = 'offer-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
             currentData.offers.push({
-                id: offerId,
-                shiftId: shift.id,
-                locumId: locum.id,
-                practiceId: shift.practiceId,
-                practiceName: shift.practiceName,
-                healthBoard: shift.healthBoard,
-                shiftDate: shift.date,
-                startTime: shift.startTime,
-                endTime: shift.endTime,
-                sessionType: shift.sessionType,
-                rateAM: locum.rates.am,
-                ratePM: locum.rates.pm,
-                rateFullDay: locum.rates.fullDay,
-                rateHousecall: locum.rates.housecall || 0,
-                status: 'pending',
-                offerDate: DateUtils.toISO(new Date()),
-                comment: '',
-                housecalls: shift.housecalls
+                id: offerId, shiftId: shift.id, locumId: locum.id, practiceId: shift.practiceId,
+                practiceName: shift.practiceName, healthBoard: shift.healthBoard, shiftDate: shift.date,
+                startTime: shift.startTime, endTime: shift.endTime, sessionType: shift.sessionType,
+                rateAM: locum.rates.am, ratePM: locum.rates.pm, rateFullDay: locum.rates.fullDay,
+                rateHousecall: locum.rates.housecall || 0, status: 'pending',
+                offerDate: DateUtils.toISO(new Date()), comment: '', housecalls: shift.housecalls
             });
             saveMockData(currentData);
             return offerId;
         }
 
-        function renderShiftsList(statusFilter, dateFrom, dateTo) {
-            const currentData = getMockData();
-            let shifts = currentData.shifts.filter(s => s.practiceId === session.id);
+        function getStatusBadge(status) {
+            var map = { 'open': 'badge-primary', 'filled': 'badge-success', 'pending': 'badge-warning', 'accepted': 'badge-success', 'acknowledged': 'badge-success', 'confirmed': 'badge-info', 'completed': 'badge-info', 'declined': 'badge-neutral', 'withdrawn': 'badge-neutral', 'cancelled': 'badge-danger', 'no_show': 'badge-danger', 'negotiating': 'badge-warning', 'rejected_by_locum': 'badge-danger', 'paid': 'badge-success', 'overdue': 'badge-danger', 'disputed': 'badge-warning' };
+            return map[status] || 'badge-neutral';
+        }
 
+        function getShiftsForPractice(statusFilter) {
+            var currentData = getMockData();
+            var shifts = currentData.shifts.filter(function(s) { return s.practiceId === session.id; });
             if (statusFilter === 'history') {
-                shifts = shifts.filter(s => s.status === 'filled' || new Date(s.date) < new Date());
+                shifts = shifts.filter(function(s) { return s.status === 'filled' || new Date(s.date) < new Date(); });
             } else if (statusFilter === 'completed') {
-                shifts = shifts.filter(s => {
-                    return currentData.offers.some(o => o.shiftId === s.id && o.status === 'completed');
-                });
+                shifts = shifts.filter(function(s) { return currentData.offers.some(function(o) { return o.shiftId === s.id && o.status === 'completed'; }); });
             } else if (statusFilter && statusFilter !== 'all') {
-                shifts = shifts.filter(s => s.status === statusFilter);
+                shifts = shifts.filter(function(s) { return s.status === statusFilter; });
             }
-            if (dateFrom) {
-                shifts = shifts.filter(s => s.date >= dateFrom);
-            }
-            if (dateTo) {
-                shifts = shifts.filter(s => s.date <= dateTo);
+            return shifts;
+        }
+
+        function getShiftStatusColor(shift) {
+            var currentData = getMockData();
+            var hasCompleted = currentData.offers.some(function(o) { return o.shiftId === shift.id && o.status === 'completed'; });
+            if (hasCompleted) return 'completed';
+            if (shift.status === 'filled') return 'filled';
+            return 'open';
+        }
+
+        // ============== CALENDAR VIEW ==============
+
+        function renderCalendarView() {
+            var daysInMonth = DateUtils.getDaysInMonth(calYear, calMonth);
+            var firstDay = DateUtils.getFirstDayOfMonth(calYear, calMonth);
+            var todayStr = DateUtils.toISO(new Date());
+            var shifts = getShiftsForPractice(currentStatusFilter);
+
+            // Group shifts by date
+            var shiftsByDate = {};
+            shifts.forEach(function(s) {
+                if (!shiftsByDate[s.date]) shiftsByDate[s.date] = [];
+                shiftsByDate[s.date].push(s);
+            });
+
+            // Previous month trailing days
+            var prevMonth = calMonth === 0 ? 11 : calMonth - 1;
+            var prevYear = calMonth === 0 ? calYear - 1 : calYear;
+            var daysInPrevMonth = DateUtils.getDaysInMonth(prevYear, prevMonth);
+
+            var cells = '';
+
+            for (var i = firstDay - 1; i >= 0; i--) {
+                var day = daysInPrevMonth - i;
+                var dateStr = prevYear + '-' + String(prevMonth + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+                var dayShifts = shiftsByDate[dateStr] || [];
+                cells += buildDayCell(day, dateStr, dayShifts, false, todayStr);
             }
 
-            shifts.sort((a, b) => new Date(a.date) - new Date(b.date));
+            // Current month days
+            for (var d = 1; d <= daysInMonth; d++) {
+                var dateStr = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                var dayShifts = shiftsByDate[dateStr] || [];
+                cells += buildDayCell(d, dateStr, dayShifts, true, todayStr);
+            }
 
-            const locums = currentData.locums;
+            // Next month fill
+            var totalCells = firstDay + daysInMonth;
+            var remainder = totalCells % 7;
+            if (remainder > 0) {
+                var nextMonth = calMonth === 11 ? 0 : calMonth + 1;
+                var nextYear = calMonth === 11 ? calYear + 1 : calYear;
+                for (var d = 1; d <= (7 - remainder); d++) {
+                    var dateStr = nextYear + '-' + String(nextMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                    var dayShifts = shiftsByDate[dateStr] || [];
+                    cells += buildDayCell(d, dateStr, dayShifts, false, todayStr);
+                }
+            }
+
+            return '<div class="calendar-container">'
+                + '<div class="calendar-header-bar">'
+                + '<div class="calendar-nav">'
+                + '<button id="calPrev">' + getIcon('chevron-left') + '</button>'
+                + '<span class="calendar-title">' + monthNames[calMonth] + ' ' + calYear + '</span>'
+                + '<button id="calNext">' + getIcon('chevron-right') + '</button>'
+                + '</div>'
+                + '<div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">'
+                + '<button class="btn btn-secondary btn-small" id="calToday">Today</button>'
+                + '<div style="display: flex; align-items: center; gap: 16px; font-size: 0.78rem; flex-wrap: wrap;">'
+                + '<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: var(--primary);"></span> Open</span>'
+                + '<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: var(--success);"></span> Filled</span>'
+                + '<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: var(--secondary);"></span> Completed</span>'
+                + '</div></div></div>'
+                + '<div class="calendar-grid-full">'
+                + dayNames.map(function(d) { return '<div class="calendar-day-header">' + d + '</div>'; }).join('')
+                + cells
+                + '</div></div>';
+        }
+
+        function buildDayCell(day, dateStr, shifts, isCurrentMonth, todayStr) {
+            var isToday = dateStr === todayStr;
+            var cls = 'calendar-day-cell' + (isToday ? ' today' : '') + (!isCurrentMonth ? ' other-month' : '');
+            var html = '<div class="' + cls + '" data-date="' + dateStr + '" style="cursor: pointer;">';
+            html += '<div class="cal-date">' + day + '</div>';
+
+            var maxShow = 3;
+            for (var i = 0; i < Math.min(shifts.length, maxShow); i++) {
+                var s = shifts[i];
+                var color = getShiftStatusColor(s);
+                var bgColor, textColor;
+                if (color === 'open') { bgColor = 'rgba(79,70,229,0.15)'; textColor = 'var(--primary)'; }
+                else if (color === 'filled') { bgColor = 'rgba(16,185,129,0.15)'; textColor = 'var(--success)'; }
+                else { bgColor = 'rgba(14,165,233,0.15)'; textColor = 'var(--secondary)'; }
+
+                html += '<div data-shift-id="' + s.id + '" style="font-size: 0.65rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-bottom: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: ' + bgColor + '; color: ' + textColor + ';">'
+                    + s.sessionType + ' ' + s.startTime
+                    + '</div>';
+            }
+            if (shifts.length > maxShow) {
+                html += '<div style="font-size: 0.65rem; color: var(--dark-600);">+' + (shifts.length - maxShow) + ' more</div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
+        // ============== SHIFT DETAIL MODAL ==============
+
+        function openShiftDetailModal(shiftId) {
+            var currentData = getMockData();
+            var shift = currentData.shifts.find(function(s) { return s.id === shiftId; });
+            if (!shift) return;
+
+            var locums = currentData.locums;
+            var allShiftOffers = currentData.offers.filter(function(o) { return o.shiftId === shift.id; });
+            var pendingOffers = allShiftOffers.filter(function(o) { return o.status === 'pending' || o.status === 'negotiating'; });
+
+            // Create mock offers if needed
+            if (shift.status === 'open' && allShiftOffers.length === 0 && (shift.applicants || 0) > 0) {
+                var usedIds = {};
+                pendingOffers.forEach(function(o) { usedIds[o.locumId] = true; });
+                var available = locums.filter(function(l) { return !usedIds[l.id]; });
+                for (var i = 0; i < Math.min(shift.applicants || 0, available.length); i++) {
+                    ensureOfferExists(currentData, shift, available[i]);
+                }
+                allShiftOffers = currentData.offers.filter(function(o) { return o.shiftId === shift.id; });
+                pendingOffers = allShiftOffers.filter(function(o) { return o.status === 'pending' || o.status === 'negotiating'; });
+            }
+
+            // Build info section
+            var info = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">'
+                + '<div><div style="font-size: 0.75rem; color: var(--dark-600); margin-bottom: 2px;">Date</div><div style="font-weight: 600;">' + DateUtils.format(shift.date, 'full') + '</div></div>'
+                + '<div><div style="font-size: 0.75rem; color: var(--dark-600); margin-bottom: 2px;">Time</div><div style="font-weight: 600;">' + shift.startTime + ' - ' + shift.endTime + '</div></div>'
+                + '<div><div style="font-size: 0.75rem; color: var(--dark-600); margin-bottom: 2px;">Session</div><div style="font-weight: 600;">' + shift.sessionType + '</div></div>'
+                + '<div><div style="font-size: 0.75rem; color: var(--dark-600); margin-bottom: 2px;">Status</div><div><span class="badge ' + getStatusBadge(shift.status) + '">' + shift.status.charAt(0).toUpperCase() + shift.status.slice(1) + '</span></div></div>'
+                + '<div><div style="font-size: 0.75rem; color: var(--dark-600); margin-bottom: 2px;">Shift Type</div><div style="font-weight: 600;">' + shift.shiftType + '</div></div>'
+                + '<div><div style="font-size: 0.75rem; color: var(--dark-600); margin-bottom: 2px;">Computer System</div><div style="font-weight: 600;">' + shift.computerSystem + '</div></div>'
+                + '<div><div style="font-size: 0.75rem; color: var(--dark-600); margin-bottom: 2px;">Housecalls</div><div>' + (shift.housecalls ? '<span class="badge badge-info">Yes</span>' : '<span class="badge badge-neutral">No</span>') + '</div></div>'
+                + (shift.budgetRate ? '<div><div style="font-size: 0.75rem; color: var(--dark-600); margin-bottom: 2px;">Budget</div><div style="font-weight: 600;">' + formatCurrency(shift.budgetRate) + '</div></div>' : '')
+                + '</div>';
+
+            if (shift.comment) {
+                info += '<div style="padding: 10px; background: var(--gray-50); border-radius: 8px; margin-bottom: 16px; font-size: 0.85rem; color: var(--dark-600);">' + shift.comment + '</div>';
+            }
+
+            // Accepted/confirmed locum
+            var acceptedOffer = allShiftOffers.find(function(o) { return ['accepted','acknowledged','confirmed','completed'].indexOf(o.status) >= 0; });
+            if (acceptedOffer) {
+                var loc = locums.find(function(l) { return l.id === acceptedOffer.locumId; });
+                if (loc) {
+                    var rate = acceptedOffer.agreedRate || (acceptedOffer.sessionType === 'Full Day' ? acceptedOffer.rateFullDay : acceptedOffer.sessionType === 'AM' ? acceptedOffer.rateAM : acceptedOffer.ratePM);
+                    info += '<div style="padding: 12px; background: rgba(16,185,129,0.06); border-radius: 8px; border: 1px solid rgba(16,185,129,0.15); margin-bottom: 16px;">'
+                        + '<div style="display: flex; align-items: center; gap: 10px;">'
+                        + '<div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.7rem;">' + getInitials(loc.firstName + ' ' + loc.lastName) + '</div>'
+                        + '<div><strong style="color: var(--dark);">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</strong>'
+                        + '<div style="font-size: 0.8rem; color: var(--dark-600);"><span class="badge ' + getStatusBadge(acceptedOffer.status) + '" style="font-size: 0.7rem;">' + acceptedOffer.status.charAt(0).toUpperCase() + acceptedOffer.status.slice(1) + '</span> &bull; Rate: ' + formatCurrency(rate) + '</div>'
+                        + '</div></div></div>';
+                }
+            }
+
+            // Applicants section
+            if (pendingOffers.length > 0) {
+                info += '<div style="border-top: 1px solid var(--gray-100); padding-top: 16px;">'
+                    + '<h4 style="font-size: 0.88rem; font-weight: 600; color: var(--dark-700); margin-bottom: 12px;">Applicants (' + pendingOffers.length + ')</h4>';
+
+                pendingOffers.forEach(function(offer) {
+                    var loc = locums.find(function(l) { return l.id === offer.locumId; });
+                    if (!loc) return;
+                    var offerRate = offer.sessionType === 'Full Day' ? offer.rateFullDay : offer.sessionType === 'AM' ? offer.rateAM : offer.ratePM;
+
+                    info += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gray-50); border-radius: 8px; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">'
+                        + '<div style="display: flex; align-items: center; gap: 12px;">'
+                        + '<div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.7rem;">' + getInitials(loc.firstName + ' ' + loc.lastName) + '</div>'
+                        + '<div><strong style="font-size: 0.88rem; color: var(--dark);">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</strong>'
+                        + renderBarredWarning(session.id, loc.id)
+                        + '<div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">'
+                        + '<span style="font-size: 0.8rem; color: var(--dark-600);">Reliability: <strong style="color: ' + (loc.bookingReliability >= 95 ? 'var(--success)' : 'var(--warning)') + ';">' + loc.bookingReliability + '%</strong></span>'
+                        + '<span style="font-size: 0.8rem; color: var(--dark-600);">Rate: ' + formatCurrency(offerRate) + '</span>'
+                        + (shift.budgetRate ? (offerRate > shift.budgetRate ? '<span class="badge badge-danger" style="font-size:0.7rem;padding:2px 6px;">Over budget</span>' : '<span class="badge badge-success" style="font-size:0.7rem;padding:2px 6px;">Within budget</span>') : '')
+                        + '</div></div></div>';
+
+                    // Negotiations
+                    if (offer.negotiations && offer.negotiations.length > 0) {
+                        info += '<div style="width:100%;padding:8px 12px;background:rgba(14,165,233,0.06);border-radius:6px;margin-top:4px;">'
+                            + '<div style="font-size:0.75rem;font-weight:600;color:var(--secondary);margin-bottom:4px;">Rate Negotiation</div>';
+                        offer.negotiations.forEach(function(n) {
+                            info += '<div style="font-size:0.78rem;color:var(--dark-600);margin-bottom:2px;"><strong>' + (n.from === 'practice' ? 'You' : 'Locum') + ':</strong> ' + formatCurrency(n.rate) + (n.accepted ? ' ✓ Agreed' : '') + (n.message ? ' — ' + n.message : '') + '</div>';
+                        });
+                        info += '</div>';
+                    }
+
+                    // Action buttons
+                    info += '<div style="display: flex; gap: 8px; flex-wrap: wrap;">'
+                        + '<a href="locum-profile-view.html?id=' + loc.id + '" class="btn btn-ghost btn-small">View Profile</a>';
+
+                    if (offer.status === 'negotiating' && offer.negotiations && offer.negotiations.length > 0 && offer.negotiations[offer.negotiations.length - 1].from === 'locum') {
+                        info += '<button class="btn btn-small" style="background:var(--secondary);color:white;border-color:var(--secondary);" onclick="Modal.close(this.closest(\'.modal-overlay\')); openNegotiate(\'' + offer.id + '\', ' + (offer.counterRate || offerRate) + ')">Counter</button>'
+                            + '<button class="btn btn-primary btn-small" onclick="Modal.close(this.closest(\'.modal-overlay\')); acceptCounterOffer(\'' + offer.id + '\')">Accept Rate</button>'
+                            + '<button class="btn btn-ghost btn-small" onclick="Modal.close(this.closest(\'.modal-overlay\')); declineApplicant(\'' + offer.id + '\')">Decline</button>';
+                    } else {
+                        info += '<button class="btn btn-small" style="background:var(--secondary);color:white;border-color:var(--secondary);" onclick="Modal.close(this.closest(\'.modal-overlay\')); openNegotiate(\'' + offer.id + '\', ' + offerRate + ')">Negotiate</button>'
+                            + '<button class="btn btn-primary btn-small" onclick="Modal.close(this.closest(\'.modal-overlay\')); acceptApplicant(\'' + offer.id + '\')">Accept</button>'
+                            + '<button class="btn btn-ghost btn-small" onclick="Modal.close(this.closest(\'.modal-overlay\')); declineApplicant(\'' + offer.id + '\')">Decline</button>';
+                    }
+                    info += '</div></div>';
+                });
+                info += '</div>';
+            }
+
+            Modal.show({
+                title: DateUtils.format(shift.date, 'full') + ' — ' + shift.sessionType,
+                size: 'large',
+                body: info,
+                footer: '<button class="btn btn-ghost" data-modal-close>Close</button>'
+            });
+        }
+
+        // ============== DAY DETAIL MODAL ==============
+
+        function openDayDetail(dateStr) {
+            var allShifts = getShiftsForPractice(currentStatusFilter);
+            var dayShifts = allShifts.filter(function(s) { return s.date === dateStr; });
+
+            if (dayShifts.length === 0) {
+                Modal.show({
+                    title: 'Shifts for ' + DateUtils.format(dateStr, 'full'),
+                    body: '<p style="color: var(--dark-600); padding: 12px 0;">No shifts on this day.</p><a href="post-shift.html" class="btn btn-primary btn-small">Post a Shift</a>',
+                    footer: '<button class="btn btn-ghost" data-modal-close>Close</button>'
+                });
+                return;
+            }
+
+            if (dayShifts.length === 1) {
+                openShiftDetailModal(dayShifts[0].id);
+                return;
+            }
+
+            var currentData = getMockData();
+            var body = '';
+            dayShifts.forEach(function(shift) {
+                var color = getShiftStatusColor(shift);
+                var applicantCount = currentData.offers.filter(function(o) { return o.shiftId === shift.id && (o.status === 'pending' || o.status === 'negotiating'); }).length;
+                var filledOffer = currentData.offers.find(function(o) { return o.shiftId === shift.id && ['accepted','acknowledged','confirmed','completed'].indexOf(o.status) >= 0; });
+
+                body += '<div onclick="Modal.close(this.closest(\'.modal-overlay\')); openShiftDetailModal(\'' + shift.id + '\')" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background=\'var(--gray-50)\'" onmouseout="this.style.background=\'transparent\'">'
+                    + '<div style="display: flex; align-items: center; gap: 12px;">'
+                    + '<span class="badge ' + getStatusBadge(shift.status) + '">' + shift.status.charAt(0).toUpperCase() + shift.status.slice(1) + '</span>'
+                    + '<div><strong style="font-size: 0.9rem;">' + shift.sessionType + '</strong>'
+                    + '<div style="font-size: 0.82rem; color: var(--dark-600);">' + shift.startTime + ' - ' + shift.endTime + '</div></div></div>'
+                    + '<div style="text-align: right; font-size: 0.82rem; color: var(--dark-600);">';
+
+                if (filledOffer) {
+                    var loc = currentData.locums.find(function(l) { return l.id === filledOffer.locumId; });
+                    body += loc ? loc.title + ' ' + loc.firstName + ' ' + loc.lastName : 'Assigned';
+                } else {
+                    body += applicantCount + ' applicant' + (applicantCount !== 1 ? 's' : '');
+                }
+                body += '</div></div>';
+            });
+
+            Modal.show({
+                title: 'Shifts for ' + DateUtils.format(dateStr, 'full') + ' (' + dayShifts.length + ')',
+                body: '<div style="margin: -20px -24px;">' + body + '</div>',
+                footer: '<button class="btn btn-ghost" data-modal-close>Close</button>'
+            });
+        }
+
+        // ============== LIST VIEW (original) ==============
+
+        function renderShiftsList(statusFilter, dateFrom, dateTo) {
+            var currentData = getMockData();
+            var shifts = getShiftsForPractice(statusFilter);
+
+            if (dateFrom) shifts = shifts.filter(function(s) { return s.date >= dateFrom; });
+            if (dateTo) shifts = shifts.filter(function(s) { return s.date <= dateTo; });
+            shifts.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+
+            var locums = currentData.locums;
 
             if (shifts.length === 0) {
                 return renderEmptyState('list', 'No Shifts Found', 'No shifts match your current filters.', 'Post a Shift', 'post-shift.html');
             }
 
-            return shifts.map(shift => {
-                // Get ALL offers for this shift (to avoid recreating handled ones)
-                const allShiftOffers = currentData.offers.filter(o => o.shiftId === shift.id);
-                let shiftOffers = allShiftOffers.filter(o => o.status === 'pending' || o.status === 'negotiating');
+            return shifts.map(function(shift) {
+                var allShiftOffers = currentData.offers.filter(function(o) { return o.shiftId === shift.id; });
+                var shiftOffers = allShiftOffers.filter(function(o) { return o.status === 'pending' || o.status === 'negotiating'; });
 
-                // Only create mock offers for open shifts that have never had real offers
                 if (shift.status === 'open' && allShiftOffers.length === 0 && (shift.applicants || 0) > 0) {
-                    const applicantCount = shift.applicants || 0;
-                    const usedLocumIds = new Set(shiftOffers.map(o => o.locumId));
-                    const availableLocums = locums.filter(l => !usedLocumIds.has(l.id));
-                    for (let i = 0; i < Math.min(applicantCount, availableLocums.length); i++) {
+                    var usedLocumIds = {};
+                    shiftOffers.forEach(function(o) { usedLocumIds[o.locumId] = true; });
+                    var availableLocums = locums.filter(function(l) { return !usedLocumIds[l.id]; });
+                    for (var i = 0; i < Math.min(shift.applicants || 0, availableLocums.length); i++) {
                         ensureOfferExists(currentData, shift, availableLocums[i]);
                     }
-                    shiftOffers = currentData.offers.filter(o => o.shiftId === shift.id && (o.status === 'pending' || o.status === 'negotiating'));
+                    shiftOffers = currentData.offers.filter(function(o) { return o.shiftId === shift.id && (o.status === 'pending' || o.status === 'negotiating'); });
                 }
 
-                // Resolve locum details for each offer
-                const applicants = shiftOffers.map(offer => {
-                    const loc = locums.find(l => l.id === offer.locumId);
-                    return loc ? { offer, locum: loc } : null;
+                var applicants = shiftOffers.map(function(offer) {
+                    var loc = locums.find(function(l) { return l.id === offer.locumId; });
+                    return loc ? { offer: offer, locum: loc } : null;
                 }).filter(Boolean);
 
-                return `
-                    <div class="shift-card-full" data-shift-id="${shift.id}">
-                        <div class="shift-card-header">
-                            <div>
-                                <h3 class="shift-card-title">${DateUtils.format(shift.date, 'full')}</h3>
-                                <p class="shift-card-location">${shift.startTime} - ${shift.endTime} &bull; ${shift.sessionType}</p>
-                            </div>
-                            <div class="shift-card-badges">
-                                <span class="badge ${getStatusBadge(shift.status)}">${shift.status.charAt(0).toUpperCase() + shift.status.slice(1)}</span>
-                                <span class="badge badge-neutral">${applicants.length} applicant${applicants.length !== 1 ? 's' : ''}</span>
-                            </div>
-                        </div>
-                        <div class="shift-card-details">
-                            <div class="shift-card-detail">
-                                ${getIcon('monitor')}
-                                <span>${shift.computerSystem}</span>
-                            </div>
-                            <div class="shift-card-detail">
-                                ${getIcon('tag')}
-                                <span>${shift.shiftType}</span>
-                            </div>
-                            ${!shift.housecalls ? `<span class="badge badge-neutral">No Housecalls</span>` : `<span class="badge badge-info">Housecalls</span>`}
-                        </div>
+                var html = '<div class="shift-card-full" data-shift-id="' + shift.id + '">'
+                    + '<div class="shift-card-header"><div>'
+                    + '<h3 class="shift-card-title">' + DateUtils.format(shift.date, 'full') + '</h3>'
+                    + '<p class="shift-card-location">' + shift.startTime + ' - ' + shift.endTime + ' &bull; ' + shift.sessionType + '</p>'
+                    + '</div><div class="shift-card-badges">'
+                    + '<span class="badge ' + getStatusBadge(shift.status) + '">' + shift.status.charAt(0).toUpperCase() + shift.status.slice(1) + '</span>'
+                    + '<span class="badge badge-neutral">' + applicants.length + ' applicant' + (applicants.length !== 1 ? 's' : '') + '</span>'
+                    + '</div></div>'
+                    + '<div class="shift-card-details">'
+                    + '<div class="shift-card-detail">' + getIcon('monitor') + '<span>' + shift.computerSystem + '</span></div>'
+                    + '<div class="shift-card-detail">' + getIcon('tag') + '<span>' + shift.shiftType + '</span></div>'
+                    + (!shift.housecalls ? '<span class="badge badge-neutral">No Housecalls</span>' : '<span class="badge badge-info">Housecalls</span>')
+                    + '</div>';
 
-                        ${applicants.length > 0 ? `
-                        <div id="applicants-${shift.id}" style="display: none; padding-top: 12px; border-top: 1px solid var(--gray-100);">
-                            <h4 style="font-size: 0.88rem; font-weight: 600; color: var(--dark-700); margin-bottom: 12px;">Applicants</h4>
-                            ${applicants.map(({ offer, locum: loc }) => `
-                                <div class="applicant-row" data-offer-id="${offer.id}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gray-50); border-radius: 8px; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-                                    <div style="display: flex; align-items: center; gap: 12px;">
-                                        <div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.7rem;">${getInitials(loc.firstName + ' ' + loc.lastName)}</div>
-                                        <div>
-                                            <strong style="font-size: 0.88rem; color: var(--dark);">${loc.title} ${loc.firstName} ${loc.lastName}</strong>
-                                            ${renderBarredWarning(session.id, loc.id)}
-                                            <div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
-                                                <span style="font-size: 0.8rem; color: var(--dark-600);">Reliability: <strong style="color: ${loc.bookingReliability >= 95 ? 'var(--success)' : 'var(--warning)'};">${loc.bookingReliability}%</strong></span>
-                                                <span style="font-size: 0.8rem; color: var(--dark-600);">Rate: ${formatCurrency(offer.sessionType === 'Full Day' ? offer.rateFullDay : offer.sessionType === 'AM' ? offer.rateAM : offer.ratePM)}</span>
-                                                ${shift.budgetRate ? (() => { const offerRate = offer.sessionType === 'Full Day' ? offer.rateFullDay : offer.sessionType === 'AM' ? offer.rateAM : offer.ratePM; return offerRate > shift.budgetRate ? '<span class="badge badge-danger" style="font-size:0.7rem;padding:2px 6px;">Over budget</span>' : '<span class="badge badge-success" style="font-size:0.7rem;padding:2px 6px;">Within budget</span>'; })() : ''}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    ${offer.negotiations && offer.negotiations.length > 0 ? `
-                                    <div style="width:100%;padding:8px 12px;background:rgba(14,165,233,0.06);border-radius:6px;margin-top:4px;">
-                                        <div style="font-size:0.75rem;font-weight:600;color:var(--secondary);margin-bottom:4px;">Rate Negotiation</div>
-                                        ${offer.negotiations.map(n => '<div style="font-size:0.78rem;color:var(--dark-600);margin-bottom:2px;"><strong>' + (n.from === 'practice' ? 'You' : 'Locum') + ':</strong> ' + formatCurrency(n.rate) + (n.accepted ? ' ✓ Agreed' : '') + (n.message ? ' — ' + n.message : '') + '</div>').join('')}
-                                    </div>` : ''}
-                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                        <a href="locum-profile-view.html?id=${loc.id}" class="btn btn-ghost btn-small">View Profile</a>
-                                        ${offer.status === 'negotiating' && offer.negotiations && offer.negotiations.length > 0 && offer.negotiations[offer.negotiations.length - 1].from === 'locum' ? `
-                                            <button class="btn btn-small" style="background:var(--secondary);color:white;border-color:var(--secondary);" onclick="openNegotiate('${offer.id}', ${offer.counterRate})">Counter</button>
-                                            <button class="btn btn-primary btn-small" onclick="acceptCounterOffer('${offer.id}')">Accept Rate</button>
-                                            <button class="btn btn-ghost btn-small" onclick="declineApplicant('${offer.id}')">Decline</button>
-                                        ` : `
-                                            <button class="btn btn-small" style="background:var(--secondary);color:white;border-color:var(--secondary);" onclick="openNegotiate('${offer.id}', ${offer.sessionType === 'Full Day' ? offer.rateFullDay : offer.sessionType === 'AM' ? offer.rateAM : offer.ratePM})">Negotiate</button>
-                                            <button class="btn btn-primary btn-small" onclick="acceptApplicant('${offer.id}')">Accept</button>
-                                            <button class="btn btn-ghost btn-small" onclick="declineApplicant('${offer.id}')">Decline</button>
-                                        `}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                        ` : ''}
+                if (applicants.length > 0) {
+                    html += '<div id="applicants-' + shift.id + '" style="display: none; padding-top: 12px; border-top: 1px solid var(--gray-100);">'
+                        + '<h4 style="font-size: 0.88rem; font-weight: 600; color: var(--dark-700); margin-bottom: 12px;">Applicants</h4>';
+                    applicants.forEach(function(a) {
+                        var offer = a.offer;
+                        var loc = a.locum;
+                        var offerRate = offer.sessionType === 'Full Day' ? offer.rateFullDay : offer.sessionType === 'AM' ? offer.rateAM : offer.ratePM;
+                        html += '<div class="applicant-row" data-offer-id="' + offer.id + '" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gray-50); border-radius: 8px; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">'
+                            + '<div style="display: flex; align-items: center; gap: 12px;">'
+                            + '<div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.7rem;">' + getInitials(loc.firstName + ' ' + loc.lastName) + '</div>'
+                            + '<div><strong style="font-size: 0.88rem; color: var(--dark);">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</strong>'
+                            + renderBarredWarning(session.id, loc.id)
+                            + '<div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">'
+                            + '<span style="font-size: 0.8rem; color: var(--dark-600);">Reliability: <strong style="color: ' + (loc.bookingReliability >= 95 ? 'var(--success)' : 'var(--warning)') + ';">' + loc.bookingReliability + '%</strong></span>'
+                            + '<span style="font-size: 0.8rem; color: var(--dark-600);">Rate: ' + formatCurrency(offerRate) + '</span>'
+                            + (shift.budgetRate ? (offerRate > shift.budgetRate ? '<span class="badge badge-danger" style="font-size:0.7rem;padding:2px 6px;">Over budget</span>' : '<span class="badge badge-success" style="font-size:0.7rem;padding:2px 6px;">Within budget</span>') : '')
+                            + '</div></div></div>';
 
-                        ${allShiftOffers && allShiftOffers.some(o => ['accepted','acknowledged','confirmed','completed'].includes(o.status)) ? (() => {
-                            const ao = allShiftOffers.find(o => ['accepted','acknowledged','confirmed','completed'].includes(o.status));
-                            if (!ao) return '';
-                            const loc = locums.find(l => l.id === ao.locumId);
-                            if (!loc) return '';
-                            const inv = currentData.invoices ? currentData.invoices.find(i => i.offerId === ao.id) : null;
-                            return '<div style="padding:12px;background:rgba(16,185,129,0.06);border-radius:8px;margin-top:8px;border:1px solid rgba(16,185,129,0.15);"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"><div style="display:flex;align-items:center;gap:10px;"><div class="header-avatar" style="width:32px;height:32px;font-size:0.65rem;">' + getInitials(loc.firstName + ' ' + loc.lastName) + '</div><div><strong style="font-size:0.85rem;color:var(--dark);">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</strong><div style="font-size:0.78rem;color:var(--dark-600);">Status: <span class="badge ' + getStatusBadge(ao.status) + '" style="font-size:0.7rem;">' + ao.status.charAt(0).toUpperCase() + ao.status.slice(1).replace(/_/g,' ') + '</span>' + (ao.agreedRate ? ' • Agreed rate: ' + formatCurrency(ao.agreedRate) : ' • Rate: ' + formatCurrency(ao.sessionType === 'Full Day' ? ao.rateFullDay : ao.sessionType === 'AM' ? ao.rateAM : ao.ratePM)) + '</div></div></div><div style="display:flex;gap:8px;">' + (inv ? '<a href="invoice-view.html?id=' + inv.id + '" class="btn btn-ghost btn-small">' + inv.invoiceNumber + ' (' + inv.status + ')</a>' : '') + '<a href="locum-profile-view.html?id=' + loc.id + '" class="btn btn-ghost btn-small">View Profile</a></div></div></div>';
-                        })() : ''}
+                        if (offer.negotiations && offer.negotiations.length > 0) {
+                            html += '<div style="width:100%;padding:8px 12px;background:rgba(14,165,233,0.06);border-radius:6px;margin-top:4px;">'
+                                + '<div style="font-size:0.75rem;font-weight:600;color:var(--secondary);margin-bottom:4px;">Rate Negotiation</div>';
+                            offer.negotiations.forEach(function(n) {
+                                html += '<div style="font-size:0.78rem;color:var(--dark-600);margin-bottom:2px;"><strong>' + (n.from === 'practice' ? 'You' : 'Locum') + ':</strong> ' + formatCurrency(n.rate) + (n.accepted ? ' ✓ Agreed' : '') + (n.message ? ' — ' + n.message : '') + '</div>';
+                            });
+                            html += '</div>';
+                        }
 
-                        <div class="shift-card-footer">
-                            <span style="font-size: 0.82rem; color: var(--gray-400);">Shift date: ${DateUtils.format(shift.date, 'medium')}</span>
-                            ${applicants.length > 0 ? `
-                                <button class="btn btn-ghost btn-small" onclick="toggleApplicants('${shift.id}', this)">
-                                    ${getIcon('chevron-down')} Show Applicants
-                                </button>
-                            ` : `
-                                <span style="font-size: 0.82rem; color: var(--gray-400);">No applicants yet</span>
-                            `}
-                        </div>
-                    </div>
-                `;
+                        html += '<div style="display: flex; gap: 8px; flex-wrap: wrap;">'
+                            + '<a href="locum-profile-view.html?id=' + loc.id + '" class="btn btn-ghost btn-small">View Profile</a>';
+                        if (offer.status === 'negotiating' && offer.negotiations && offer.negotiations.length > 0 && offer.negotiations[offer.negotiations.length - 1].from === 'locum') {
+                            html += '<button class="btn btn-small" style="background:var(--secondary);color:white;border-color:var(--secondary);" onclick="openNegotiate(\'' + offer.id + '\', ' + (offer.counterRate || offerRate) + ')">Counter</button>'
+                                + '<button class="btn btn-primary btn-small" onclick="acceptCounterOffer(\'' + offer.id + '\')">Accept Rate</button>'
+                                + '<button class="btn btn-ghost btn-small" onclick="declineApplicant(\'' + offer.id + '\')">Decline</button>';
+                        } else {
+                            html += '<button class="btn btn-small" style="background:var(--secondary);color:white;border-color:var(--secondary);" onclick="openNegotiate(\'' + offer.id + '\', ' + offerRate + ')">Negotiate</button>'
+                                + '<button class="btn btn-primary btn-small" onclick="acceptApplicant(\'' + offer.id + '\')">Accept</button>'
+                                + '<button class="btn btn-ghost btn-small" onclick="declineApplicant(\'' + offer.id + '\')">Decline</button>';
+                        }
+                        html += '</div></div>';
+                    });
+                    html += '</div>';
+                }
+
+                // Accepted locum section
+                var acceptedOffer = allShiftOffers.find(function(o) { return ['accepted','acknowledged','confirmed','completed'].indexOf(o.status) >= 0; });
+                if (acceptedOffer) {
+                    var loc = locums.find(function(l) { return l.id === acceptedOffer.locumId; });
+                    if (loc) {
+                        var inv = currentData.invoices ? currentData.invoices.find(function(inv) { return inv.offerId === acceptedOffer.id; }) : null;
+                        html += '<div style="padding:12px;background:rgba(16,185,129,0.06);border-radius:8px;margin-top:8px;border:1px solid rgba(16,185,129,0.15);">'
+                            + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">'
+                            + '<div style="display:flex;align-items:center;gap:10px;">'
+                            + '<div class="header-avatar" style="width:32px;height:32px;font-size:0.65rem;">' + getInitials(loc.firstName + ' ' + loc.lastName) + '</div>'
+                            + '<div><strong style="font-size:0.85rem;color:var(--dark);">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</strong>'
+                            + '<div style="font-size:0.78rem;color:var(--dark-600);">Status: <span class="badge ' + getStatusBadge(acceptedOffer.status) + '" style="font-size:0.7rem;">' + acceptedOffer.status.charAt(0).toUpperCase() + acceptedOffer.status.slice(1) + '</span>'
+                            + (acceptedOffer.agreedRate ? ' &bull; Agreed rate: ' + formatCurrency(acceptedOffer.agreedRate) : ' &bull; Rate: ' + formatCurrency(acceptedOffer.sessionType === 'Full Day' ? acceptedOffer.rateFullDay : acceptedOffer.sessionType === 'AM' ? acceptedOffer.rateAM : acceptedOffer.ratePM))
+                            + '</div></div></div>'
+                            + '<div style="display:flex;gap:8px;">'
+                            + (inv ? '<a href="invoice-view.html?id=' + inv.id + '" class="btn btn-ghost btn-small">' + inv.invoiceNumber + ' (' + inv.status + ')</a>' : '')
+                            + '<a href="locum-profile-view.html?id=' + loc.id + '" class="btn btn-ghost btn-small">View Profile</a>'
+                            + '</div></div></div>';
+                    }
+                }
+
+                html += '<div class="shift-card-footer">'
+                    + '<span style="font-size: 0.82rem; color: var(--gray-400);">Shift date: ' + DateUtils.format(shift.date, 'medium') + '</span>';
+                if (applicants.length > 0) {
+                    html += '<button class="btn btn-ghost btn-small" onclick="toggleApplicants(\'' + shift.id + '\', this)">' + getIcon('chevron-down') + ' Show Applicants</button>';
+                } else {
+                    html += '<span style="font-size: 0.82rem; color: var(--gray-400);">No applicants yet</span>';
+                }
+                html += '</div></div>';
+                return html;
             }).join('');
         }
 
+        // ============== MAIN RENDER ==============
+
         function render() {
-            const statusFilter = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : 'all';
-            const dateFrom = document.getElementById('filterDateFrom') ? document.getElementById('filterDateFrom').value : '';
-            const dateTo = document.getElementById('filterDateTo') ? document.getElementById('filterDateTo').value : '';
+            // Preserve filter values
+            var statusEl = document.getElementById('filterStatus');
+            var dateFromEl = document.getElementById('filterDateFrom');
+            var dateToEl = document.getElementById('filterDateTo');
+            if (statusEl) currentStatusFilter = statusEl.value;
+            if (dateFromEl) currentDateFrom = dateFromEl.value;
+            if (dateToEl) currentDateTo = dateToEl.value;
 
-            pageContent.innerHTML = `
-                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
-                    Your Posted Shifts
-                </h1>
+            var toggleBtnCal = viewMode === 'calendar' ? 'background: var(--primary); color: white;' : 'background: white; color: var(--dark);';
+            var toggleBtnList = viewMode === 'list' ? 'background: var(--primary); color: white;' : 'background: white; color: var(--dark);';
 
-                <div class="filter-bar">
-                    <div class="form-group">
-                        <label class="form-label">Status</label>
-                        <select id="filterStatus" class="form-select" onchange="render()">
-                            <option value="all" ${statusFilter === 'all' ? 'selected' : ''}>All Statuses</option>
-                            <option value="open" ${statusFilter === 'open' ? 'selected' : ''}>Open</option>
-                            <option value="filled" ${statusFilter === 'filled' ? 'selected' : ''}>Filled</option>
-                            <option value="completed" ${statusFilter === 'completed' ? 'selected' : ''}>Completed</option>
-                            <option value="history" ${statusFilter === 'history' ? 'selected' : ''}>All Historical</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">From</label>
-                        <input type="date" id="filterDateFrom" class="form-input" value="${dateFrom}" onchange="render()">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">To</label>
-                        <input type="date" id="filterDateTo" class="form-input" value="${dateTo}" onchange="render()">
-                    </div>
-                </div>
+            var html = '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">'
+                + '<h1 style="font-family: \'Space Grotesk\', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin: 0;">Your Posted Shifts</h1>'
+                + '<div style="display: inline-flex; border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden;">'
+                + '<button onclick="viewMode=\'calendar\'; render();" style="padding: 8px 16px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 500; ' + toggleBtnCal + '">' + getIcon('calendar') + ' Calendar</button>'
+                + '<button onclick="viewMode=\'list\'; render();" style="padding: 8px 16px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 500; ' + toggleBtnList + '">' + getIcon('list') + ' List</button>'
+                + '</div></div>';
 
-                <div id="shiftsList">
-                    ${renderShiftsList(statusFilter, dateFrom, dateTo)}
-                </div>
-            `;
+            if (viewMode === 'list') {
+                html += '<div class="filter-bar">'
+                    + '<div class="form-group"><label class="form-label">Status</label>'
+                    + '<select id="filterStatus" class="form-select" onchange="render()">'
+                    + '<option value="all"' + (currentStatusFilter === 'all' ? ' selected' : '') + '>All Statuses</option>'
+                    + '<option value="open"' + (currentStatusFilter === 'open' ? ' selected' : '') + '>Open</option>'
+                    + '<option value="filled"' + (currentStatusFilter === 'filled' ? ' selected' : '') + '>Filled</option>'
+                    + '<option value="completed"' + (currentStatusFilter === 'completed' ? ' selected' : '') + '>Completed</option>'
+                    + '<option value="history"' + (currentStatusFilter === 'history' ? ' selected' : '') + '>All Historical</option>'
+                    + '</select></div>'
+                    + '<div class="form-group"><label class="form-label">From</label>'
+                    + '<input type="date" id="filterDateFrom" class="form-input" value="' + currentDateFrom + '" onchange="render()"></div>'
+                    + '<div class="form-group"><label class="form-label">To</label>'
+                    + '<input type="date" id="filterDateTo" class="form-input" value="' + currentDateTo + '" onchange="render()"></div>'
+                    + '</div>'
+                    + '<div id="shiftsList">' + renderShiftsList(currentStatusFilter, currentDateFrom, currentDateTo) + '</div>';
+            } else {
+                // Calendar mode - show status filter inline
+                html += '<div style="margin-bottom: 16px;">'
+                    + '<select id="filterStatus" class="form-select" style="width: auto; min-width: 160px;" onchange="render()">'
+                    + '<option value="all"' + (currentStatusFilter === 'all' ? ' selected' : '') + '>All Statuses</option>'
+                    + '<option value="open"' + (currentStatusFilter === 'open' ? ' selected' : '') + '>Open</option>'
+                    + '<option value="filled"' + (currentStatusFilter === 'filled' ? ' selected' : '') + '>Filled</option>'
+                    + '<option value="completed"' + (currentStatusFilter === 'completed' ? ' selected' : '') + '>Completed</option>'
+                    + '<option value="history"' + (currentStatusFilter === 'history' ? ' selected' : '') + '>All Historical</option>'
+                    + '</select></div>';
+                html += renderCalendarView();
+            }
+
+            pageContent.innerHTML = html;
+
+            // Bind calendar navigation if in calendar mode
+            if (viewMode === 'calendar') {
+                document.getElementById('calPrev').addEventListener('click', function() {
+                    calMonth--;
+                    if (calMonth < 0) { calMonth = 11; calYear--; }
+                    render();
+                });
+                document.getElementById('calNext').addEventListener('click', function() {
+                    calMonth++;
+                    if (calMonth > 11) { calMonth = 0; calYear++; }
+                    render();
+                });
+                document.getElementById('calToday').addEventListener('click', function() {
+                    calYear = new Date().getFullYear();
+                    calMonth = new Date().getMonth();
+                    render();
+                });
+
+                // Bind day cell clicks
+                document.querySelectorAll('.calendar-day-cell').forEach(function(cell) {
+                    cell.addEventListener('click', function(e) {
+                        // Don't trigger day click if a shift block was clicked
+                        if (e.target.closest('[data-shift-id]')) return;
+                        var dateStr = this.dataset.date;
+                        if (dateStr) openDayDetail(dateStr);
+                    });
+                });
+
+                // Bind shift block clicks
+                document.querySelectorAll('[data-shift-id]').forEach(function(block) {
+                    block.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var shiftId = this.dataset.shiftId;
+                        if (shiftId) openShiftDetailModal(shiftId);
+                    });
+                });
+            }
         }
 
         render();
 
+        // ============== SHARED ACTIONS ==============
+
         function toggleApplicants(shiftId, btn) {
-            const el = document.getElementById('applicants-' + shiftId);
+            var el = document.getElementById('applicants-' + shiftId);
             if (el) {
-                const isHidden = el.style.display === 'none';
+                var isHidden = el.style.display === 'none';
                 el.style.display = isHidden ? 'block' : 'none';
-                btn.innerHTML = isHidden
-                    ? getIcon('chevron-down') + ' Hide Applicants'
-                    : getIcon('chevron-down') + ' Show Applicants';
+                btn.innerHTML = isHidden ? getIcon('chevron-down') + ' Hide Applicants' : getIcon('chevron-down') + ' Show Applicants';
             }
         }
 
         function acceptApplicant(offerId) {
-            const success = Booking.acceptOffer(offerId);
+            var success = Booking.acceptOffer(offerId);
             if (success) {
-                Toast.show('Applicant accepted! Shift marked as filled. Other applicants have been auto-declined.', 'success');
+                Toast.show('Applicant accepted! Shift marked as filled.', 'success');
             } else {
-                Toast.show('Failed to accept applicant. Please try again.', 'error');
+                Toast.show('Failed to accept applicant.', 'error');
             }
-            setTimeout(() => render(), 500);
+            setTimeout(function() { render(); }, 500);
         }
 
         function declineApplicant(offerId) {
-            const success = Booking.declineOffer(offerId);
+            var success = Booking.declineOffer(offerId);
             if (success) {
-                Toast.show('Applicant declined. The locum has been notified.', 'info');
+                Toast.show('Applicant declined.', 'info');
             } else {
-                Toast.show('Failed to decline applicant. Please try again.', 'error');
+                Toast.show('Failed to decline applicant.', 'error');
             }
-            setTimeout(() => render(), 500);
-        }
-        function getStatusBadge(status) {
-            const map = { 'open': 'badge-primary', 'filled': 'badge-success', 'pending': 'badge-warning', 'accepted': 'badge-success', 'acknowledged': 'badge-success', 'confirmed': 'badge-info', 'completed': 'badge-info', 'declined': 'badge-neutral', 'withdrawn': 'badge-neutral', 'cancelled': 'badge-danger', 'no_show': 'badge-danger', 'negotiating': 'badge-warning', 'rejected_by_locum': 'badge-danger', 'paid': 'badge-success', 'overdue': 'badge-danger', 'disputed': 'badge-warning' };
-            return map[status] || 'badge-neutral';
+            setTimeout(function() { render(); }, 500);
         }
 
         function openNegotiate(offerId, currentRate) {
