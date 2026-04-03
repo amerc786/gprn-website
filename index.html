@@ -1943,15 +1943,13 @@
                 path.setAttribute('stroke-width', (0.5 + i * 0.03).toFixed(2));
                 path.setAttribute('fill', 'none');
 
-                var duration = (20 + Math.random() * 10).toFixed(1);
-                var delay = (Math.random() * -20).toFixed(1);
                 var opMin = (0.04 + i * 0.008).toFixed(3);
                 var opMax = (0.12 + i * 0.015).toFixed(3);
 
-                path.style.setProperty('--path-duration', duration + 's');
+                path.style.setProperty('--path-duration', '30s');
                 path.style.setProperty('--path-opacity-min', opMin);
                 path.style.setProperty('--path-opacity-max', opMax);
-                path.style.animationDelay = delay + 's, ' + delay + 's';
+                path.style.animationDelay = '0s, 0s';
 
                 svg.appendChild(path);
             }
