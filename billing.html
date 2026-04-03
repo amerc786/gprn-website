@@ -101,16 +101,34 @@
         }
 
         function handleMarkPaid(invoiceId) {
+            // Find invoice number before updating for the confirmation message
+            const preData = getMockData();
+            const preInv = preData.invoices.find(i => i.id === invoiceId);
+            const invNum = preInv ? preInv.invoiceNumber : '';
+
             const success = InvoiceManager.updateStatus(invoiceId, 'paid');
             if (success) {
-                // Reset status filter so the user can see the updated invoice
+                // Reset filter to All so user can see the updated invoice with Paid status
                 filterStatus = '';
-                Toast.show('Invoice marked as paid. Locum has been notified.', 'success');
+                filterMonth = '';
+                render(false);
+                Toast.show(invNum + ' marked as paid. Locum has been notified.', 'success', 3000);
+                // Highlight the updated row briefly
+                setTimeout(() => {
+                    const rows = document.querySelectorAll('.data-table tbody tr');
+                    rows.forEach(row => {
+                        const numCell = row.querySelector('td:first-child strong');
+                        if (numCell && numCell.textContent.trim() === invNum) {
+                            row.style.transition = 'background 0.3s';
+                            row.style.background = 'rgba(16,185,129,0.12)';
+                            setTimeout(() => { row.style.background = ''; }, 2500);
+                        }
+                    });
+                }, 100);
             } else {
                 Toast.show('Failed to update invoice. Please try again.', 'error');
+                render();
             }
-            // Re-render without reading stale filter DOM values
-            render(false);
         }
 
         function handleDispute(invoiceId) {
@@ -135,16 +153,20 @@
                             Toast.show('Please provide a dispute reason.', 'warning');
                             return;
                         }
+                        const preData = getMockData();
+                        const preInv = preData.invoices.find(i => i.id === invoiceId);
+                        const invNum = preInv ? preInv.invoiceNumber : '';
                         const success = InvoiceManager.updateStatus(invoiceId, 'disputed', reason);
                         Modal.close(overlay);
                         if (success) {
-                            // Reset status filter so the user can see the updated invoice
                             filterStatus = '';
-                            Toast.show('Invoice has been disputed.', 'info');
+                            filterMonth = '';
+                            render(false);
+                            Toast.show(invNum + ' has been disputed. Locum notified.', 'info', 3000);
                         } else {
                             Toast.show('Failed to dispute invoice. Please try again.', 'error');
+                            render();
                         }
-                        render(false);
                     });
                 }
             });
