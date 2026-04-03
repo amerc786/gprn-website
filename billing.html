@@ -314,9 +314,9 @@
                 + '<h1 style="font-family: \'Space Grotesk\', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">Billing</h1>'
 
                 + '<div class="dash-stats-row" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 32px;">'
-                + '<div class="dash-stat-card"><div class="stat-icon" style="background: var(--primary-50); color: var(--primary);">' + getIcon('pound') + '</div><div><div class="stat-value" id="billing-stat-total">' + formatCurrency(totalThisMonth) + '</div><div class="stat-label">Total This Month</div></div></div>'
-                + '<div class="dash-stat-card"><div class="stat-icon" style="background: var(--warning-50, #fff8e1); color: var(--warning, #f59e0b);">' + getIcon('clock') + '</div><div><div class="stat-value" id="billing-stat-outstanding">' + formatCurrency(outstanding) + '</div><div class="stat-label">Outstanding</div></div></div>'
-                + '<div class="dash-stat-card"><div class="stat-icon" style="background: var(--success-50, #e8f5e9); color: var(--success);">' + getIcon('check') + '</div><div><div class="stat-value" id="billing-stat-paid">' + formatCurrency(paid) + '</div><div class="stat-label">Paid</div></div></div>'
+                + renderStatCard('pound', 'Total This Month', '<span id="billing-stat-total">' + formatCurrency(totalThisMonth) + '</span>', null, null)
+                + renderStatCard('clock', 'Outstanding', '<span id="billing-stat-outstanding">' + formatCurrency(outstanding) + '</span>', null, null)
+                + renderStatCard('check', 'Paid', '<span id="billing-stat-paid">' + formatCurrency(paid) + '</span>', null, null)
                 + '</div>'
 
                 + '<div class="content-card">'
