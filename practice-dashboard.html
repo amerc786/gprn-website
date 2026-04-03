@@ -116,38 +116,38 @@
         // Unread messages
         const unreadMsgCount = MessageManager.getUnreadCount(session.id);
 
-        // Get real pending offers for this practice, or create mock ones
+        // Get real pending offers for this practice, or create mock ones (only on first ever load)
         const locums = data.locums;
         let realPendingOffers = data.offers.filter(o => o.practiceId === session.id && o.status === 'pending');
 
-        if (realPendingOffers.length === 0) {
+        // Only seed mock offers if this practice has NEVER had any offers at all
+        // This prevents re-creating offers after the user has already accepted/declined them
+        const allPracticeOffers = data.offers.filter(o => o.practiceId === session.id);
+        if (allPracticeOffers.length === 0) {
             const openShiftsForMock = practiceShifts.filter(s => s.status === 'open').slice(0, 3);
             openShiftsForMock.forEach((shift, i) => {
                 if (i < locums.length) {
                     const loc = locums[i];
-                    const exists = data.offers.find(o => o.shiftId === shift.id && o.locumId === loc.id);
-                    if (!exists) {
-                        data.offers.push({
-                            id: 'offer-dash-' + Date.now() + '-' + i,
-                            shiftId: shift.id,
-                            locumId: loc.id,
-                            practiceId: session.id,
-                            practiceName: session.name,
-                            healthBoard: shift.healthBoard,
-                            shiftDate: shift.date,
-                            startTime: shift.startTime,
-                            endTime: shift.endTime,
-                            sessionType: shift.sessionType,
-                            rateAM: loc.rates.am,
-                            ratePM: loc.rates.pm,
-                            rateFullDay: loc.rates.fullDay,
-                            rateHousecall: loc.rates.housecall || 0,
-                            status: 'pending',
-                            offerDate: DateUtils.toISO(new Date()),
-                            comment: '',
-                            housecalls: shift.housecalls
-                        });
-                    }
+                    data.offers.push({
+                        id: 'offer-dash-' + Date.now() + '-' + i,
+                        shiftId: shift.id,
+                        locumId: loc.id,
+                        practiceId: session.id,
+                        practiceName: session.name,
+                        healthBoard: shift.healthBoard,
+                        shiftDate: shift.date,
+                        startTime: shift.startTime,
+                        endTime: shift.endTime,
+                        sessionType: shift.sessionType,
+                        rateAM: loc.rates.am,
+                        ratePM: loc.rates.pm,
+                        rateFullDay: loc.rates.fullDay,
+                        rateHousecall: loc.rates.housecall || 0,
+                        status: 'pending',
+                        offerDate: DateUtils.toISO(new Date()),
+                        comment: '',
+                        housecalls: shift.housecalls
+                    });
                 }
             });
             saveMockData(data);
