@@ -101,20 +101,31 @@
         }
 
         function handleMarkPaid(invoiceId) {
-            // Direct localStorage update — no dependency on InvoiceManager
+            // Direct localStorage update + immediate DOM re-render (no page reload)
             try {
                 const raw = localStorage.getItem('gprn_data');
+                if (!raw) { Toast.show('Data not found.', 'error'); return; }
                 const d = JSON.parse(raw);
+                if (!d.invoices || !Array.isArray(d.invoices)) { Toast.show('No invoices found.', 'error'); return; }
                 const inv = d.invoices.find(i => i.id === invoiceId);
                 if (!inv) {
-                    Toast.show('Invoice not found.', 'error');
+                    Toast.show('Invoice not found (ID: ' + invoiceId + '). Try refreshing the page.', 'error');
                     return;
                 }
                 inv.status = 'paid';
                 inv.paidDate = new Date().toISOString().split('T')[0];
-                localStorage.setItem('gprn_data', JSON.stringify(d));
+                const saved = JSON.stringify(d);
+                localStorage.setItem('gprn_data', saved);
+                // Verify the save worked
+                const verify = JSON.parse(localStorage.getItem('gprn_data'));
+                const check = verify.invoices.find(i => i.id === invoiceId);
+                if (!check || check.status !== 'paid') {
+                    Toast.show('Save failed — please try again.', 'error');
+                    return;
+                }
                 Toast.show('Invoice marked as paid. Locum has been notified.', 'success');
-                setTimeout(() => window.location.reload(), 600);
+                // Re-render the page immediately from updated localStorage (no reload)
+                render(true);
             } catch(e) {
                 Toast.show('Error: ' + e.message, 'error');
             }
