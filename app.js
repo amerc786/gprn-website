@@ -2,11 +2,14 @@
 
 // ---- Auth Manager ----
 const Auth = {
-    login(email, password) {
+    login(email, password, expectedRole) {
         const data = getMockData();
         const allUsers = [...data.locums, ...data.practices];
         const user = allUsers.find(u => u.email === email && u.password === password);
         if (user) {
+            if (expectedRole && user.role !== expectedRole) {
+                return { error: 'wrong_role', actualRole: user.role };
+            }
             const session = {
                 id: user.id,
                 role: user.role,
