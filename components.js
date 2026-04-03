@@ -73,9 +73,20 @@ function renderSidebar(role, activePage) {
 function renderTopHeader(title, breadcrumbs) {
     const session = Auth.getSession();
     const data = getMockData();
-    const unreadNotifs = data.notifications ? data.notifications.filter(n => !n.read && (!n.userId || n.userId === session.id)).length : 0;
+    const userNotifs = data.notifications ? data.notifications.filter(n => !n.userId || n.userId === session.id).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
+    const unreadNotifs = userNotifs.filter(n => !n.read).length;
     const unreadMsgs = MessageManager.getUnreadCount(session.id);
     const unreadCount = unreadNotifs + unreadMsgs;
+
+    const notifTypeIcons = {
+        'shift_confirmed': 'check', 'new_shifts': 'calendar', 'offer_accepted': 'check',
+        'offer_declined': 'x', 'reliability_warning': 'activity', 'cpd_event': 'award',
+        'message': 'mail', 'no_show': 'x', 'cancellation': 'x',
+        'leave_feedback': 'award', 'payment_reminder': 'pound', 'new_offer': 'briefcase'
+    };
+
+    const settingsHref = session.role === 'locum' ? 'my-settings.html' : 'practice-settings.html';
+    const profileHref = session.role === 'locum' ? 'my-profile.html' : 'practice-settings.html';
 
     return `
     <header class="top-header">
@@ -95,10 +106,60 @@ function renderTopHeader(title, breadcrumbs) {
                     ${getIcon('bell')}
                     ${unreadCount > 0 ? `<span class="notification-badge">${unreadCount}</span>` : ''}
                 </button>
+                <div class="header-dropdown notif-dropdown" id="notifDropdown">
+                    <div class="dropdown-header">
+                        <h3>Notifications</h3>
+                        ${unreadNotifs > 0 ? `<button class="dropdown-action" id="markAllRead">Mark all read</button>` : ''}
+                    </div>
+                    <div class="dropdown-list" id="notifList">
+                        ${userNotifs.length === 0 ? '<div class="dropdown-empty">No notifications</div>' :
+                        userNotifs.slice(0, 8).map(n => `
+                            <div class="dropdown-item ${n.read ? '' : 'unread'}" data-notif-id="${n.id}">
+                                <div class="dropdown-item-icon ${n.read ? '' : 'icon-unread'}">
+                                    ${getIcon(notifTypeIcons[n.type] || 'bell')}
+                                </div>
+                                <div class="dropdown-item-content">
+                                    <div class="dropdown-item-title">${n.title}</div>
+                                    <div class="dropdown-item-text">${n.message}</div>
+                                    <div class="dropdown-item-time">${DateUtils.timeAgo(n.date)}</div>
+                                </div>
+                                ${n.read ? '' : '<div class="dropdown-item-dot"></div>'}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
             </div>
-            <div class="header-user">
+            <div class="header-user" id="userMenuBtn">
                 <div class="header-avatar">${getInitials(session.name)}</div>
                 <span class="header-name">${session.name}</span>
+                <svg class="header-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <div class="header-dropdown user-dropdown" id="userDropdown">
+                    <div class="dropdown-user-info">
+                        <div class="header-avatar" style="width:40px;height:40px;font-size:0.85rem;">${getInitials(session.name)}</div>
+                        <div>
+                            <div class="dropdown-user-name">${session.name}</div>
+                            <div class="dropdown-user-role">${session.role === 'locum' ? 'Locum GP' : 'Practice Manager'}</div>
+                        </div>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a href="${profileHref}" class="dropdown-menu-item">
+                        ${getIcon('user')}
+                        <span>My Profile</span>
+                    </a>
+                    <a href="${settingsHref}" class="dropdown-menu-item">
+                        ${getIcon('settings')}
+                        <span>Settings</span>
+                    </a>
+                    <a href="help-faq.html" class="dropdown-menu-item">
+                        ${getIcon('help-circle')}
+                        <span>Help & FAQ</span>
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <button class="dropdown-menu-item dropdown-logout" id="dropdownLogout">
+                        ${getIcon('log-out')}
+                        <span>Log Out</span>
+                    </button>
+                </div>
             </div>
         </div>
     </header>`;
@@ -122,6 +183,65 @@ function initAppLayout(role, activePage, pageTitle, breadcrumbs) {
         toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
         if (close) close.addEventListener('click', () => sidebar.classList.remove('open'));
     }
+
+    // Notification dropdown
+    const notifBell = document.getElementById('notifBell');
+    const notifDropdown = document.getElementById('notifDropdown');
+    if (notifBell && notifDropdown) {
+        notifBell.addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.getElementById('userDropdown')?.classList.remove('open');
+            notifDropdown.classList.toggle('open');
+        });
+        const markAllBtn = document.getElementById('markAllRead');
+        if (markAllBtn) {
+            markAllBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const data = getMockData();
+                const session = Auth.getSession();
+                if (data.notifications) {
+                    data.notifications.forEach(n => {
+                        if (!n.userId || n.userId === session.id) n.read = true;
+                    });
+                    localStorage.setItem('gprn_mockData', JSON.stringify(data));
+                }
+                notifDropdown.querySelectorAll('.dropdown-item.unread').forEach(el => {
+                    el.classList.remove('unread');
+                    const dot = el.querySelector('.dropdown-item-dot');
+                    if (dot) dot.remove();
+                    const icon = el.querySelector('.dropdown-item-icon');
+                    if (icon) icon.classList.remove('icon-unread');
+                });
+                const badge = document.querySelector('.notification-badge');
+                if (badge) badge.remove();
+                this.remove();
+            });
+        }
+    }
+
+    // User menu dropdown
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    const userDropdown = document.getElementById('userDropdown');
+    if (userMenuBtn && userDropdown) {
+        userMenuBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            notifDropdown?.classList.remove('open');
+            userDropdown.classList.toggle('open');
+        });
+        const logoutBtn = document.getElementById('dropdownLogout');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                Auth.logout();
+            });
+        }
+    }
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', function() {
+        notifDropdown?.classList.remove('open');
+        userDropdown?.classList.remove('open');
+    });
 
     return document.getElementById('pageContent');
 }
