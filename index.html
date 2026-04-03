@@ -9,1099 +9,1525 @@
     <title>GPRN - GP Right Now | The Right GP, Right Now</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* ===== HOMEPAGE CINEMATIC OVERRIDES ===== */
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-        /* --- Animated Gradient Keyframes --- */
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        :root {
+            --navy: #101722;
+            --navy-light: #1a2233;
+            --cream: #f9f0ff;
+            --breeze: #4541fe;
+            --neon: #fe0e83;
+            --lavender: #d9c6ff;
+            --white: #ffffff;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
-        @keyframes overlayShift {
-            0% { opacity: 0.6; }
-            50% { opacity: 0.8; }
-            100% { opacity: 0.6; }
+        html {
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
+        body {
+            font-family: var(--font);
+            font-size: 1rem;
+            line-height: 1.6;
+            color: var(--navy);
+            background: var(--white);
+            overflow-x: hidden;
         }
 
-        @keyframes floatSlow {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            33% { transform: translateY(-15px) rotate(1deg); }
-            66% { transform: translateY(-8px) rotate(-1deg); }
+        a { text-decoration: none; color: inherit; }
+        img { max-width: 100%; display: block; }
+        button { cursor: pointer; border: none; background: none; font-family: inherit; }
+
+        /* ===== UTILITY ===== */
+        .container {
+            max-width: 87.5rem;
+            margin: 0 auto;
+            padding: 0 2rem;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(1.5); }
+        .container-small {
+            max-width: 64rem;
+            margin: 0 auto;
+            padding: 0 2rem;
         }
 
-        @keyframes particleDrift {
-            0% { transform: translateY(0) translateX(0); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(-100vh) translateX(50px); opacity: 0; }
+        .text-gradient {
+            background: linear-gradient(270deg, var(--breeze) 40%, var(--neon));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        @keyframes borderRotate {
-            0% { --angle: 0deg; }
-            100% { --angle: 360deg; }
+        .text-cream { color: var(--cream); }
+        .text-center { text-align: center; }
+        .text-white { color: var(--white); }
+
+        /* ===== TYPOGRAPHY ===== */
+        h1, h2, h3, h4 {
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            line-height: 1;
         }
 
-        @keyframes meshGradient {
-            0% { background-position: 0% 0%; }
-            25% { background-position: 100% 0%; }
-            50% { background-position: 100% 100%; }
-            75% { background-position: 0% 100%; }
-            100% { background-position: 0% 0%; }
+        h1 { font-size: clamp(3rem, 6vw, 4.75rem); }
+        h2 { font-size: clamp(2.2rem, 4.5vw, 3.5rem); }
+        h3 { font-size: clamp(1.5rem, 2.5vw, 2rem); }
+
+        .text-large { font-size: 1.25rem; line-height: 1.6; }
+        .text-regular { font-size: 1rem; line-height: 1.6; }
+        .text-small { font-size: 0.875rem; line-height: 1.5; }
+        .text-bold { font-weight: 700; }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.85em 1.5em;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            transition: all 0.3s ease;
+            white-space: nowrap;
         }
 
-        @keyframes textGlow {
-            0%, 100% { text-shadow: 0 0 20px rgba(79, 70, 229, 0.3), 0 0 40px rgba(14, 165, 233, 0.15); }
-            50% { text-shadow: 0 0 30px rgba(79, 70, 229, 0.5), 0 0 60px rgba(14, 165, 233, 0.25); }
+        .btn-cream {
+            background: var(--cream);
+            color: var(--navy);
+        }
+        .btn-cream:hover {
+            background: var(--white);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(249, 240, 255, 0.3);
         }
 
-        @keyframes statPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.2); }
-            50% { box-shadow: 0 0 0 20px rgba(79, 70, 229, 0); }
+        .btn-breeze {
+            background: var(--breeze);
+            color: var(--white);
+        }
+        .btn-breeze:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(69, 65, 254, 0.4);
         }
 
-        @keyframes scaleIn {
-            from { opacity: 0; transform: scale(0.95) translateY(30px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
+        .btn-neon {
+            background: var(--neon);
+            color: var(--white);
+        }
+        .btn-neon:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(254, 14, 131, 0.4);
         }
 
-        @keyframes slideInFromBottom {
-            from { opacity: 0; transform: translateY(60px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        .btn-outline {
+            background: transparent;
+            color: var(--cream);
+            border: 2px solid rgba(249, 240, 255, 0.3);
+        }
+        .btn-outline:hover {
+            border-color: var(--cream);
+            background: rgba(249, 240, 255, 0.08);
+            transform: translateY(-2px);
         }
 
-        /* --- Fade Up Animation Override (more dramatic) --- */
+        .btn-navy {
+            background: var(--navy);
+            color: var(--cream);
+        }
+        .btn-navy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(16, 23, 34, 0.3);
+        }
+
+        .btn-lg {
+            padding: 1em 2em;
+            font-size: 1.1rem;
+        }
+
+        /* ===== SCROLL ANIMATIONS ===== */
         .fade-up {
             opacity: 0;
-            transform: translateY(40px) scale(0.95);
+            transform: translateY(2rem);
             transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
                         transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .fade-up.visible {
             opacity: 1;
-            transform: translateY(0) scale(1);
+            transform: translateY(0);
+        }
+        .fade-up.delay-1 { transition-delay: 0.1s; }
+        .fade-up.delay-2 { transition-delay: 0.2s; }
+        .fade-up.delay-3 { transition-delay: 0.3s; }
+        .fade-up.delay-4 { transition-delay: 0.4s; }
+
+        /* ===== NAVBAR ===== */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(16, 23, 34, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            transition: background 0.3s ease;
         }
 
-        /* --- HERO SECTION --- */
+        .navbar-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 72px;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            font-size: 1.5rem;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            color: var(--white);
+        }
+
+        .nav-logo .gp { color: var(--breeze); }
+        .nav-logo .rn { color: var(--neon); }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--white); }
+
+        .nav-auth {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .nav-auth .btn-login {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        .nav-auth .btn-login:hover { color: var(--white); }
+
+        .nav-auth .btn-get-started {
+            padding: 0.55em 1.2em;
+            background: var(--breeze);
+            color: var(--white);
+            border-radius: 0.4rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            transition: all 0.3s;
+        }
+        .nav-auth .btn-get-started:hover {
+            box-shadow: 0 4px 20px rgba(69, 65, 254, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .nav-mobile-toggle {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            padding: 4px;
+        }
+        .nav-mobile-toggle span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--white);
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        /* ===== HERO ===== */
         .hero {
+            background: var(--navy);
+            padding: 10rem 0 6rem;
             position: relative;
+            overflow: hidden;
             min-height: 100vh;
             display: flex;
             align-items: center;
-            overflow: hidden;
-            background: var(--gradient-hero);
-            padding-top: 80px;
         }
 
-        .hero-video-bg {
+        .hero::before {
+            content: '';
             position: absolute;
-            inset: 0;
-            z-index: 0;
-            overflow: hidden;
+            top: -50%;
+            right: -20%;
+            width: 80rem;
+            height: 80rem;
+            background: radial-gradient(circle, rgba(69, 65, 254, 0.08) 0%, transparent 60%);
+            pointer-events: none;
         }
 
-        .hero-video-bg video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0.35;
-        }
-
-        .hero-video-overlay {
+        .hero::after {
+            content: '';
             position: absolute;
-            inset: 0;
-            background: linear-gradient(
-                135deg,
-                rgba(15, 23, 42, 0.92) 0%,
-                rgba(30, 41, 59, 0.85) 40%,
-                rgba(15, 23, 42, 0.9) 100%
-            );
+            bottom: -30%;
+            left: -10%;
+            width: 60rem;
+            height: 60rem;
+            background: radial-gradient(circle, rgba(254, 14, 131, 0.05) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .hero-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            position: relative;
             z-index: 1;
         }
 
-        .hero-gradient-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(
-                45deg,
-                rgba(79, 70, 229, 0.15),
-                rgba(14, 165, 233, 0.1),
-                rgba(249, 115, 22, 0.05),
-                rgba(79, 70, 229, 0.15)
-            );
-            background-size: 400% 400%;
-            animation: gradientShift 12s ease infinite;
-            z-index: 2;
-        }
-
-        /* Floating Particles (CSS only) */
-        .hero-particles {
-            position: absolute;
-            inset: 0;
-            z-index: 2;
-            overflow: hidden;
-            pointer-events: none;
-        }
-        .hero-particles::before,
-        .hero-particles::after {
-            content: '';
-            position: absolute;
-            width: 3px;
-            height: 3px;
-            background: rgba(129, 140, 248, 0.5);
-            border-radius: 50%;
-            animation: particleDrift 15s linear infinite;
-        }
-        .hero-particles::before {
-            left: 20%;
-            bottom: 0;
-            animation-delay: 0s;
-            animation-duration: 18s;
-        }
-        .hero-particles::after {
-            left: 70%;
-            bottom: 0;
-            animation-delay: -5s;
-            animation-duration: 22s;
-            width: 2px;
-            height: 2px;
-            background: rgba(14, 165, 233, 0.4);
-        }
-        .particle {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            background: rgba(129, 140, 248, 0.4);
-            border-radius: 50%;
-            animation: particleDrift linear infinite;
-            bottom: 0;
-        }
-        .particle:nth-child(1) { left: 10%; animation-duration: 20s; animation-delay: -2s; }
-        .particle:nth-child(2) { left: 30%; animation-duration: 25s; animation-delay: -8s; width: 3px; height: 3px; background: rgba(14, 165, 233, 0.3); }
-        .particle:nth-child(3) { left: 50%; animation-duration: 18s; animation-delay: -4s; }
-        .particle:nth-child(4) { left: 65%; animation-duration: 22s; animation-delay: -12s; width: 4px; height: 4px; background: rgba(79, 70, 229, 0.25); }
-        .particle:nth-child(5) { left: 85%; animation-duration: 28s; animation-delay: -6s; }
-        .particle:nth-child(6) { left: 42%; animation-duration: 16s; animation-delay: -10s; background: rgba(249, 115, 22, 0.2); width: 3px; height: 3px; }
-
-        /* Cursor glow */
-        .hero-cursor-glow {
-            position: absolute;
-            width: 600px;
-            height: 600px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(79, 70, 229, 0.12) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 2;
-            transform: translate(-50%, -50%);
-            transition: left 0.3s ease-out, top 0.3s ease-out;
-            will-change: left, top;
-        }
-
-        .hero .hero-bg-shapes { display: none; }
-
-        .hero-container {
-            position: relative;
-            z-index: 10;
-        }
-
-        .hero-content h1 {
-            font-size: clamp(3rem, 6vw, 5.5rem);
-            font-weight: 900;
-            letter-spacing: -0.04em;
-            line-height: 1.0;
-            color: var(--white);
-            margin-bottom: 24px;
-            position: relative;
-        }
-
-        .hero-content h1::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 120%;
-            height: 120%;
-            background: radial-gradient(ellipse, rgba(79, 70, 229, 0.15) 0%, transparent 70%);
-            filter: blur(40px);
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        .hero-content .gradient-text {
-            background: linear-gradient(135deg, #818CF8 0%, #0EA5E9 50%, #818CF8 100%);
-            background-size: 200% 200%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: gradientShift 6s ease infinite;
-        }
-
-        .hero-content .hero-subtitle {
-            font-size: 1.2rem;
-            color: rgba(203, 213, 225, 0.9);
-            max-width: 520px;
-            line-height: 1.7;
-        }
+        .hero-content { max-width: 640px; }
 
         .hero-badge {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 18px;
-            background: rgba(79, 70, 229, 0.15);
-            border: 1px solid rgba(129, 140, 248, 0.25);
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(69, 65, 254, 0.12);
+            border: 1px solid rgba(69, 65, 254, 0.25);
             border-radius: 100px;
-            color: #818CF8;
+            color: var(--lavender);
             font-size: 0.85rem;
             font-weight: 600;
-            margin-bottom: 24px;
-            backdrop-filter: blur(10px);
+            margin-bottom: 1.5rem;
         }
 
-        .hero-trust p {
-            color: rgba(203, 213, 225, 0.8);
+        .hero-badge svg { width: 16px; height: 16px; }
+
+        .hero h1 {
+            color: var(--white);
+            margin-bottom: 1.5rem;
+            line-height: 1.05;
         }
 
-        /* Glassmorphism Hero Card */
-        .hero-card.hero-card-main {
-            background: rgba(255, 255, 255, 0.06);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-            animation: floatSlow 8s ease-in-out infinite;
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: rgba(203, 213, 225, 0.85);
+            line-height: 1.7;
+            max-width: 500px;
+            margin-bottom: 2.5rem;
         }
 
-        .hero-card.hero-card-main .card-header-bar {
-            border-bottom-color: rgba(255, 255, 255, 0.08);
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2.5rem;
         }
 
-        .hero-card.hero-card-main .shift-item {
-            border-bottom-color: rgba(255, 255, 255, 0.06);
+        .hero-trust {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: rgba(203, 213, 225, 0.6);
+            font-size: 0.9rem;
         }
 
-        .hero-card.hero-card-float {
-            background: rgba(16, 185, 129, 0.12);
+        .hero-trust-avatars {
+            display: flex;
+        }
+
+        .hero-trust-avatars span {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--white);
+            margin-left: -8px;
+            border: 2px solid var(--navy);
+        }
+        .hero-trust-avatars span:first-child { margin-left: 0; }
+
+        /* Hero Visual */
+        .hero-visual {
+            position: relative;
+        }
+
+        .hero-card {
+            background: rgba(255, 255, 255, 0.04);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(16, 185, 129, 0.25);
-            box-shadow: 0 10px 40px rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 1.5rem;
+            color: var(--white);
         }
 
-        /* --- SVG Wave Dividers --- */
-        .section-divider {
-            position: relative;
-            width: 100%;
-            overflow: hidden;
-            line-height: 0;
-        }
-        .section-divider svg {
-            display: block;
-            width: 100%;
-            height: auto;
-        }
-        .section-divider-dark {
-            background: var(--dark);
-        }
-        .section-divider-dark svg {
-            fill: var(--gray-50);
-        }
-        .section-divider-light {
-            background: var(--gray-50);
-        }
-        .section-divider-light svg {
-            fill: var(--dark);
-        }
-        .section-divider-white {
-            background: var(--white);
-        }
-        .section-divider-white svg {
-            fill: var(--gray-50);
-        }
-        .section-divider-to-dark {
-            background: var(--gray-50);
-        }
-        .section-divider-to-dark svg {
-            fill: var(--dark);
-        }
-        .section-divider-dark-to-white {
-            background: var(--dark);
-        }
-        .section-divider-dark-to-white svg {
-            fill: var(--white);
+        .hero-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
-        /* --- STATS BAR (dark, glowing) --- */
-        .stats-bar {
-            background: var(--dark);
-            padding: 80px 0;
-            position: relative;
-            overflow: hidden;
+        .hero-card-header h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
         }
 
-        .stats-bar::before {
-            content: '';
+        .hero-card-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.25rem 0.6rem;
+            border-radius: 100px;
+            background: rgba(69, 65, 254, 0.15);
+            color: var(--lavender);
+        }
+
+        .shift-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .shift-item:last-child { border-bottom: none; }
+
+        .shift-item-left h5 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            margin-bottom: 0.15rem;
+        }
+
+        .shift-item-left p {
+            font-size: 0.75rem;
+            color: rgba(203, 213, 225, 0.6);
+        }
+
+        .shift-tag {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.55rem;
+            border-radius: 4px;
+        }
+        .shift-tag.gp-only { background: rgba(69, 65, 254, 0.15); color: #a5b4fc; }
+        .shift-tag.urgent { background: rgba(254, 14, 131, 0.15); color: #f9a8d4; }
+        .shift-tag.full-day { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
+
+        .hero-float-card {
             position: absolute;
-            inset: 0;
-            background:
-                radial-gradient(ellipse at 20% 50%, rgba(79, 70, 229, 0.08) 0%, transparent 60%),
-                radial-gradient(ellipse at 80% 50%, rgba(14, 165, 233, 0.06) 0%, transparent 60%);
-            pointer-events: none;
+            bottom: -1rem;
+            right: -1.5rem;
+            background: rgba(16, 185, 129, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--white);
+            animation: floatSlow 6s ease-in-out infinite;
+        }
+
+        .hero-float-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-float-card h5 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+        .hero-float-card p {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* ===== STATS BAR ===== */
+        .stats-bar {
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-200);
+            padding: 3rem 0;
         }
 
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 40px;
-        }
-
-        .stat-item {
+            gap: 2rem;
             text-align: center;
-            position: relative;
-            padding: 32px 16px;
         }
 
-        .stat-item::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: rgba(79, 70, 229, 0.1);
-            animation: statPulse 3s ease-in-out infinite;
-        }
-
-        .stat-number {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 3.5rem;
-            font-weight: 700;
-            color: var(--white);
-            text-shadow: 0 0 30px rgba(79, 70, 229, 0.4), 0 0 60px rgba(14, 165, 233, 0.15);
+        .stat-item h3 {
+            font-size: clamp(2rem, 3.5vw, 3rem);
+            font-weight: 900;
+            letter-spacing: -0.05em;
             line-height: 1;
-            display: inline;
+            margin-bottom: 0.4rem;
         }
 
-        .stat-suffix {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 3.5rem;
-            font-weight: 700;
-            color: var(--white);
-            text-shadow: 0 0 30px rgba(79, 70, 229, 0.4), 0 0 60px rgba(14, 165, 233, 0.15);
-            line-height: 1;
-            display: inline;
+        .stat-item h3 .text-gradient {
+            font-weight: 900;
         }
 
-        .stat-label {
-            display: block;
-            color: var(--gray-400);
-            font-size: 0.9rem;
-            margin-top: 8px;
+        .stat-item p {
+            font-size: 0.95rem;
+            color: var(--gray-500);
             font-weight: 500;
         }
 
-        /* --- HOW IT WORKS --- */
-        .how-it-works {
-            background: var(--gray-50);
-            padding: 120px 0;
+        /* ===== BENEFITS (How It Works) ===== */
+        .section-benefits {
+            background: var(--cream);
+            padding: 7rem 0;
             position: relative;
+            overflow: hidden;
         }
 
-        .section-header {
+        .section-benefits::before {
+            content: '';
+            position: absolute;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(69, 65, 254, 0.06) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .benefits-top {
             text-align: center;
-            margin-bottom: 64px;
-        }
-
-        .section-header h2 {
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            margin-bottom: 16px;
+            max-width: 700px;
+            margin: 0 auto 4rem;
+            position: relative;
         }
 
         .section-tag {
             display: inline-flex;
             align-items: center;
-            padding: 6px 16px;
-            border-radius: 100px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            margin-bottom: 16px;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--neon);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.25rem;
+        }
+
+        .benefits-top h2 {
+            margin-bottom: 1.25rem;
+        }
+
+        .benefits-top p {
+            font-size: 1.15rem;
+            color: var(--gray-600);
+            line-height: 1.7;
+        }
+
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2.5rem;
         }
 
         .step-card {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.9);
-            border-radius: 20px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.04);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .step-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 60px rgba(79, 70, 229, 0.12);
-            border-color: rgba(79, 70, 229, 0.2);
-        }
-
-        /* --- FEATURES SECTIONS --- */
-        .features-section {
-            padding: 120px 0;
+            background: var(--white);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: 0;
+            padding: 2.5rem 2rem;
             position: relative;
-            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+        .step-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
         }
 
-        .features-section::before {
-            content: '';
-            position: absolute;
-            top: -200px;
-            right: -200px;
-            width: 600px;
-            height: 600px;
+        .step-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(79, 70, 229, 0.04) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        .features-section .section-header h2 {
-            font-size: clamp(2rem, 4vw, 3rem);
-        }
-
-        .features-content h2 {
-            font-size: clamp(2rem, 4vw, 3rem);
+            background: linear-gradient(270deg, var(--breeze) 40%, var(--neon));
+            color: var(--white);
+            font-size: 1.25rem;
             font-weight: 800;
+            margin-bottom: 1.5rem;
+        }
+
+        .step-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
             letter-spacing: -0.03em;
         }
 
-        .feature-preview-card {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.9);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.06);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        .step-card p {
+            color: var(--gray-600);
+            line-height: 1.7;
         }
 
-        .feature-preview-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 30px 80px rgba(79, 70, 229, 0.1);
+        /* ===== FEATURE SECTIONS ===== */
+        .section-feature {
+            padding: 7rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section-feature.is-navy {
+            background: var(--navy);
+            color: var(--white);
+        }
+
+        .section-feature.is-cream {
+            background: var(--cream);
+        }
+
+        .feature-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5rem;
+            align-items: center;
+        }
+
+        .feature-layout.reverse { direction: rtl; }
+        .feature-layout.reverse > * { direction: ltr; }
+
+        .feature-content .section-tag {
+            margin-bottom: 1.25rem;
+        }
+
+        .section-feature.is-navy .section-tag {
+            color: var(--lavender);
+        }
+
+        .feature-content h2 {
+            margin-bottom: 1.25rem;
+        }
+
+        .feature-content .feature-desc {
+            font-size: 1.15rem;
+            line-height: 1.7;
+            margin-bottom: 2.5rem;
+        }
+
+        .section-feature.is-navy .feature-desc {
+            color: rgba(203, 213, 225, 0.8);
+        }
+        .section-feature.is-cream .feature-desc {
+            color: var(--gray-600);
+        }
+
+        .feature-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            margin-bottom: 2.5rem;
         }
 
         .feature-list li {
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .feature-list li:hover {
-            transform: translateX(6px);
-        }
-
-        /* --- HEALTH BOARDS (dark section) --- */
-        .health-boards {
-            background: var(--dark);
-            padding: 120px 0;
-            position: relative;
-            overflow: hidden;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
         }
 
-        .health-boards::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background:
-                radial-gradient(ellipse at 30% 20%, rgba(79, 70, 229, 0.08) 0%, transparent 60%),
-                radial-gradient(ellipse at 70% 80%, rgba(14, 165, 233, 0.05) 0%, transparent 60%);
-            pointer-events: none;
-        }
-
-        .health-boards .section-header h2 {
-            color: var(--white);
-            font-size: clamp(2rem, 4vw, 3rem);
-        }
-        .health-boards .section-header p {
-            color: var(--gray-400);
-        }
-
-        .board-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 28px;
-            text-align: center;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .board-card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 16px;
-            padding: 1px;
-            background: linear-gradient(135deg, rgba(79, 70, 229, 0), rgba(14, 165, 233, 0));
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            transition: background 0.5s ease;
-            pointer-events: none;
-        }
-
-        .board-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            background: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 20px 60px rgba(79, 70, 229, 0.15);
-        }
-
-        .board-card:hover::before {
-            background: linear-gradient(135deg, rgba(79, 70, 229, 0.5), rgba(14, 165, 233, 0.5));
-        }
-
-        .board-count {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--white);
-            text-shadow: 0 0 20px rgba(79, 70, 229, 0.3);
-            line-height: 1;
-            margin-bottom: 8px;
-        }
-
-        .board-name {
-            color: var(--gray-400);
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        /* --- TESTIMONIALS --- */
-        .testimonials {
-            padding: 120px 0;
-            background: var(--gray-50);
-            position: relative;
-        }
-
-        .testimonial-card {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.9);
-            border-radius: 20px;
-            padding: 36px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.04);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .testimonial-card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 20px;
-            padding: 1px;
-            background: linear-gradient(135deg, rgba(79, 70, 229, 0), rgba(14, 165, 233, 0));
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            transition: background 0.5s ease;
-            pointer-events: none;
-        }
-
-        .testimonial-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 60px rgba(79, 70, 229, 0.1);
-        }
-
-        .testimonial-card:hover::before {
-            background: linear-gradient(135deg, rgba(79, 70, 229, 0.4), rgba(14, 165, 233, 0.4));
-        }
-
-        .testimonial-card.featured {
-            background: rgba(255, 255, 255, 0.85);
-            border-color: rgba(79, 70, 229, 0.15);
-        }
-
-        .testimonial-card .author-avatar {
-            width: 52px;
-            height: 52px;
+        .feature-list-icon {
+            flex-shrink: 0;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
+            margin-top: 2px;
+        }
+
+        .section-feature.is-navy .feature-list-icon {
+            background: rgba(69, 65, 254, 0.15);
+            color: var(--lavender);
+        }
+        .section-feature.is-cream .feature-list-icon {
+            background: rgba(254, 14, 131, 0.1);
+            color: var(--neon);
+        }
+
+        .feature-list h4 {
+            font-size: 1.05rem;
             font-weight: 700;
-            font-size: 0.85rem;
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 0 0 0 5px rgba(79, 70, 229, 0.2);
+            letter-spacing: -0.02em;
+            margin-bottom: 0.2rem;
+            line-height: 1.3;
         }
 
-        .testimonials .section-header h2 {
-            font-size: clamp(2rem, 4vw, 3rem);
+        .feature-list p {
+            font-size: 0.9rem;
+            line-height: 1.5;
         }
 
-        /* --- CTA SECTION --- */
-        .cta-section {
-            padding: 120px 0;
+        .section-feature.is-navy .feature-list p {
+            color: rgba(203, 213, 225, 0.65);
+        }
+        .section-feature.is-cream .feature-list p {
+            color: var(--gray-500);
+        }
+
+        /* Feature Visuals */
+        .feature-visual {
             position: relative;
-            overflow: hidden;
         }
 
-        .cta-card {
-            background: linear-gradient(135deg, #4F46E5, #0EA5E9, #818CF8, #4F46E5);
-            background-size: 300% 300%;
-            animation: meshGradient 10s ease infinite;
-            border-radius: 28px;
-            padding: 80px 60px;
+        .feature-mock {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 2rem;
+            color: var(--white);
+        }
+
+        .section-feature.is-cream .feature-mock {
+            background: var(--white);
+            border-color: rgba(0, 0, 0, 0.06);
+            color: var(--navy);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.06);
+        }
+
+        .mock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .section-feature.is-cream .mock-header {
+            border-bottom-color: rgba(0, 0, 0, 0.06);
+        }
+
+        .mock-header h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .mock-header span {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--gray-400);
+        }
+
+        /* Calendar Mock */
+        .calendar-mock-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .cal-day-label {
             text-align: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: rgba(203, 213, 225, 0.5);
+            padding: 0.4rem 0;
+            text-transform: uppercase;
+        }
+
+        .cal-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border-radius: 8px;
+            color: rgba(203, 213, 225, 0.7);
+        }
+
+        .cal-day.booked {
+            background: rgba(69, 65, 254, 0.2);
+            color: #a5b4fc;
+            font-weight: 700;
+        }
+
+        .cal-day.available {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+            font-weight: 700;
+        }
+
+        .cal-legend {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.75rem;
+            color: rgba(203, 213, 225, 0.5);
+        }
+
+        .cal-legend span {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .legend-dot.booked { background: rgba(69, 65, 254, 0.5); }
+        .legend-dot.available { background: rgba(16, 185, 129, 0.5); }
+
+        /* Coverage Mock */
+        .coverage-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .coverage-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .coverage-row .day-label {
+            width: 60px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--gray-500);
+        }
+
+        .coverage-bar-track {
+            flex: 1;
+            height: 24px;
+            background: var(--gray-100);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .coverage-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease;
+        }
+        .coverage-bar-fill.full { background: linear-gradient(90deg, var(--breeze), #6366f1); }
+        .coverage-bar-fill.half { background: linear-gradient(90deg, #f59e0b, #fb923c); }
+        .coverage-bar-fill.empty { background: var(--gray-200); width: 0 !important; }
+
+        .coverage-row .pct {
+            width: 45px;
+            text-align: right;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        .coverage-cta-btn {
+            margin-top: 1rem;
+            padding: 0.6rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            background: var(--neon);
+            color: var(--white);
+            border-radius: 6px;
+            border: none;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        /* ===== HEALTH BOARDS ===== */
+        .section-healthboards {
+            background: var(--navy);
+            padding: 7rem 0;
+            color: var(--white);
             position: relative;
             overflow: hidden;
         }
 
-        .cta-card::before {
+        .section-healthboards::before {
             content: '';
             position: absolute;
-            inset: 0;
-            background:
-                radial-gradient(ellipse at 20% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+            bottom: -300px;
+            right: -200px;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(254, 14, 131, 0.06) 0%, transparent 60%);
             pointer-events: none;
         }
 
-        .cta-card h2 {
-            color: var(--white);
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            margin-bottom: 16px;
+        .hb-top {
+            text-align: center;
+            max-width: 650px;
+            margin: 0 auto 4rem;
         }
 
-        .cta-card p {
-            color: rgba(255, 255, 255, 0.9);
+        .hb-top .section-tag { color: var(--lavender); }
+
+        .hb-top p {
             font-size: 1.15rem;
-            max-width: 500px;
-            margin: 0 auto 32px;
+            color: rgba(203, 213, 225, 0.7);
+            line-height: 1.7;
         }
 
-        .cta-card .cta-bg-shapes { display: none; }
-
-        .cta-buttons .btn {
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        .hb-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.25rem;
         }
 
-        .cta-buttons .btn-white {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            color: var(--primary);
+        .hb-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 0;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            transition: all 0.4s ease;
+        }
+        .hb-card:hover {
+            background: rgba(255, 255, 255, 0.07);
+            transform: translateY(-4px);
+            border-color: rgba(69, 65, 254, 0.3);
+        }
+
+        .hb-card .hb-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(270deg, var(--breeze) 40%, var(--neon));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+
+        .hb-card .hb-icon svg {
+            width: 22px;
+            height: 22px;
+            color: var(--white);
+        }
+
+        .hb-card h4 {
+            font-size: 1.05rem;
             font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
         }
-        .cta-buttons .btn-white:hover {
+
+        .hb-card .hb-count {
+            font-size: 2rem;
+            font-weight: 900;
+            letter-spacing: -0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .hb-card .hb-label {
+            font-size: 0.8rem;
+            color: rgba(203, 213, 225, 0.5);
+            font-weight: 500;
+        }
+
+        /* 7th card centered */
+        .hb-grid-bottom {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+            margin-top: 1.25rem;
+        }
+
+        /* ===== TESTIMONIALS ===== */
+        .section-testimonials {
+            background: var(--cream);
+            padding: 7rem 0;
+            position: relative;
+        }
+
+        .testimonials-top {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto 4rem;
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .testimonial-card {
             background: var(--white);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2), 0 0 20px rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: 0;
+            padding: 2.5rem 2rem;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.4s ease;
+        }
+        .testimonial-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.06);
         }
 
-        .cta-buttons .btn-outline-white {
-            border-color: rgba(255, 255, 255, 0.4);
-            backdrop-filter: blur(10px);
-        }
-        .cta-buttons .btn-outline-white:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.7);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        .testimonial-card.featured {
+            border-left: 4px solid;
+            border-image: linear-gradient(180deg, var(--breeze), var(--neon)) 1;
         }
 
-        /* --- BUTTON GLOW ON HOVER --- */
-        .btn-primary:hover {
-            box-shadow: 0 8px 30px rgba(79, 70, 229, 0.5), 0 0 15px rgba(79, 70, 229, 0.3);
+        .testimonial-stars {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 1.25rem;
         }
 
-        .btn-coral:hover {
-            box-shadow: 0 8px 30px rgba(249, 115, 22, 0.5), 0 0 15px rgba(249, 115, 22, 0.3);
+        .testimonial-stars svg {
+            width: 18px;
+            height: 18px;
+            color: #facc15;
         }
 
-        /* --- GLOBAL TRANSITIONS --- */
-        .board-card,
-        .step-card,
-        .testimonial-card,
-        .feature-preview-card,
-        .btn {
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        .testimonial-card blockquote {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: var(--gray-700);
+            flex: 1;
+            margin-bottom: 1.5rem;
         }
 
-        /* --- RESPONSIVE --- */
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .testimonial-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--white);
+        }
+
+        .testimonial-author-info h4 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.3;
+        }
+
+        .testimonial-author-info p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        /* ===== CTA SECTION ===== */
+        .section-cta {
+            background: var(--navy);
+            padding: 7rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section-cta::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100rem;
+            height: 100rem;
+            background: radial-gradient(circle, rgba(69, 65, 254, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .cta-layout {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-layout h2 {
+            color: var(--cream);
+            margin-bottom: 1.25rem;
+        }
+
+        .cta-layout p {
+            font-size: 1.25rem;
+            color: rgba(203, 213, 225, 0.7);
+            line-height: 1.7;
+            margin-bottom: 2.5rem;
+        }
+
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            background: var(--navy);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 4rem 0 2rem;
+            color: rgba(203, 213, 225, 0.6);
+        }
+
+        .footer-layout {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand p {
+            font-size: 0.9rem;
+            line-height: 1.7;
+            margin-top: 1rem;
+            max-width: 300px;
+        }
+
+        .footer-social {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+        }
+
+        .footer-social a {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        .footer-social a:hover {
+            background: var(--breeze);
+            color: var(--white);
+        }
+        .footer-social a svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .footer-col h4 {
+            color: var(--white);
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin-bottom: 1rem;
+        }
+
+        .footer-col ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .footer-col ul a {
+            font-size: 0.85rem;
+            transition: color 0.2s;
+        }
+        .footer-col ul a:hover { color: var(--white); }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        .footer-bottom-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+        .footer-bottom-links a:hover { color: var(--white); }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .hero-layout { grid-template-columns: 1fr; gap: 3rem; }
+            .hero-content { max-width: 100%; }
+            .hero-visual { max-width: 500px; }
+            .feature-layout { grid-template-columns: 1fr; gap: 3rem; }
+            .feature-layout.reverse { direction: ltr; }
+            .hb-grid { grid-template-columns: repeat(3, 1fr); }
+            .hb-grid-bottom { grid-template-columns: repeat(3, 1fr); }
+            .footer-layout { grid-template-columns: repeat(2, 1fr); }
+        }
+
         @media (max-width: 768px) {
-            .hero-video-bg { display: none; }
-            .hero-particles { display: none; }
-            .hero-cursor-glow { display: none; }
-            .hero-gradient-overlay { animation: none; }
+            .nav-links { display: none; }
+            .nav-mobile-toggle { display: flex; }
 
-            .hero-content h1 {
-                font-size: 2.8rem;
-            }
+            .hero { padding: 8rem 0 4rem; min-height: auto; }
+            .hero h1 { font-size: 2.8rem; }
+            .hero-buttons { flex-direction: column; }
+            .hero-buttons .btn { width: 100%; }
 
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 24px;
-            }
+            .section-benefits, .section-feature, .section-healthboards,
+            .section-testimonials, .section-cta { padding: 4rem 0; }
 
-            .stat-number, .stat-suffix {
-                font-size: 2.5rem;
-            }
+            .steps-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+            .hb-grid { grid-template-columns: repeat(2, 1fr); }
+            .hb-grid-bottom { grid-template-columns: 1fr; }
+            .testimonials-grid { grid-template-columns: 1fr; }
 
-            .stat-item::before { display: none; }
+            .cta-buttons { flex-direction: column; align-items: center; }
+            .cta-buttons .btn { width: 100%; max-width: 300px; }
 
-            .boards-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .cta-card {
-                padding: 48px 24px;
-            }
-
-            .section-divider svg {
-                height: 30px;
-            }
+            .footer-layout { grid-template-columns: 1fr; gap: 2rem; }
         }
 
         @media (max-width: 480px) {
-            .hero-content h1 {
-                font-size: 2.2rem;
-            }
-            .stats-grid {
-                grid-template-columns: 1fr 1fr;
-            }
+            .hero h1 { font-size: 2.2rem; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .hb-grid { grid-template-columns: 1fr; }
         }
 
-        /* --- PARALLAX CONTAINER --- */
-        .parallax-bg {
-            transition: transform 0.1s linear;
-            will-change: transform;
+        /* ===== MOBILE NAV ===== */
+        .nav-mobile-menu {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: var(--navy);
+            z-index: 999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+        }
+
+        .nav-mobile-menu.active { display: flex; }
+
+        .nav-mobile-menu a {
+            color: var(--white);
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .nav-mobile-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            color: var(--white);
+            font-size: 2rem;
+            cursor: pointer;
+            background: none;
+            border: none;
         }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar" id="navbar">
-        <div class="container nav-container">
-            <a href="#" class="logo">
-                <span class="logo-icon">GP</span>
-                <span class="logo-text">RN</span>
-            </a>
-            <ul class="nav-links" id="navLinks">
-                <li><a href="#how-it-works">How It Works</a></li>
-                <li><a href="#for-locums">For Locums</a></li>
-                <li><a href="#for-practices">For Practices</a></li>
-                <li><a href="#about">About</a></li>
-                <li><a href="#contact">Contact</a></li>
-            </ul>
-            <div class="nav-actions">
-                <a href="login.html" class="btn btn-ghost">Log In</a>
-                <a href="login.html" class="btn btn-primary">Get Started</a>
+
+    <!-- ===== NAVBAR ===== -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-inner">
+                <a href="index.html" class="nav-logo">
+                    <span class="gp">GP</span><span class="rn">RN</span>
+                </a>
+                <ul class="nav-links">
+                    <li><a href="#how-it-works">How It Works</a></li>
+                    <li><a href="#for-locums">For Locums</a></li>
+                    <li><a href="#for-practices">For Practices</a></li>
+                    <li><a href="#health-boards">Health Boards</a></li>
+                    <li><a href="#testimonials">Testimonials</a></li>
+                </ul>
+                <div class="nav-auth">
+                    <a href="login.html" class="btn-login">Log In</a>
+                    <a href="login.html" class="btn-get-started">Get Started</a>
+                </div>
+                <button class="nav-mobile-toggle" onclick="document.querySelector('.nav-mobile-menu').classList.add('active')">
+                    <span></span><span></span><span></span>
+                </button>
             </div>
-            <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
         </div>
     </nav>
 
-    <!-- Hero Section -->
+    <!-- Mobile Menu -->
+    <div class="nav-mobile-menu">
+        <button class="nav-mobile-close" onclick="this.parentElement.classList.remove('active')">&times;</button>
+        <a href="#how-it-works" onclick="this.parentElement.classList.remove('active')">How It Works</a>
+        <a href="#for-locums" onclick="this.parentElement.classList.remove('active')">For Locums</a>
+        <a href="#for-practices" onclick="this.parentElement.classList.remove('active')">For Practices</a>
+        <a href="#health-boards" onclick="this.parentElement.classList.remove('active')">Health Boards</a>
+        <a href="#testimonials" onclick="this.parentElement.classList.remove('active')">Testimonials</a>
+        <a href="login.html" style="color: var(--lavender);">Log In</a>
+        <a href="login.html" class="btn btn-breeze" style="margin-top: 1rem;">Get Started</a>
+    </div>
+
+    <!-- ===== HERO ===== -->
     <section class="hero">
-        <!-- Video Background -->
-        <div class="hero-video-bg">
-            <video autoplay loop muted playsinline preload="metadata" id="heroVideo">
-                <source src="https://videos.pexels.com/video-files/7579958/7579958-uhd_2560_1440_30fps.mp4" type="video/mp4">
-                <source src="https://videos.pexels.com/video-files/7578542/7578542-uhd_2560_1440_30fps.mp4" type="video/mp4">
-            </video>
-        </div>
-        <div class="hero-video-overlay"></div>
-        <div class="hero-gradient-overlay"></div>
-
-        <!-- Floating Particles -->
-        <div class="hero-particles">
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-        </div>
-
-        <!-- Cursor Glow -->
-        <div class="hero-cursor-glow" id="cursorGlow"></div>
-
-        <div class="hero-bg-shapes">
-            <div class="shape shape-1"></div>
-            <div class="shape shape-2"></div>
-            <div class="shape shape-3"></div>
-        </div>
-        <div class="container hero-container">
-            <div class="hero-content">
-                <div class="hero-badge">Trusted across Wales</div>
-                <h1>The Right GP,<br><span class="gradient-text">Right Now.</span></h1>
-                <p class="hero-subtitle">GPRN connects locum GPs with practices across Wales instantly. Find shifts, fill gaps, and keep healthcare moving &mdash; all in one powerful platform.</p>
-                <div class="hero-ctas">
-                    <a href="register-locum.html" class="btn btn-large btn-primary">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        I'm a Locum
-                    </a>
-                    <a href="register-practice.html" class="btn btn-large btn-secondary">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                        I'm a Practice
-                    </a>
-                </div>
-                <div class="hero-trust">
-                    <div class="trust-avatars">
-                        <div class="avatar" style="background: #4F46E5;">Dr</div>
-                        <div class="avatar" style="background: #0EA5E9;">GP</div>
-                        <div class="avatar" style="background: #F97316;">MD</div>
-                        <div class="avatar" style="background: #10B981;">RN</div>
+        <div class="container">
+            <div class="hero-layout">
+                <div class="hero-content">
+                    <div class="hero-badge fade-up">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        Trusted across Wales
                     </div>
-                    <p>Join <strong>600+</strong> locum GPs already on GPRN</p>
-                </div>
-            </div>
-            <div class="hero-visual">
-                <div class="hero-card hero-card-main">
-                    <div class="card-header-bar">
-                        <div class="dot green"></div>
-                        <span>Available Shifts</span>
+                    <h1 class="fade-up delay-1">The Right GP, <span class="text-gradient">Right Now.</span></h1>
+                    <p class="hero-subtitle fade-up delay-2">GPRN connects locum GPs with practices across Wales instantly. Find shifts, fill gaps, and keep healthcare moving — all in one powerful platform.</p>
+                    <div class="hero-buttons fade-up delay-3">
+                        <a href="register-locum.html" class="btn btn-cream btn-lg">I'm a Locum</a>
+                        <a href="register-practice.html" class="btn btn-outline btn-lg">I'm a Practice</a>
                     </div>
-                    <div class="shift-item">
-                        <div class="shift-info">
-                            <strong>Ringland Medical Practice</strong>
-                            <span>Newport &bull; Aneurin Bevan</span>
+                    <div class="hero-trust fade-up delay-4">
+                        <div class="hero-trust-avatars">
+                            <span style="background: var(--breeze);">SW</span>
+                            <span style="background: var(--neon);">JM</span>
+                            <span style="background: #10b981;">RP</span>
+                            <span style="background: #f59e0b;">DL</span>
                         </div>
-                        <div class="shift-meta">
-                            <span class="shift-time">08:30 - 16:00</span>
-                            <span class="shift-badge">GP Only</span>
-                        </div>
-                    </div>
-                    <div class="shift-item">
-                        <div class="shift-info">
-                            <strong>Whitchurch Road Surgery</strong>
-                            <span>Cardiff &bull; Cardiff and Vale</span>
-                        </div>
-                        <div class="shift-meta">
-                            <span class="shift-time">08:30 - 12:00</span>
-                            <span class="shift-badge urgent">Urgent</span>
-                        </div>
-                    </div>
-                    <div class="shift-item">
-                        <div class="shift-info">
-                            <strong>Radyr Medical Centre</strong>
-                            <span>Cardiff &bull; Cardiff and Vale</span>
-                        </div>
-                        <div class="shift-meta">
-                            <span class="shift-time">08:30 - 17:00</span>
-                            <span class="shift-badge">Full Day</span>
-                        </div>
+                        <span>Join 600+ locum GPs already on GPRN</span>
                     </div>
                 </div>
-                <div class="hero-card hero-card-float">
-                    <div class="float-icon">&#x2713;</div>
-                    <div>
-                        <strong>Shift Confirmed</strong>
-                        <span>Tomorrow, 08:30</span>
+                <div class="hero-visual fade-up delay-2">
+                    <div class="hero-card">
+                        <div class="hero-card-header">
+                            <h4>Available Shifts</h4>
+                            <span class="hero-card-badge">3 New</span>
+                        </div>
+                        <div class="shift-item">
+                            <div class="shift-item-left">
+                                <h5>Ringland Medical Practice</h5>
+                                <p>Newport &bull; 08:30 - 16:00</p>
+                            </div>
+                            <span class="shift-tag gp-only">GP Only</span>
+                        </div>
+                        <div class="shift-item">
+                            <div class="shift-item-left">
+                                <h5>Whitchurch Road Surgery</h5>
+                                <p>Cardiff &bull; 08:30 - 12:00</p>
+                            </div>
+                            <span class="shift-tag urgent">Urgent</span>
+                        </div>
+                        <div class="shift-item">
+                            <div class="shift-item-left">
+                                <h5>Radyr Medical Centre</h5>
+                                <p>Cardiff &bull; 08:30 - 17:00</p>
+                            </div>
+                            <span class="shift-tag full-day">Full Day</span>
+                        </div>
+                    </div>
+                    <div class="hero-float-card">
+                        <div class="hero-float-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div>
+                            <h5>Shift Confirmed</h5>
+                            <p>Tomorrow, 08:30</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Wave Divider: Hero to Stats -->
-    <div class="section-divider section-divider-dark">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,60 C360,0 1080,0 1440,60 L1440,0 L0,0 Z" fill="currentColor" style="fill: var(--dark);"/>
-        </svg>
-    </div>
-
-    <!-- Stats Bar -->
+    <!-- ===== STATS BAR ===== -->
     <section class="stats-bar">
         <div class="container">
             <div class="stats-grid">
-                <div class="stat-item">
-                    <span class="stat-number" data-target="600">0</span>
-                    <span class="stat-suffix">+</span>
-                    <span class="stat-label">Active Locum GPs</span>
+                <div class="stat-item fade-up">
+                    <h3><span class="text-gradient">600+</span></h3>
+                    <p>Active Locum GPs</p>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-number" data-target="150">0</span>
-                    <span class="stat-suffix">+</span>
-                    <span class="stat-label">Partner Practices</span>
+                <div class="stat-item fade-up delay-1">
+                    <h3><span class="text-gradient">150+</span></h3>
+                    <p>Partner Practices</p>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-number" data-target="7">0</span>
-                    <span class="stat-label">Health Boards Covered</span>
+                <div class="stat-item fade-up delay-2">
+                    <h3><span class="text-gradient">7</span></h3>
+                    <p>Health Boards Covered</p>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-number" data-target="98">0</span>
-                    <span class="stat-suffix">%</span>
-                    <span class="stat-label">Shift Fill Rate</span>
+                <div class="stat-item fade-up delay-3">
+                    <h3><span class="text-gradient">98%</span></h3>
+                    <p>Shift Fill Rate</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Wave Divider: Stats to How It Works -->
-    <div class="section-divider" style="background: var(--dark);">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,0 C480,60 960,60 1440,0 L1440,60 L0,60 Z" style="fill: var(--gray-50);"/>
-        </svg>
-    </div>
-
-    <!-- How It Works -->
-    <section class="how-it-works" id="how-it-works">
+    <!-- ===== HOW IT WORKS ===== -->
+    <section id="how-it-works" class="section-benefits">
         <div class="container">
-            <div class="section-header">
-                <span class="section-tag">Simple & Fast</span>
-                <h2>How GPRN Works</h2>
-                <p>Three simple steps to connect locums with practices. No fuss, no delays.</p>
+            <div class="benefits-top">
+                <div class="section-tag fade-up">Simple &amp; Fast</div>
+                <h2 class="fade-up delay-1">How GPRN Works</h2>
+                <p class="fade-up delay-2">Three simple steps to connect locums with practices. No fuss, no delays.</p>
             </div>
             <div class="steps-grid">
-                <div class="step-card">
-                    <div class="step-number">01</div>
-                    <div class="step-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-                    </div>
+                <div class="step-card fade-up">
+                    <div class="step-number">1</div>
                     <h3>Sign Up</h3>
                     <p>Create your profile in minutes. Locums add availability, practices list open shifts.</p>
                 </div>
-                <div class="step-connector">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">02</div>
-                    <div class="step-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    </div>
+                <div class="step-card fade-up delay-1">
+                    <div class="step-number">2</div>
                     <h3>Match</h3>
                     <p>Our smart matching connects the right locum to the right shift based on location, skills, and availability.</p>
                 </div>
-                <div class="step-connector">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">03</div>
-                    <div class="step-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    </div>
-                    <h3>Book & Go</h3>
+                <div class="step-card fade-up delay-2">
+                    <div class="step-number">3</div>
+                    <h3>Book &amp; Go</h3>
                     <p>Confirm shifts instantly. Manage bookings, rates, and schedules all from your dashboard.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Wave Divider: How It Works to For Locums -->
-    <div class="section-divider" style="background: var(--gray-50);">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,0 C480,60 960,60 1440,0 L1440,60 L0,60 Z" style="fill: var(--white);"/>
-        </svg>
-    </div>
-
-    <!-- For Locums -->
-    <section class="features-section" id="for-locums">
+    <!-- ===== FOR LOCUMS ===== -->
+    <section id="for-locums" class="section-feature is-navy">
         <div class="container">
-            <div class="features-layout">
-                <div class="features-content">
-                    <span class="section-tag">For Locum GPs</span>
-                    <h2>Your shifts,<br><span class="gradient-text">your terms.</span></h2>
-                    <p>Take control of your locum career. Browse available shifts across all Welsh health boards, set your rates, and build your professional profile.</p>
-                    <ul class="feature-list">
+            <div class="feature-layout">
+                <div class="feature-content">
+                    <div class="section-tag fade-up">For Locum GPs</div>
+                    <h2 class="fade-up delay-1">Your shifts, your terms.</h2>
+                    <p class="feature-desc fade-up delay-2">Take control of your locum career. Browse available shifts across all Welsh health boards, set your rates, and build your professional profile.</p>
+                    <ul class="feature-list fade-up delay-3">
                         <li>
-                            <div class="feature-icon-sm">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                            </div>
+                            <span class="feature-list-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
                             <div>
-                                <strong>Smart Calendar</strong>
-                                <span>See all available shifts mapped to your location and preferences</span>
+                                <h4>Smart Calendar</h4>
+                                <p>See all available shifts mapped to your location and preferences</p>
                             </div>
                         </li>
                         <li>
-                            <div class="feature-icon-sm">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                            </div>
+                            <span class="feature-list-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
                             <div>
-                                <strong>Set Your Rates</strong>
-                                <span>Define AM, PM, full-day, and on-call rates per practice</span>
+                                <h4>Set Your Rates</h4>
+                                <p>Define AM, PM, full-day, and on-call rates per practice</p>
                             </div>
                         </li>
                         <li>
-                            <div class="feature-icon-sm">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                            </div>
+                            <span class="feature-list-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
                             <div>
-                                <strong>Instant Booking</strong>
-                                <span>Apply for shifts with one click and get confirmed instantly</span>
+                                <h4>Instant Booking</h4>
+                                <p>Apply for shifts with one click and get confirmed instantly</p>
                             </div>
                         </li>
                         <li>
-                            <div class="feature-icon-sm">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            </div>
+                            <span class="feature-list-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
                             <div>
-                                <strong>Professional Profile</strong>
-                                <span>Showcase your CV, qualifications, and booking reliability</span>
+                                <h4>Professional Profile</h4>
+                                <p>Showcase your CV, qualifications, and booking reliability</p>
                             </div>
                         </li>
                     </ul>
-                    <a href="register-locum.html" class="btn btn-primary">Register as a Locum</a>
+                    <a href="register-locum.html" class="btn btn-cream fade-up delay-4">Register as a Locum</a>
                 </div>
-                <div class="features-visual">
-                    <div class="feature-preview-card">
-                        <div class="preview-header">
+                <div class="feature-visual fade-up delay-2">
+                    <div class="feature-mock">
+                        <div class="mock-header">
                             <h4>My Calendar</h4>
                             <span>April 2026</span>
                         </div>
-                        <div class="calendar-mini">
-                            <div class="cal-row cal-header-row">
-                                <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span>
-                            </div>
-                            <div class="cal-row">
-                                <span class="cal-day booked">6</span>
-                                <span class="cal-day available">7</span>
-                                <span class="cal-day booked">8</span>
-                                <span class="cal-day available">9</span>
-                                <span class="cal-day booked">10</span>
-                            </div>
-                            <div class="cal-row">
-                                <span class="cal-day available">13</span>
-                                <span class="cal-day">14</span>
-                                <span class="cal-day booked">15</span>
-                                <span class="cal-day booked">16</span>
-                                <span class="cal-day available">17</span>
-                            </div>
-                            <div class="cal-row">
-                                <span class="cal-day booked">20</span>
-                                <span class="cal-day available">21</span>
-                                <span class="cal-day">22</span>
-                                <span class="cal-day available">23</span>
-                                <span class="cal-day booked">24</span>
-                            </div>
+                        <div class="calendar-mock-grid">
+                            <div class="cal-day-label">Mon</div>
+                            <div class="cal-day-label">Tue</div>
+                            <div class="cal-day-label">Wed</div>
+                            <div class="cal-day-label">Thu</div>
+                            <div class="cal-day-label">Fri</div>
+                            <div class="cal-day-label">Sat</div>
+                            <div class="cal-day-label">Sun</div>
+                            <div class="cal-day"></div>
+                            <div class="cal-day"></div>
+                            <div class="cal-day booked">1</div>
+                            <div class="cal-day">2</div>
+                            <div class="cal-day available">3</div>
+                            <div class="cal-day">4</div>
+                            <div class="cal-day">5</div>
+                            <div class="cal-day booked">6</div>
+                            <div class="cal-day booked">7</div>
+                            <div class="cal-day available">8</div>
+                            <div class="cal-day">9</div>
+                            <div class="cal-day booked">10</div>
+                            <div class="cal-day">11</div>
+                            <div class="cal-day">12</div>
+                            <div class="cal-day available">13</div>
+                            <div class="cal-day booked">14</div>
+                            <div class="cal-day">15</div>
+                            <div class="cal-day available">16</div>
+                            <div class="cal-day">17</div>
+                            <div class="cal-day">18</div>
+                            <div class="cal-day">19</div>
+                            <div class="cal-day booked">20</div>
+                            <div class="cal-day">21</div>
+                            <div class="cal-day available">22</div>
+                            <div class="cal-day booked">23</div>
+                            <div class="cal-day">24</div>
+                            <div class="cal-day">25</div>
+                            <div class="cal-day">26</div>
+                            <div class="cal-day available">27</div>
+                            <div class="cal-day booked">28</div>
+                            <div class="cal-day">29</div>
+                            <div class="cal-day">30</div>
                         </div>
                         <div class="cal-legend">
-                            <span><i class="dot-legend booked-dot"></i> Booked</span>
-                            <span><i class="dot-legend available-dot"></i> Available</span>
+                            <span><span class="legend-dot booked"></span> Booked</span>
+                            <span><span class="legend-dot available"></span> Available</span>
                         </div>
                     </div>
                 </div>
@@ -1109,202 +1535,231 @@
         </div>
     </section>
 
-    <!-- Wave Divider: For Locums to For Practices -->
-    <div class="section-divider" style="background: var(--white);">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,60 C360,0 1080,0 1440,60 L1440,0 L0,0 Z" style="fill: var(--gray-50);"/>
-        </svg>
-    </div>
-
-    <!-- For Practices -->
-    <section class="features-section features-reverse" id="for-practices" style="background: var(--gray-50);">
+    <!-- ===== FOR PRACTICES ===== -->
+    <section id="for-practices" class="section-feature is-cream">
         <div class="container">
-            <div class="features-layout">
-                <div class="features-content">
-                    <span class="section-tag tag-coral">For Practice Managers</span>
-                    <h2>Fill shifts<br><span class="gradient-text-coral">in minutes.</span></h2>
-                    <p>Stop chasing locums. Post your shifts and let qualified GPs come to you. Manage bookings, view profiles, and keep your practice running smoothly.</p>
-                    <ul class="feature-list">
+            <div class="feature-layout reverse">
+                <div class="feature-content">
+                    <div class="section-tag fade-up">For Practice Managers</div>
+                    <h2 class="fade-up delay-1">Fill shifts in minutes.</h2>
+                    <p class="feature-desc fade-up delay-2">Stop chasing locums. Post your shifts and let qualified GPs come to you. Manage bookings, view profiles, and keep your practice running smoothly.</p>
+                    <ul class="feature-list fade-up delay-3">
                         <li>
-                            <div class="feature-icon-sm coral">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                            </div>
+                            <span class="feature-list-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
                             <div>
-                                <strong>Immediate Booking</strong>
-                                <span>Post urgent shifts and get locum offers within minutes</span>
+                                <h4>Immediate Booking</h4>
+                                <p>Post urgent shifts and get locum offers within minutes</p>
                             </div>
                         </li>
                         <li>
-                            <div class="feature-icon-sm coral">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                            </div>
+                            <span class="feature-list-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
                             <div>
-                                <strong>Verified Locum Profiles</strong>
-                                <span>View CVs, qualifications, booking reliability, and references</span>
+                                <h4>Verified Locum Profiles</h4>
+                                <p>View CVs, qualifications, booking reliability, and references</p>
                             </div>
                         </li>
                         <li>
-                            <div class="feature-icon-sm coral">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                            </div>
+                            <span class="feature-list-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
                             <div>
-                                <strong>Real-Time Dashboard</strong>
-                                <span>Track shift coverage, pending offers, and spending at a glance</span>
+                                <h4>Real-Time Dashboard</h4>
+                                <p>Track shift coverage, pending offers, and spending at a glance</p>
                             </div>
                         </li>
                         <li>
-                            <div class="feature-icon-sm coral">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                            </div>
+                            <span class="feature-list-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
                             <div>
-                                <strong>Transparent Billing</strong>
-                                <span>Clear rates, no hidden fees. See costs before confirming</span>
+                                <h4>Transparent Billing</h4>
+                                <p>Clear rates, no hidden fees. See costs before confirming</p>
                             </div>
                         </li>
                     </ul>
-                    <a href="register-practice.html" class="btn btn-coral">Register Your Practice</a>
+                    <a href="register-practice.html" class="btn btn-navy fade-up delay-4">Register Your Practice</a>
                 </div>
-                <div class="features-visual">
-                    <div class="feature-preview-card practice-card">
-                        <div class="preview-header">
+                <div class="feature-visual fade-up delay-2">
+                    <div class="feature-mock">
+                        <div class="mock-header">
                             <h4>Shift Coverage</h4>
-                            <span class="coverage-badge">This Week</span>
+                            <span>This Week</span>
                         </div>
-                        <div class="coverage-bar-container">
-                            <div class="coverage-label">
-                                <span>Monday</span>
-                                <span class="coverage-pct">100%</span>
+                        <div class="coverage-bars">
+                            <div class="coverage-row">
+                                <span class="day-label">Monday</span>
+                                <div class="coverage-bar-track">
+                                    <div class="coverage-bar-fill full" style="width: 100%;"></div>
+                                </div>
+                                <span class="pct">100%</span>
                             </div>
-                            <div class="coverage-bar"><div class="coverage-fill" style="width: 100%"></div></div>
-                        </div>
-                        <div class="coverage-bar-container">
-                            <div class="coverage-label">
-                                <span>Tuesday</span>
-                                <span class="coverage-pct">100%</span>
+                            <div class="coverage-row">
+                                <span class="day-label">Tuesday</span>
+                                <div class="coverage-bar-track">
+                                    <div class="coverage-bar-fill full" style="width: 100%;"></div>
+                                </div>
+                                <span class="pct">100%</span>
                             </div>
-                            <div class="coverage-bar"><div class="coverage-fill" style="width: 100%"></div></div>
-                        </div>
-                        <div class="coverage-bar-container">
-                            <div class="coverage-label">
-                                <span>Wednesday</span>
-                                <span class="coverage-pct warn">50%</span>
+                            <div class="coverage-row">
+                                <span class="day-label">Wednesday</span>
+                                <div class="coverage-bar-track">
+                                    <div class="coverage-bar-fill half" style="width: 50%;"></div>
+                                </div>
+                                <span class="pct">50%</span>
                             </div>
-                            <div class="coverage-bar"><div class="coverage-fill warning" style="width: 50%"></div></div>
-                        </div>
-                        <div class="coverage-bar-container">
-                            <div class="coverage-label">
-                                <span>Thursday</span>
-                                <span class="coverage-pct danger">0%</span>
+                            <div class="coverage-row">
+                                <span class="day-label">Thursday</span>
+                                <div class="coverage-bar-track">
+                                    <div class="coverage-bar-fill empty" style="width: 0%;"></div>
+                                </div>
+                                <span class="pct" style="color: var(--neon);">0%</span>
                             </div>
-                            <div class="coverage-bar"><div class="coverage-fill" style="width: 0%"></div></div>
-                        </div>
-                        <div class="coverage-bar-container">
-                            <div class="coverage-label">
-                                <span>Friday</span>
-                                <span class="coverage-pct">100%</span>
+                            <div class="coverage-row">
+                                <span class="day-label">Friday</span>
+                                <div class="coverage-bar-track">
+                                    <div class="coverage-bar-fill full" style="width: 100%;"></div>
+                                </div>
+                                <span class="pct">100%</span>
                             </div>
-                            <div class="coverage-bar"><div class="coverage-fill" style="width: 100%"></div></div>
                         </div>
-                        <a href="#" class="btn btn-small btn-coral" style="margin-top: 16px; width: 100%; text-align: center;">Post a Shift for Thursday</a>
+                        <button class="coverage-cta-btn" onclick="window.location.href='login.html'">Post a Shift for Thursday</button>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Wave Divider: For Practices to Health Boards -->
-    <div class="section-divider" style="background: var(--gray-50);">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,0 C480,60 960,60 1440,0 L1440,60 L0,60 Z" style="fill: var(--dark);"/>
-        </svg>
-    </div>
-
-    <!-- Health Boards -->
-    <section class="health-boards" id="about">
+    <!-- ===== HEALTH BOARDS ===== -->
+    <section id="health-boards" class="section-healthboards">
         <div class="container">
-            <div class="section-header">
-                <span class="section-tag">All of Wales</span>
-                <h2>Covering Every Health Board</h2>
-                <p>GPRN operates across all seven Welsh health boards, connecting locums and practices nationwide.</p>
+            <div class="hb-top">
+                <div class="section-tag fade-up">All of Wales</div>
+                <h2 class="fade-up delay-1">Covering Every Health Board</h2>
+                <p class="fade-up delay-2">GPRN operates across all seven Welsh health boards, connecting locums and practices nationwide.</p>
             </div>
-            <div class="boards-grid">
-                <div class="board-card">
-                    <div class="board-count">414</div>
-                    <div class="board-name">Aneurin Bevan</div>
+            <div class="hb-grid">
+                <div class="hb-card fade-up">
+                    <div class="hb-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7H3l2-4h14l2 4M5 21V10.87M19 21V10.87"/></svg>
+                    </div>
+                    <h4>Aneurin Bevan</h4>
+                    <div class="hb-count text-gradient">414</div>
+                    <div class="hb-label">Practices</div>
                 </div>
-                <div class="board-card">
-                    <div class="board-count">266</div>
-                    <div class="board-name">Betsi Cadwaladr</div>
+                <div class="hb-card fade-up delay-1">
+                    <div class="hb-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7H3l2-4h14l2 4M5 21V10.87M19 21V10.87"/></svg>
+                    </div>
+                    <h4>Betsi Cadwaladr</h4>
+                    <div class="hb-count text-gradient">266</div>
+                    <div class="hb-label">Practices</div>
                 </div>
-                <div class="board-card">
-                    <div class="board-count">437</div>
-                    <div class="board-name">Cardiff and Vale</div>
+                <div class="hb-card fade-up delay-2">
+                    <div class="hb-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7H3l2-4h14l2 4M5 21V10.87M19 21V10.87"/></svg>
+                    </div>
+                    <h4>Cardiff and Vale</h4>
+                    <div class="hb-count text-gradient">437</div>
+                    <div class="hb-label">Practices</div>
                 </div>
-                <div class="board-card">
-                    <div class="board-count">425</div>
-                    <div class="board-name">Cwm Taf Morgannwg</div>
+                <div class="hb-card fade-up delay-3">
+                    <div class="hb-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7H3l2-4h14l2 4M5 21V10.87M19 21V10.87"/></svg>
+                    </div>
+                    <h4>Cwm Taf Morgannwg</h4>
+                    <div class="hb-count text-gradient">425</div>
+                    <div class="hb-label">Practices</div>
                 </div>
-                <div class="board-card">
-                    <div class="board-count">309</div>
-                    <div class="board-name">Hywel Dda</div>
+            </div>
+            <div class="hb-grid-bottom">
+                <div class="hb-card fade-up">
+                    <div class="hb-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7H3l2-4h14l2 4M5 21V10.87M19 21V10.87"/></svg>
+                    </div>
+                    <h4>Hywel Dda</h4>
+                    <div class="hb-count text-gradient">309</div>
+                    <div class="hb-label">Practices</div>
                 </div>
-                <div class="board-card">
-                    <div class="board-count">276</div>
-                    <div class="board-name">Powys</div>
+                <div class="hb-card fade-up delay-1">
+                    <div class="hb-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7H3l2-4h14l2 4M5 21V10.87M19 21V10.87"/></svg>
+                    </div>
+                    <h4>Powys</h4>
+                    <div class="hb-count text-gradient">276</div>
+                    <div class="hb-label">Practices</div>
                 </div>
-                <div class="board-card">
-                    <div class="board-count">354</div>
-                    <div class="board-name">Swansea Bay</div>
+                <div class="hb-card fade-up delay-2">
+                    <div class="hb-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7H3l2-4h14l2 4M5 21V10.87M19 21V10.87"/></svg>
+                    </div>
+                    <h4>Swansea Bay</h4>
+                    <div class="hb-count text-gradient">354</div>
+                    <div class="hb-label">Practices</div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Wave Divider: Health Boards to Testimonials -->
-    <div class="section-divider" style="background: var(--dark);">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,60 C360,0 1080,0 1440,60 L1440,0 L0,0 Z" style="fill: var(--gray-50);"/>
-        </svg>
-    </div>
-
-    <!-- Testimonials -->
-    <section class="testimonials">
+    <!-- ===== TESTIMONIALS ===== -->
+    <section id="testimonials" class="section-testimonials">
         <div class="container">
-            <div class="section-header">
-                <span class="section-tag">Trusted by Professionals</span>
-                <h2>What They Say</h2>
+            <div class="testimonials-top">
+                <div class="section-tag fade-up">Trusted by Professionals</div>
+                <h2 class="fade-up delay-1">Their words speak for us.</h2>
             </div>
             <div class="testimonials-grid">
-                <div class="testimonial-card">
-                    <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-                    <p>"GPRN has completely transformed how I find locum shifts. The calendar view and instant booking saves me hours every week."</p>
+                <div class="testimonial-card fade-up">
+                    <div class="testimonial-stars">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </div>
+                    <blockquote>GPRN has completely transformed how I find locum shifts. The calendar view and instant booking saves me hours every week.</blockquote>
                     <div class="testimonial-author">
-                        <div class="author-avatar" style="background: #4F46E5;">DS</div>
-                        <div>
-                            <strong>Dr. Sarah Williams</strong>
-                            <span>Locum GP, Cardiff</span>
+                        <div class="testimonial-avatar" style="background: var(--breeze);">SW</div>
+                        <div class="testimonial-author-info">
+                            <h4>Dr. Sarah Williams</h4>
+                            <p>Locum GP, Cardiff</p>
                         </div>
                     </div>
                 </div>
-                <div class="testimonial-card featured">
-                    <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-                    <p>"We went from struggling to fill shifts to having multiple qualified applicants within minutes. The dashboard gives us complete visibility."</p>
+                <div class="testimonial-card featured fade-up delay-1">
+                    <div class="testimonial-stars">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </div>
+                    <blockquote>We went from struggling to fill shifts to having multiple qualified applicants within minutes. The dashboard gives us complete visibility.</blockquote>
                     <div class="testimonial-author">
-                        <div class="author-avatar" style="background: #F97316;">JM</div>
-                        <div>
-                            <strong>Jane Morgan</strong>
-                            <span>Practice Manager, Swansea</span>
+                        <div class="testimonial-avatar" style="background: var(--neon);">JM</div>
+                        <div class="testimonial-author-info">
+                            <h4>Jane Morgan</h4>
+                            <p>Practice Manager, Swansea</p>
                         </div>
                     </div>
                 </div>
-                <div class="testimonial-card">
-                    <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-                    <p>"The transparency on rates and the booking reliability score gives me confidence in every locum we bring in. Highly recommended."</p>
+                <div class="testimonial-card fade-up delay-2">
+                    <div class="testimonial-stars">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </div>
+                    <blockquote>The transparency on rates and the booking reliability score gives me confidence in every locum we bring in. Highly recommended.</blockquote>
                     <div class="testimonial-author">
-                        <div class="author-avatar" style="background: #10B981;">RP</div>
-                        <div>
-                            <strong>Dr. Rhys Parry</strong>
-                            <span>Senior Partner, Newport</span>
+                        <div class="testimonial-avatar" style="background: #10b981;">RP</div>
+                        <div class="testimonial-author-info">
+                            <h4>Dr. Rhys Parry</h4>
+                            <p>Senior Partner, Newport</p>
                         </div>
                     </div>
                 </div>
@@ -1312,54 +1767,42 @@
         </div>
     </section>
 
-    <!-- Wave Divider: Testimonials to CTA -->
-    <div class="section-divider" style="background: var(--gray-50);">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,0 C480,60 960,60 1440,0 L1440,60 L0,60 Z" style="fill: var(--white);"/>
-        </svg>
-    </div>
-
-    <!-- CTA Section -->
-    <section class="cta-section">
+    <!-- ===== CTA ===== -->
+    <section class="section-cta">
         <div class="container">
-            <div class="cta-card">
-                <div class="cta-bg-shapes">
-                    <div class="cta-shape cta-shape-1"></div>
-                    <div class="cta-shape cta-shape-2"></div>
-                </div>
-                <h2>Ready to get started?</h2>
-                <p>Join hundreds of locum GPs and practices across Wales. Sign up in under 2 minutes.</p>
-                <div class="cta-buttons">
-                    <a href="register-locum.html" class="btn btn-large btn-white">I'm a Locum GP</a>
-                    <a href="register-practice.html" class="btn btn-large btn-outline-white">I'm a Practice Manager</a>
+            <div class="cta-layout">
+                <h2 class="fade-up">Ready to get started?</h2>
+                <p class="fade-up delay-1">Join hundreds of locum GPs and practices across Wales. Sign up in under 2 minutes.</p>
+                <div class="cta-buttons fade-up delay-2">
+                    <a href="register-locum.html" class="btn btn-cream btn-lg">I'm a Locum GP</a>
+                    <a href="register-practice.html" class="btn btn-neon btn-lg">I'm a Practice Manager</a>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="footer" id="contact">
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
         <div class="container">
-            <div class="footer-grid">
+            <div class="footer-layout">
                 <div class="footer-brand">
-                    <a href="#" class="logo">
-                        <span class="logo-icon">GP</span>
-                        <span class="logo-text">RN</span>
+                    <a href="index.html" class="nav-logo" style="font-size: 1.3rem;">
+                        <span class="gp" style="color: var(--breeze);">GP</span><span class="rn" style="color: var(--neon);">RN</span>
                     </a>
-                    <p>GP Right Now &mdash; connecting primary care locums and practices across Wales.</p>
-                    <div class="social-links">
+                    <p>GP Right Now — connecting primary care locums and practices across Wales.</p>
+                    <div class="footer-social">
                         <a href="#" aria-label="Facebook">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
                         </a>
                         <a href="#" aria-label="Twitter">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/></svg>
                         </a>
                         <a href="#" aria-label="LinkedIn">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
                         </a>
                     </div>
                 </div>
-                <div class="footer-links-col">
+                <div class="footer-col">
                     <h4>For Locums</h4>
                     <ul>
                         <li><a href="login.html">Browse Shifts</a></li>
@@ -1368,7 +1811,7 @@
                         <li><a href="login.html">CPD Events</a></li>
                     </ul>
                 </div>
-                <div class="footer-links-col">
+                <div class="footer-col">
                     <h4>For Practices</h4>
                     <ul>
                         <li><a href="login.html">Post a Shift</a></li>
@@ -1377,111 +1820,69 @@
                         <li><a href="login.html">Billing</a></li>
                     </ul>
                 </div>
-                <div class="footer-links-col">
+                <div class="footer-col">
                     <h4>Company</h4>
                     <ul>
                         <li><a href="#about">About GPRN</a></li>
                         <li><a href="#contact">Contact Us</a></li>
                         <li><a href="privacy-policy.html">Privacy Policy</a></li>
-                        <li><a href="terms-conditions.html">Terms & Conditions</a></li>
+                        <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
                     </ul>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2026 GPRN Ltd. All rights reserved. Company registered in Wales.</p>
+                <span>&copy; 2026 GPRN Ltd. All rights reserved. Company registered in Wales.</span>
                 <div class="footer-bottom-links">
                     <a href="privacy-policy.html">Privacy</a>
                     <a href="terms-conditions.html">Terms</a>
-                    <a href="privacy-policy.html">Cookies</a>
                 </div>
             </div>
         </div>
     </footer>
 
-    <script src="script.js"></script>
     <script>
-        // ===== Hero Cursor Glow Effect =====
-        (function() {
-            const hero = document.querySelector('.hero');
-            const glow = document.getElementById('cursorGlow');
-            if (!hero || !glow) return;
-
-            hero.addEventListener('mousemove', function(e) {
-                const rect = hero.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                glow.style.left = x + 'px';
-                glow.style.top = y + 'px';
+        // Scroll-triggered fade-up animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
             });
+        }, { threshold: 0.05, rootMargin: '0px 0px -30px 0px' });
 
-            hero.addEventListener('mouseleave', function() {
-                glow.style.left = '-300px';
-                glow.style.top = '-300px';
+        document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+        // Trigger animations for elements already in viewport on load
+        requestAnimationFrame(() => {
+            document.querySelectorAll('.fade-up').forEach(el => {
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight) {
+                    el.classList.add('visible');
+                }
             });
-        })();
+        });
 
-        // ===== Subtle Parallax on Scroll =====
-        (function() {
-            const parallaxElements = document.querySelectorAll('.hero-visual, .features-visual');
-
-            function updateParallax() {
-                const scrollY = window.scrollY;
-                parallaxElements.forEach(el => {
-                    const rect = el.getBoundingClientRect();
-                    const center = rect.top + rect.height / 2;
-                    const viewCenter = window.innerHeight / 2;
-                    const offset = (center - viewCenter) * 0.04;
-                    el.style.transform = 'translateY(' + offset + 'px)';
-                });
+        // Navbar scroll effect
+        const navbar = document.querySelector('.navbar');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                navbar.style.background = 'rgba(16, 23, 34, 0.95)';
+            } else {
+                navbar.style.background = 'rgba(16, 23, 34, 0.85)';
             }
+        });
 
-            let ticking = false;
-            window.addEventListener('scroll', function() {
-                if (!ticking) {
-                    requestAnimationFrame(function() {
-                        updateParallax();
-                        ticking = false;
-                    });
-                    ticking = true;
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    e.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             });
-        })();
-
-        // ===== Video Fallback =====
-        (function() {
-            const video = document.getElementById('heroVideo');
-            if (!video) return;
-
-            video.addEventListener('error', function() {
-                video.parentElement.style.display = 'none';
-            }, true);
-
-            // If video doesn't start playing within 5 seconds, hide it
-            setTimeout(function() {
-                if (video.readyState < 2) {
-                    video.parentElement.style.opacity = '0';
-                }
-            }, 5000);
-        })();
-
-        // ===== Enhanced Stagger Animations =====
-        (function() {
-            document.querySelectorAll('.steps-grid .step-card').forEach(function(card, i) {
-                card.style.transitionDelay = (i * 0.15) + 's';
-            });
-
-            document.querySelectorAll('.boards-grid .board-card').forEach(function(card, i) {
-                card.style.transitionDelay = (i * 0.08) + 's';
-            });
-
-            document.querySelectorAll('.testimonials-grid .testimonial-card').forEach(function(card, i) {
-                card.style.transitionDelay = (i * 0.12) + 's';
-            });
-
-            document.querySelectorAll('.stats-grid .stat-item').forEach(function(item, i) {
-                item.style.transitionDelay = (i * 0.1) + 's';
-            });
-        })();
+        });
     </script>
+
 </body>
 </html>
