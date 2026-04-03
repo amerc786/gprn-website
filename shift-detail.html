@@ -237,6 +237,11 @@
 
                 const currentData = getMockData();
                 currentData.offers.push(newOffer);
+                // Increment the shift's applicant count
+                const targetShift = currentData.shifts.find(s => s.id === shift.id);
+                if (targetShift) {
+                    targetShift.applicants = (targetShift.applicants || 0) + 1;
+                }
                 saveMockData(currentData);
 
                 Toast.show('Your offer has been submitted successfully!', 'success');

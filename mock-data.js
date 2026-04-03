@@ -793,6 +793,7 @@ function generateNotifications() {
     return [
         {
             id: 'notif-001',
+            userId: 'loc-001',
             type: 'shift_confirmed',
             title: 'Shift Confirmed',
             message: 'Your shift at Ringland Medical Practice on ' + formatDateShort(addDays(today, 2)) + ' has been confirmed.',
@@ -801,6 +802,7 @@ function generateNotifications() {
         },
         {
             id: 'notif-002',
+            userId: 'loc-001',
             type: 'new_shifts',
             title: 'New Shifts Available',
             message: '5 new shifts matching your preferences have been posted in Cardiff and Vale.',
@@ -809,6 +811,7 @@ function generateNotifications() {
         },
         {
             id: 'notif-003',
+            userId: 'loc-001',
             type: 'offer_accepted',
             title: 'Offer Accepted',
             message: 'Whitchurch Road Surgery has accepted your offer for ' + formatDateShort(addDays(today, 5)) + '.',
@@ -817,6 +820,7 @@ function generateNotifications() {
         },
         {
             id: 'notif-004',
+            userId: 'loc-001',
             type: 'reliability_warning',
             title: 'Booking Reliability',
             message: 'Your booking reliability is 98%. Keep it above 95% to maintain priority access.',
@@ -825,6 +829,7 @@ function generateNotifications() {
         },
         {
             id: 'notif-005',
+            userId: 'loc-001',
             type: 'cpd_event',
             title: 'Upcoming CPD Event',
             message: 'Emergency Skills Workshop at Royal Gwent Hospital on April 25th. Register now.',

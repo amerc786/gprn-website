@@ -286,7 +286,12 @@ function getStatusBadge(status) {
         open: 'badge-success',
         filled: 'badge-info',
         expired: 'badge-neutral',
-        cancelled: 'badge-danger'
+        cancelled: 'badge-danger',
+        paid: 'badge-success',
+        overdue: 'badge-danger',
+        disputed: 'badge-info',
+        declined: 'badge-danger',
+        no_show: 'badge-danger'
     };
     return map[status] || 'badge-neutral';
 }
@@ -323,6 +328,11 @@ const Booking = {
         if (!offer) return false;
         offer.status = 'declined';
         offer.declinedDate = DateUtils.toISO(new Date());
+        // Decrement the shift's applicant count
+        const shift = data.shifts.find(s => s.id === offer.shiftId);
+        if (shift && shift.applicants > 0) {
+            shift.applicants--;
+        }
         this.addNotification(data, offer.locumId, 'offer_declined', 'Offer Declined',
             `${offer.practiceName} has declined your offer for ${DateUtils.format(offer.shiftDate, 'medium')}.`);
         EmailManager.send(data, offer.locumId, 'Offer Declined', `Your offer at ${offer.practiceName} for ${DateUtils.format(offer.shiftDate, 'medium')} was not successful.`, 'offer_declined');
@@ -528,7 +538,7 @@ const InvoiceManager = {
         const practice = data.practices.find(p => p.id === offer.practiceId);
         const rate = offer.sessionType === 'Full Day' ? (offer.rateFullDay || locum.rates.fullDay) :
             offer.sessionType === 'AM' ? (offer.rateAM || locum.rates.am) : (offer.ratePM || locum.rates.pm);
-        const housecallFee = offer.housecalls ? (locum.rates.housecall || 0) : 0;
+        const housecallFee = offer.housecalls ? (offer.rateHousecall || locum.rates.housecall || 0) : 0;
         const total = rate + housecallFee;
         const invNum = 'INV-' + String(data.invoices.length + 1001).padStart(4, '0');
         data.invoices.push({

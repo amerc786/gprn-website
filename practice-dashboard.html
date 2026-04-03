@@ -34,6 +34,7 @@
         );
         const monthlySpend = filledThisMonth.reduce((sum, o) => {
             if (o.sessionType === 'Full Day') return sum + (o.rateFullDay || 820);
+            if (o.sessionType === 'PM') return sum + (o.ratePM || 430);
             return sum + (o.rateAM || 430);
         }, 0);
 

@@ -53,7 +53,7 @@
 
         function getEventsForDate(dateStr) {
             const events = [];
-            myOffers.filter(o => o.shiftDate === dateStr && o.status === 'accepted').forEach(o => {
+            myOffers.filter(o => o.shiftDate === dateStr && (o.status === 'accepted' || o.status === 'confirmed')).forEach(o => {
                 events.push({ type: 'booked', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
             });
             myOffers.filter(o => o.shiftDate === dateStr && o.status === 'pending').forEach(o => {

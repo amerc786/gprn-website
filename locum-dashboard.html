@@ -24,7 +24,7 @@
         // Compute stats
         const now = new Date();
         const myOffers = data.offers.filter(o => o.locumId === session.id);
-        const upcomingAccepted = myOffers.filter(o => o.status === 'accepted' && new Date(o.shiftDate) >= now);
+        const upcomingAccepted = myOffers.filter(o => (o.status === 'accepted' || o.status === 'confirmed') && new Date(o.shiftDate) >= now);
         const pendingOffers = myOffers.filter(o => o.status === 'pending');
 
         // This month's earnings from completed offers
@@ -136,7 +136,7 @@
                                             <p class="shift-card-location">${offer.healthBoard}</p>
                                         </div>
                                         <div class="shift-card-badges">
-                                            <span class="badge badge-success">Confirmed</span>
+                                            <span class="badge badge-success">${offer.status === 'confirmed' ? 'Confirmed' : 'Accepted'}</span>
                                             <span class="badge badge-primary">${offer.sessionType}</span>
                                         </div>
                                     </div>

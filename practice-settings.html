@@ -29,8 +29,8 @@
 
         const computerSystems = ['EMIS', 'Vision', 'TPP'];
 
-        // Notification preferences (default mock state)
-        const notifPrefs = {
+        // Notification preferences - load from localStorage or use defaults
+        const defaultNotifPrefs = {
             newApplications: true,
             shiftReminders: true,
             locumConfirmations: true,
@@ -38,6 +38,8 @@
             weeklyReport: false,
             marketingUpdates: false
         };
+        const savedPrefs = localStorage.getItem('gprn_notif_prefs_' + session.id);
+        const notifPrefs = savedPrefs ? JSON.parse(savedPrefs) : { ...defaultNotifPrefs };
 
         function render() {
             pageContent.innerHTML = `
@@ -274,6 +276,7 @@
         }
 
         function saveNotifications() {
+            localStorage.setItem('gprn_notif_prefs_' + session.id, JSON.stringify(notifPrefs));
             Toast.show('Notification preferences saved successfully.', 'success');
         }
 

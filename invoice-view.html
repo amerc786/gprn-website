@@ -46,6 +46,8 @@
             if (InvoiceManager.updateStatus(invoiceId, 'paid')) {
                 Toast.show('Invoice marked as paid. Locum has been notified.', 'success');
                 setTimeout(() => location.reload(), 800);
+            } else {
+                Toast.show('Failed to update invoice. Please try again.', 'error');
             }
         }
 
@@ -75,6 +77,8 @@
                             Modal.close(overlay);
                             Toast.show('Invoice has been disputed. The locum will be notified.', 'info');
                             setTimeout(() => location.reload(), 800);
+                        } else {
+                            Toast.show('Failed to dispute invoice. Please try again.', 'error');
                         }
                     });
                 }

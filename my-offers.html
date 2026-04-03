@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="app-layout">
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
     <script src="components.js"></script>
@@ -160,6 +160,11 @@
             const offer = data.offers.find(o => o.id === offerId);
             if (offer) {
                 offer.status = 'withdrawn';
+                // Decrement the shift's applicant count
+                const shift = data.shifts.find(s => s.id === offer.shiftId);
+                if (shift && shift.applicants > 0) {
+                    shift.applicants--;
+                }
                 saveMockData(data);
                 Toast.show('Offer withdrawn successfully', 'success');
                 renderOffers();
