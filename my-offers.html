@@ -312,8 +312,15 @@
         }
 
         function confirmComplete(offerId) {
-            const success = Booking.confirmCompletion(offerId);
-            if (success) {
+            const result = Booking.confirmCompletion(offerId);
+            if (result === 'too_early') {
+                const data = getMockData();
+                const offer = data.offers.find(o => o.id === offerId);
+                const dateStr = offer ? DateUtils.format(offer.shiftDate, 'full') : 'the scheduled date';
+                Toast.show('This shift cannot be completed yet. The shift date (' + dateStr + ') has not passed.', 'warning', 5000);
+                return;
+            }
+            if (result === true) {
                 Toast.show('Shift marked as complete! Invoice generated. The practice has been notified.', 'success');
             } else {
                 Toast.show('Failed to confirm completion.', 'error');

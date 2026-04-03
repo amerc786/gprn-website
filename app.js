@@ -467,6 +467,10 @@ const Booking = {
         const data = getMockData();
         const offer = data.offers.find(o => o.id === offerId);
         if (!offer || !['accepted', 'acknowledged', 'confirmed'].includes(offer.status)) return false;
+        // Prevent completion before the shift date has passed
+        const shiftEnd = new Date(offer.shiftDate);
+        shiftEnd.setHours(23, 59, 59, 999);
+        if (new Date() < shiftEnd) return 'too_early';
         offer.status = 'completed';
         offer.completedDate = DateUtils.toISO(new Date());
         offer.completedByLocum = true;
