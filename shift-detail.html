@@ -46,9 +46,12 @@
                 .slice(0, 6);
 
             pageContent.innerHTML = `
-                <a href="available-shifts.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; color: var(--primary); margin-bottom: 20px;">
-                    ${getIcon('arrow-left')} Back to Available Shifts
-                </a>
+                <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <a href="available-shifts.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; color: var(--primary);">
+                        ${getIcon('arrow-left')} Back to Available Shifts
+                    </a>
+                    <button class="btn btn-ghost btn-small" onclick="window.print()">${getIcon('download')} Print</button>
+                </div>
 
                 <div class="grid-2-1">
                     <!-- Left Column -->
@@ -90,8 +93,8 @@
                                         <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.city}</div>
                                     </div>
                                     <div>
-                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Estimated Travel</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">~19 mins from home</div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Directions</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);"><a href="https://www.google.com/maps/search/${encodeURIComponent((practice ? practice.address + ', ' + practice.city + ', ' + practice.postcode : ''))}" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline;">Get directions</a></div>
                                     </div>
                                 </div>
                             </div>
@@ -141,7 +144,7 @@
                                 <h2>Practice Comments</h2>
                             </div>
                             <div class="content-card-body">
-                                <p style="font-size: 0.9rem; color: var(--dark-600); line-height: 1.7;">${shift.comment}</p>
+                                <p style="font-size: 0.9rem; color: var(--dark-600); line-height: 1.7;">${sanitizeHTML(shift.comment)}</p>
                             </div>
                         </div>` : ''}
                     </div>
@@ -150,13 +153,13 @@
                     <div>
                         <div class="content-card" style="position: sticky; top: 80px;">
                             <div class="content-card-header">
-                                <h2>Make an Offer</h2>
+                                <h2>Apply for Shift</h2>
                             </div>
                             <div class="content-card-body">
                                 <div class="form-group">
                                     <label class="form-label">Session Type</label>
                                     <select class="form-select" id="offerSessionType">
-                                        <option value="">-- No Offer --</option>
+                                        <option value="">-- Select Session Type --</option>
                                         <option value="AM" ${shift.sessionType === 'AM' ? 'selected' : ''}>AM Session</option>
                                         <option value="PM" ${shift.sessionType === 'PM' ? 'selected' : ''}>PM Session</option>
                                         <option value="Full Day" ${shift.sessionType === 'Full Day' ? 'selected' : ''}>Full Day</option>
@@ -188,7 +191,7 @@
                                     ${getIcon('activity')} This shift may include housecalls.
                                 </div>` : ''}
 
-                                <button class="btn btn-primary" style="width: 100%;" id="submitOfferBtn">Submit Offer</button>
+                                <button class="btn btn-primary" style="width: 100%;" id="submitOfferBtn">Apply for Shift</button>
                                 <button class="btn btn-ghost" style="width: 100%; margin-top: 10px;" id="requestInfoBtn">${getIcon('mail')} Request Info from Practice</button>
                             </div>
                         </div>
@@ -215,70 +218,47 @@
 
             // Submit Offer handler
             function doSubmitOffer() {
-                const sessionType = document.getElementById('offerSessionType').value;
-
-                const newOffer = {
-                    id: 'offer-' + String(Date.now()).slice(-6),
-                    shiftId: shift.id,
-                    locumId: session.id,
-                    practiceId: shift.practiceId,
-                    practiceName: shift.practiceName,
-                    healthBoard: shift.healthBoard,
-                    shiftDate: shift.date,
-                    startTime: shift.startTime,
-                    endTime: shift.endTime,
-                    sessionType: sessionType,
-                    rateAM: rates.am,
-                    ratePM: rates.pm,
-                    rateFullDay: rates.fullDay,
-                    rateHousecall: rates.housecall || 0,
-                    status: 'pending',
-                    offerDate: DateUtils.toISO(new Date()),
-                    comment: '',
-                    housecalls: shift.housecalls
-                };
-
-                const currentData = getMockData();
-                currentData.offers.push(newOffer);
-                // Increment the shift's applicant count
-                const targetShift = currentData.shifts.find(s => s.id === shift.id);
-                if (targetShift) {
-                    targetShift.applicants = (targetShift.applicants || 0) + 1;
+                var sessionType = document.getElementById('offerSessionType').value;
+                var result = Booking.applyForShift(shift.id, sessionType);
+                if (result.error) {
+                    if (result.error === 'already_applied') {
+                        Toast.show(result.message || 'You have already applied for this shift.', 'error');
+                        var offerLink = document.getElementById('alreadyAppliedLink');
+                        if (!offerLink) {
+                            var linkDiv = document.createElement('div');
+                            linkDiv.id = 'alreadyAppliedLink';
+                            linkDiv.style.cssText = 'text-align:center;margin-top:12px;';
+                            linkDiv.innerHTML = '<a href="my-offers.html" style="color:var(--primary);font-weight:600;font-size:0.88rem;">View My Offers &rarr;</a>';
+                            document.getElementById('submitOfferBtn').parentNode.appendChild(linkDiv);
+                        }
+                        return;
+                    }
+                    var errors = {
+                        'barred': 'You cannot apply to shifts at this practice.',
+                        'shift_not_open': 'This shift is no longer available.',
+                        'not_logged_in': 'Please log in to apply.',
+                        'shift_not_found': 'This shift could not be found.'
+                    };
+                    Toast.show(result.message || errors[result.error] || 'Unable to apply for this shift.', 'error');
+                    return;
                 }
-                saveMockData(currentData);
-
-                Toast.show('Your offer has been submitted successfully!', 'success');
-
-                setTimeout(() => {
-                    window.location.href = 'my-offers.html';
-                }, 1500);
+                Toast.show('Your application has been submitted successfully!', 'success');
+                setTimeout(function() { window.location.href = 'my-offers.html'; }, 1500);
             }
 
             document.getElementById('submitOfferBtn').addEventListener('click', function() {
                 const sessionType = document.getElementById('offerSessionType').value;
                 if (!sessionType) {
-                    Toast.show('Please select a session type to make an offer.', 'warning');
+                    Toast.show('Please select a session type to apply.', 'warning');
                     return;
                 }
 
-                // Double-booking check
-                if (Booking.isDoubleBooked(session.id, shift.date)) {
+                // Double-booking check (now session-aware)
+                if (Booking.isDoubleBooked(session.id, shift.date, null, sessionType)) {
                     Modal.show({
                         title: 'Double Booking Warning',
-                        body: `
-                            <div style="padding: 8px 0;">
-                                <p style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 12px;">
-                                    You already have an <strong>accepted or confirmed</strong> shift on <strong>${DateUtils.format(shift.date, 'full')}</strong>.
-                                </p>
-                                <p style="font-size: 0.9rem; color: var(--dark-600);">
-                                    Submitting this offer may result in a scheduling conflict if accepted. Do you want to proceed anyway?
-                                </p>
-                            </div>
-                        `,
-                        footer: `
-                            <button class="btn btn-ghost" data-modal-close>Cancel</button>
-                            <button class="btn btn-primary" id="confirmDoubleBookBtn">Submit Anyway</button>
-                        `,
+                        body: '<div style="padding: 8px 0;"><p style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 12px;">You already have an <strong>accepted or confirmed</strong> shift on <strong>' + DateUtils.format(shift.date, 'full') + '</strong> that overlaps with this session.</p><p style="font-size: 0.9rem; color: var(--dark-600);">Submitting this offer may result in a scheduling conflict if accepted. Do you want to proceed anyway?</p></div>',
+                        footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="confirmDoubleBookBtn">Submit Anyway</button>',
                         onOpen: function(overlay) {
                             overlay.querySelector('#confirmDoubleBookBtn').addEventListener('click', function() {
                                 Modal.close(overlay);

@@ -274,11 +274,26 @@
                 info += '</div>';
             }
 
+            var cancelBtn = '';
+            if (shift.status === 'open' && shift.practiceId === session.id) {
+                cancelBtn = '<button class="btn btn-small" style="background:var(--danger);color:white;border-color:var(--danger);margin-right:auto;" id="cancelShiftBtn" data-shift-id="' + shift.id + '">Cancel Shift</button>';
+            }
+
             Modal.show({
                 title: DateUtils.format(shift.date, 'full') + ' — ' + shift.sessionType,
                 size: 'large',
                 body: info,
-                footer: '<button class="btn btn-ghost" data-modal-close>Close</button>'
+                footer: cancelBtn + '<button class="btn btn-ghost" data-modal-close>Close</button>',
+                onOpen: function(overlay) {
+                    var csBtn = overlay.querySelector('#cancelShiftBtn');
+                    if (csBtn) {
+                        csBtn.addEventListener('click', function() {
+                            var sid = this.dataset.shiftId;
+                            Modal.close(overlay);
+                            confirmCancelShift(sid);
+                        });
+                    }
+                }
             });
         }
 
@@ -446,13 +461,17 @@
                 }
 
                 html += '<div class="shift-card-footer">'
-                    + '<span style="font-size: 0.82rem; color: var(--gray-400);">Shift date: ' + DateUtils.format(shift.date, 'medium') + '</span>';
+                    + '<span style="font-size: 0.82rem; color: var(--gray-400);">Shift date: ' + DateUtils.format(shift.date, 'medium') + '</span>'
+                    + '<div style="display:flex;gap:8px;align-items:center;">';
+                if (shift.status === 'open' && shift.practiceId === session.id) {
+                    html += '<button class="btn btn-ghost btn-small" style="color:var(--danger);border-color:var(--danger);" onclick="confirmCancelShift(\'' + shift.id + '\')">Cancel Shift</button>';
+                }
                 if (applicants.length > 0) {
                     html += '<button class="btn btn-ghost btn-small" onclick="toggleApplicants(\'' + shift.id + '\', this)">' + getIcon('chevron-down') + ' Show Applicants</button>';
                 } else {
                     html += '<span style="font-size: 0.82rem; color: var(--gray-400);">No applicants yet</span>';
                 }
-                html += '</div></div>';
+                html += '</div></div></div>';
                 return html;
             }).join('');
         }
@@ -604,6 +623,26 @@
             Booking.practiceRespondToCounter(offerId, true);
             Toast.show('Rate agreed! The locum has been notified.', 'success');
             setTimeout(function() { render(); }, 500);
+        }
+
+        function confirmCancelShift(shiftId) {
+            Modal.show({
+                title: 'Cancel Shift',
+                body: '<div style="padding:8px 0;"><p style="font-size:0.95rem;color:var(--dark-600);margin-bottom:12px;">Are you sure you want to cancel this shift?</p><p style="font-size:0.88rem;color:var(--danger);">All pending applications will be withdrawn and applicants notified.</p></div>',
+                footer: '<button class="btn btn-ghost" data-modal-close>Keep Shift</button><button class="btn btn-small" style="background:var(--danger);color:white;border-color:var(--danger);" id="confirmCancelBtn">Cancel Shift</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#confirmCancelBtn').addEventListener('click', function() {
+                        var result = Booking.deleteShift(shiftId);
+                        Modal.close(overlay);
+                        if (result.error) {
+                            Toast.show(result.message || 'Unable to cancel this shift.', 'error');
+                            return;
+                        }
+                        Toast.show('Shift cancelled. All applicants have been notified.', 'success');
+                        setTimeout(function() { render(); }, 500);
+                    });
+                }
+            });
         }
     </script>
 </body>

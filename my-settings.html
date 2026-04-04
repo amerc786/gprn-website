@@ -240,8 +240,19 @@
 
         function toggleSwitch(el) {
             el.classList.toggle('active');
-            const state = el.classList.contains('active') ? 'enabled' : 'disabled';
-            Toast.show(`Preference ${state}`, 'info', 1500);
+            var isActive = el.classList.contains('active');
+            var settingKey = el.dataset.pref;
+            var state = isActive ? 'enabled' : 'disabled';
+
+            // Persist to mock data
+            var data = getMockData();
+            var session = Auth.getSession();
+            if (!data.userSettings) data.userSettings = {};
+            if (!data.userSettings[session.id]) data.userSettings[session.id] = {};
+            data.userSettings[session.id][settingKey] = isActive;
+            saveMockData(data);
+
+            Toast.show('Preference ' + state, 'info', 1500);
         }
 
         function savePersonalInfo(e) {
@@ -311,6 +322,25 @@
         }
 
         renderSettings();
+
+        // Load saved toggle states from mock data
+        (function() {
+            var data = getMockData();
+            var session = Auth.getSession();
+            if (data.userSettings && data.userSettings[session.id]) {
+                var settings = data.userSettings[session.id];
+                document.querySelectorAll('.toggle-switch[data-pref]').forEach(function(el) {
+                    var key = el.dataset.pref;
+                    if (settings.hasOwnProperty(key)) {
+                        if (settings[key]) {
+                            el.classList.add('active');
+                        } else {
+                            el.classList.remove('active');
+                        }
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 </html>

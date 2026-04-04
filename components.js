@@ -203,7 +203,7 @@ function initAppLayout(role, activePage, pageTitle, breadcrumbs) {
                     data.notifications.forEach(n => {
                         if (!n.userId || n.userId === session.id) n.read = true;
                     });
-                    localStorage.setItem('gprn_mockData', JSON.stringify(data));
+                    saveMockData(data);
                 }
                 notifDropdown.querySelectorAll('.dropdown-item.unread').forEach(el => {
                     el.classList.remove('unread');
@@ -255,8 +255,8 @@ function renderShiftCard(shift, showActions = true) {
     <div class="shift-card-full" data-shift-id="${shift.id}">
         <div class="shift-card-header">
             <div>
-                <h3 class="shift-card-title">${shift.practiceName}</h3>
-                <p class="shift-card-location">${shift.city} &bull; ${shift.healthBoard}</p>
+                <h3 class="shift-card-title">${sanitizeHTML(shift.practiceName)}</h3>
+                <p class="shift-card-location">${sanitizeHTML(shift.city)} &bull; ${sanitizeHTML(shift.healthBoard)}</p>
             </div>
             <div class="shift-card-badges">
                 ${urgentBadge}
@@ -285,13 +285,16 @@ function renderShiftCard(shift, showActions = true) {
         ${showActions ? `
         <div class="shift-card-footer">
             <span class="badge ${shift.shiftType === 'GP Only' ? 'badge-info' : 'badge-neutral'}">${shift.shiftType}</span>
-            <a href="shift-detail.html?id=${shift.id}" class="btn btn-primary btn-small">View Details</a>
+            <div style="display:flex;align-items:center;gap:8px;">
+                ${shift.applicants >= 3 ? '<span class="badge badge-warning" style="font-size:0.72rem;padding:2px 8px;">High demand</span>' : ''}
+                <a href="shift-detail.html?id=${shift.id}" class="btn btn-primary btn-small">View Details</a>
+            </div>
         </div>` : ''}
     </div>`;
 }
 
 // ---- Stat Card Component ----
-function renderStatCard(icon, label, value, trend, color) {
+function renderStatCard(icon, label, value, trend, color, helpText) {
     return `
     <div class="dash-stat-card">
         <div class="dash-stat-icon" style="background: ${color || 'rgba(79,70,229,0.1)'}; color: ${color ? '#fff' : 'var(--primary)'}">
@@ -300,6 +303,7 @@ function renderStatCard(icon, label, value, trend, color) {
         <div class="dash-stat-info">
             <span class="dash-stat-value">${value}</span>
             <span class="dash-stat-label">${label}</span>
+            ${helpText ? `<span style="font-size: 0.72rem; color: var(--dark-600); display: block; margin-top: 2px;">${helpText}</span>` : ''}
         </div>
         ${trend ? `<span class="dash-stat-trend ${trend.startsWith('+') ? 'trend-up' : 'trend-down'}">${trend}</span>` : ''}
     </div>`;
@@ -337,8 +341,8 @@ function renderOfferCard(offer) {
     <div class="offer-card" data-offer-id="${offer.id}">
         <div class="offer-card-header">
             <div>
-                <h3 class="offer-card-title">${offer.practiceName}</h3>
-                <p class="offer-card-location">${offer.healthBoard}</p>
+                <h3 class="offer-card-title">${sanitizeHTML(offer.practiceName)}</h3>
+                <p class="offer-card-location">${sanitizeHTML(offer.healthBoard)}</p>
             </div>
             <span class="badge ${getStatusBadge(offer.status)}">${offer.status.charAt(0).toUpperCase() + offer.status.slice(1)}</span>
         </div>
@@ -355,15 +359,14 @@ function renderOfferCard(offer) {
                 ${getIcon('tag')}
                 <span>${offer.sessionType}</span>
             </div>
-            ${!offer.housecalls ? `<span class="badge badge-neutral" style="margin-left:auto">No Housecalls</span>` : ''}
         </div>
         <div class="offer-card-footer">
             <div class="offer-rates">
-                <span>Your rates: AM ${formatCurrency(offer.rateAM)}, PM ${formatCurrency(offer.ratePM)}, Day ${formatCurrency(offer.rateFullDay)}</span>
+                <span>Your rate: ${offer.sessionType === 'Full Day' ? formatCurrency(offer.rateFullDay) : offer.sessionType === 'PM' ? formatCurrency(offer.ratePM) : formatCurrency(offer.rateAM)}/${offer.sessionType} session</span>
             </div>
             <span class="offer-date">Offer made: ${DateUtils.format(offer.offerDate, 'medium')}</span>
         </div>
-        ${offer.comment ? `<div class="offer-comment"><strong>Your comment:</strong> ${offer.comment}</div>` : ''}
+        ${offer.comment ? `<div class="offer-comment"><strong>Your comment:</strong> ${sanitizeHTML(offer.comment)}</div>` : ''}
         ${offer.status === 'pending' ? `
         <div class="offer-actions">
             <button class="btn btn-small btn-ghost" onclick="withdrawOffer('${offer.id}')">Withdraw</button>
@@ -440,7 +443,7 @@ function renderRatingStars(rating, size = 16) {
 function renderBarredWarning(practiceId, locumId) {
     if (BarredList.isBarred(practiceId, locumId)) {
         const reason = BarredList.getBarReason(practiceId, locumId);
-        return `<div class="barred-warning"><span class="badge badge-danger">BARRED</span> <span class="barred-reason">${reason || 'This locum is on your barred list'}</span></div>`;
+        return `<div class="barred-warning"><span class="badge badge-danger">BARRED</span> <span class="barred-reason">${sanitizeHTML(reason) || 'This locum is on your barred list'}</span></div>`;
     }
     if (BarredList.isPreferred(practiceId, locumId)) {
         return `<div class="preferred-indicator"><span class="badge badge-success">PREFERRED</span></div>`;
@@ -455,8 +458,8 @@ function renderMessageBubble(msg, currentUserId) {
     const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const dateStr = DateUtils.format(msg.timestamp, 'medium');
     return `<div class="message-bubble ${isMine ? 'sent' : 'received'}">
-        <div class="message-content">${msg.body}</div>
-        <div class="message-time">${dateStr} ${timeStr}</div>
+        <div class="message-content">${sanitizeHTML(msg.body)}</div>
+        <div class="message-time">${dateStr} ${timeStr}${isMine ? ' <span style="color:var(--gray-400);margin-left:6px;">Delivered</span>' : ''}</div>
     </div>`;
 }
 
@@ -465,7 +468,7 @@ function renderInvoiceRow(inv) {
     return `<tr>
         <td><strong>${inv.invoiceNumber}</strong></td>
         <td>${DateUtils.format(inv.generatedDate, 'short')}</td>
-        <td>${inv.locumName}</td>
+        <td>${sanitizeHTML(inv.locumName)}</td>
         <td>${DateUtils.format(inv.shiftDate, 'medium')}</td>
         <td>${inv.sessionType}</td>
         <td><strong>${formatCurrency(inv.total)}</strong></td>

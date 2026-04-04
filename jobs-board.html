@@ -61,17 +61,19 @@
                     </h3>`;
 
                     grouped[board].forEach(job => {
+                        const isClosed = new Date(job.closingDate) < new Date();
                         const typeBadgeClass = job.type === 'Partnership' ? 'badge-coral' :
                                                job.type === 'Permanent' ? 'badge-success' :
                                                job.type === 'Maternity Cover' ? 'badge-warning' : 'badge-info';
                         html += `
-                        <div class="shift-card-full" style="margin-bottom: 16px;">
+                        <div class="shift-card-full" style="margin-bottom: 16px;${isClosed ? ' opacity: 0.7;' : ''}">
                             <div class="shift-card-header">
                                 <div>
                                     <h3 class="shift-card-title">${job.practiceName}</h3>
                                     <p class="shift-card-location">${job.healthBoard}</p>
                                 </div>
                                 <div class="shift-card-badges">
+                                    ${isClosed ? '<span class="badge badge-danger">Closed</span>' : ''}
                                     <span class="badge ${typeBadgeClass}">${job.type}</span>
                                 </div>
                             </div>
@@ -96,13 +98,16 @@
                             </div>
                             <p style="font-size: 0.88rem; color: var(--dark-600); line-height: 1.6; margin-top: 12px; padding: 0 4px;">${job.description}</p>
                             <div class="shift-card-footer" style="margin-top: 12px;">
-                                <a href="mailto:${job.contactEmail}" style="font-size: 0.85rem; color: var(--primary); display: flex; align-items: center; gap: 6px;">
+                                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                                    <a href="mailto:${job.contactEmail}" style="font-size: 0.85rem; color: var(--primary); display: flex; align-items: center; gap: 6px;">
+                                        ${getIcon('mail')}
+                                        ${job.contactEmail}
+                                    </a>
+                                    <span style="font-size:0.8rem;color:var(--dark-600);">Contact for full job specification</span>
+                                </div>
+                                <button class="btn btn-primary btn-small" id="job-interest-${job.id}" ${isClosed ? 'disabled style="opacity: 0.5; pointer-events: none;"' : ''} onclick="expressInterest('${job.id}')">
                                     ${getIcon('mail')}
-                                    ${job.contactEmail}
-                                </a>
-                                <button class="btn btn-primary btn-small" onclick="Toast.show('Job advert download simulated for ${job.title}', 'info')">
-                                    ${getIcon('download')}
-                                    Download Job Advert
+                                    Express Interest
                                 </button>
                             </div>
                         </div>`;
@@ -118,7 +123,99 @@
             });
         }
 
+        function expressInterest(jobId) {
+            var currentData = getMockData();
+            var session = Auth.getSession();
+            var job = currentData.jobs.find(function(j) { return j.id === jobId; });
+            if (!job) { Toast.show('Job not found.', 'error'); return; }
+
+            if (!currentData.jobApplications) currentData.jobApplications = [];
+            var existing = currentData.jobApplications.find(function(a) { return a.jobId === jobId && a.userId === session.id; });
+            if (existing) {
+                Toast.show('You have already expressed interest in this position.', 'info');
+                return;
+            }
+
+            Modal.show({
+                title: 'Express Interest - ' + job.practiceName,
+                size: 'medium',
+                body: '<div style="margin-bottom:16px;">'
+                    + '<p style="font-size:0.9rem;color:var(--dark-600);margin-bottom:12px;"><strong>' + job.title + '</strong> at ' + job.practiceName + '</p>'
+                    + '<p style="font-size:0.85rem;color:var(--dark-600);margin-bottom:4px;">' + job.sessions + ' &bull; ' + job.salary + '</p>'
+                    + '</div>'
+                    + '<div class="form-group">'
+                    + '<label class="form-label">Cover Message</label>'
+                    + '<textarea class="form-input" id="jobCoverMsg" rows="5" placeholder="Introduce yourself and explain your interest in this position..."></textarea>'
+                    + '</div>',
+                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button>'
+                    + '<button class="btn btn-primary" id="submitInterestBtn">Send Interest</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#submitInterestBtn').addEventListener('click', function() {
+                        var coverMsg = overlay.querySelector('#jobCoverMsg').value.trim();
+                        if (!coverMsg) { Toast.show('Please write a cover message.', 'warning'); return; }
+
+                        var freshData = getMockData();
+                        if (!freshData.jobApplications) freshData.jobApplications = [];
+                        freshData.jobApplications.push({
+                            id: 'jobapp-' + Date.now(),
+                            jobId: jobId,
+                            userId: session.id,
+                            userName: session.name,
+                            coverMessage: coverMsg,
+                            date: new Date().toISOString(),
+                            status: 'sent'
+                        });
+
+                        // Create notification for the practice
+                        if (!freshData.notifications) freshData.notifications = [];
+                        freshData.notifications.push({
+                            userId: job.practiceId || job.contactEmail,
+                            type: 'job_interest',
+                            title: 'New Job Interest',
+                            message: session.name + ' has expressed interest in the "' + job.title + '" position.',
+                            date: new Date().toISOString(),
+                            read: false
+                        });
+
+                        // Log email to practice contact
+                        EmailManager.send(freshData, job.practiceId || session.id, 'Job Interest: ' + job.title,
+                            session.name + ' has expressed interest in the "' + job.title + '" position at ' + job.practiceName + '. Cover message: ' + coverMsg,
+                            'job_interest');
+
+                        saveMockData(freshData);
+                        Modal.close(overlay);
+                        Toast.show('Your interest has been sent to ' + job.practiceName + '!', 'success');
+
+                        var btn = document.getElementById('job-interest-' + jobId);
+                        if (btn) {
+                            btn.textContent = 'Interest Sent';
+                            btn.disabled = true;
+                            btn.style.opacity = '0.7';
+                        }
+                    });
+                }
+            });
+        }
+
         renderJobs(null);
+
+        // Mark already-applied jobs
+        (function() {
+            var currentData = getMockData();
+            var session = Auth.getSession();
+            if (currentData.jobApplications) {
+                currentData.jobApplications.forEach(function(app) {
+                    if (app.userId === session.id) {
+                        var btn = document.getElementById('job-interest-' + app.jobId);
+                        if (btn) {
+                            btn.textContent = 'Interest Sent';
+                            btn.disabled = true;
+                            btn.style.opacity = '0.7';
+                        }
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 </html>

@@ -234,8 +234,15 @@
 
         function toggleNotif(el) {
             el.classList.toggle('active');
-            const pref = el.dataset.pref;
+            var pref = el.dataset.pref;
             if (pref) notifPrefs[pref] = el.classList.contains('active');
+
+            // Also persist to mock data
+            var data = getMockData();
+            if (!data.userSettings) data.userSettings = {};
+            if (!data.userSettings[session.id]) data.userSettings[session.id] = {};
+            data.userSettings[session.id][pref] = el.classList.contains('active');
+            saveMockData(data);
         }
 
         function attachFormHandlers() {
@@ -280,10 +287,42 @@
 
         function saveNotifications() {
             localStorage.setItem('gprn_notif_prefs_' + session.id, JSON.stringify(notifPrefs));
+
+            // Also persist to mock data
+            var data = getMockData();
+            if (!data.userSettings) data.userSettings = {};
+            if (!data.userSettings[session.id]) data.userSettings[session.id] = {};
+            Object.keys(notifPrefs).forEach(function(key) {
+                data.userSettings[session.id][key] = notifPrefs[key];
+            });
+            saveMockData(data);
+
             Toast.show('Notification preferences saved successfully.', 'success');
         }
 
         render();
+
+        // Load saved toggle states from mock data
+        (function() {
+            var data = getMockData();
+            if (data.userSettings && data.userSettings[session.id]) {
+                var settings = data.userSettings[session.id];
+                document.querySelectorAll('.toggle-switch[data-pref]').forEach(function(el) {
+                    var key = el.dataset.pref;
+                    if (settings.hasOwnProperty(key)) {
+                        if (settings[key]) {
+                            el.classList.add('active');
+                        } else {
+                            el.classList.remove('active');
+                        }
+                        // Also update in-memory notifPrefs object
+                        if (notifPrefs.hasOwnProperty(key)) {
+                            notifPrefs[key] = settings[key];
+                        }
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 </html>

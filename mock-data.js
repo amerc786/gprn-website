@@ -6,12 +6,12 @@ const MOCK_DATA = {
         {
             id: 'loc-001',
             email: 'sarah.williams@gprn.wales',
-            password: 'password',
+            password: 'Locum2026!',
             role: 'locum',
             title: 'Dr',
             firstName: 'Sarah',
             lastName: 'Williams',
-            phone: '07700 900123',
+            phone: '07891 234567',
             gmcNumber: '7612345',
             medicalSchool: 'Cardiff University',
             yearQualified: 2015,
@@ -45,12 +45,12 @@ const MOCK_DATA = {
         {
             id: 'loc-002',
             email: 'rhys.parry@gprn.wales',
-            password: 'password',
+            password: 'RhysGP2024',
             role: 'locum',
             title: 'Dr',
             firstName: 'Rhys',
             lastName: 'Parry',
-            phone: '07700 900456',
+            phone: '07456 789012',
             gmcNumber: '7623456',
             medicalSchool: 'Swansea University',
             yearQualified: 2012,
@@ -84,12 +84,12 @@ const MOCK_DATA = {
         {
             id: 'loc-003',
             email: 'megan.jones@gprn.wales',
-            password: 'password',
+            password: 'MeganJ!456',
             role: 'locum',
             title: 'Dr',
             firstName: 'Megan',
             lastName: 'Jones',
-            phone: '07700 900789',
+            phone: '07723 456789',
             gmcNumber: '7634567',
             medicalSchool: 'University of Bristol',
             yearQualified: 2018,
@@ -123,12 +123,12 @@ const MOCK_DATA = {
         {
             id: 'loc-004',
             email: 'owen.davies@gprn.wales',
-            password: 'password',
+            password: 'OwenD#2023',
             role: 'locum',
             title: 'Dr',
             firstName: 'Owen',
             lastName: 'Davies',
-            phone: '07700 900321',
+            phone: '07934 567890',
             gmcNumber: '7645678',
             medicalSchool: 'Cardiff University',
             yearQualified: 2010,
@@ -141,7 +141,7 @@ const MOCK_DATA = {
             travelDistance: 50,
             bio: 'Versatile and highly experienced locum GP covering all of South Wales. Over 300 locum sessions completed. Skilled in all clinical systems.',
             avatar: null,
-            bookingReliability: 92,
+            bookingReliability: 82,
             responseTime: '1-2 days',
             totalShifts: 312,
             documents: {
@@ -162,12 +162,12 @@ const MOCK_DATA = {
         {
             id: 'loc-005',
             email: 'elin.morgan@gprn.wales',
-            password: 'password',
+            password: 'ElinM@Wales',
             role: 'locum',
             title: 'Dr',
             firstName: 'Elin',
             lastName: 'Morgan',
-            phone: '07700 900654',
+            phone: '07612 345678',
             gmcNumber: '7656789',
             medicalSchool: 'University of Liverpool',
             yearQualified: 2019,
@@ -201,12 +201,12 @@ const MOCK_DATA = {
         {
             id: 'loc-006',
             email: 'james.evans@gprn.wales',
-            password: 'password',
+            password: 'JamesE!789',
             role: 'locum',
             title: 'Dr',
             firstName: 'James',
             lastName: 'Evans',
-            phone: '07700 900987',
+            phone: '07845 678901',
             gmcNumber: '7667890',
             medicalSchool: 'Peninsula Medical School',
             yearQualified: 2016,
@@ -219,7 +219,7 @@ const MOCK_DATA = {
             travelDistance: 35,
             bio: 'Experienced GP with a focus on mental health and substance misuse. Happy to cover complex caseloads.',
             avatar: null,
-            bookingReliability: 88,
+            bookingReliability: 74,
             responseTime: '2-3 days',
             totalShifts: 189,
             documents: {
@@ -240,12 +240,12 @@ const MOCK_DATA = {
         {
             id: 'loc-007',
             email: 'carys.thomas@gprn.wales',
-            password: 'password',
+            password: 'CarysT#2025',
             role: 'locum',
             title: 'Dr',
             firstName: 'Carys',
             lastName: 'Thomas',
-            phone: '07700 900147',
+            phone: '07567 890123',
             gmcNumber: '7678901',
             medicalSchool: 'Cardiff University',
             yearQualified: 2020,
@@ -279,12 +279,12 @@ const MOCK_DATA = {
         {
             id: 'loc-008',
             email: 'gareth.hughes@gprn.wales',
-            password: 'password',
+            password: 'GarethH!101',
             role: 'locum',
             title: 'Dr',
             firstName: 'Gareth',
             lastName: 'Hughes',
-            phone: '07700 900258',
+            phone: '07378 901234',
             gmcNumber: '7689012',
             medicalSchool: 'University of Manchester',
             yearQualified: 2008,
@@ -297,7 +297,7 @@ const MOCK_DATA = {
             travelDistance: 60,
             bio: 'Senior GP covering North and Mid Wales. Extensive rural practice experience. Happy to travel and cover remote practices.',
             avatar: null,
-            bookingReliability: 96,
+            bookingReliability: 91,
             responseTime: '1-2 days',
             totalShifts: 410,
             documents: {
@@ -321,7 +321,7 @@ const MOCK_DATA = {
         {
             id: 'prac-001',
             email: 'manager@ringland.wales',
-            password: 'password',
+            password: 'Practice2026!',
             role: 'practice',
             practiceName: 'Ringland Medical Practice',
             healthBoard: 'Aneurin Bevan',
@@ -329,7 +329,7 @@ const MOCK_DATA = {
             city: 'Newport',
             postcode: 'NP9 9PS',
             phone: '01633 274000',
-            website: '',
+            website: 'https://ringlandmedical.wales',
             computerSystem: 'EMIS',
             partners: 4,
             patientListSize: 8500,
@@ -341,7 +341,7 @@ const MOCK_DATA = {
         {
             id: 'prac-002',
             email: 'admin@whitchurchroad.wales',
-            password: 'password',
+            password: 'Whitchurch!22',
             role: 'practice',
             practiceName: 'Whitchurch Road Surgery',
             healthBoard: 'Cardiff and Vale',
@@ -349,7 +349,7 @@ const MOCK_DATA = {
             city: 'Cardiff',
             postcode: 'CF14 3JN',
             phone: '029 2061 5000',
-            website: '',
+            website: 'https://whitchurchroadsurgery.wales',
             computerSystem: 'Vision',
             partners: 6,
             patientListSize: 12000,
@@ -361,7 +361,7 @@ const MOCK_DATA = {
         {
             id: 'prac-003',
             email: 'admin@radyrmedical.wales',
-            password: 'password',
+            password: 'Radyr#Med34',
             role: 'practice',
             practiceName: 'Radyr Medical Centre',
             healthBoard: 'Cardiff and Vale',
@@ -369,7 +369,7 @@ const MOCK_DATA = {
             city: 'Cardiff',
             postcode: 'CF15 8AA',
             phone: '029 2084 2000',
-            website: '',
+            website: 'https://radyrmedical.wales',
             computerSystem: 'EMIS',
             partners: 3,
             patientListSize: 6200,
@@ -381,7 +381,7 @@ const MOCK_DATA = {
         {
             id: 'prac-004',
             email: 'admin@malpasbrook.wales',
-            password: 'password',
+            password: 'Malpas!Brook5',
             role: 'practice',
             practiceName: 'Malpas Brook Health Centre',
             healthBoard: 'Aneurin Bevan',
@@ -401,7 +401,7 @@ const MOCK_DATA = {
         {
             id: 'prac-005',
             email: 'admin@trosnant.wales',
-            password: 'password',
+            password: 'Trosnant#66',
             role: 'practice',
             practiceName: 'Trosnant Lodge',
             healthBoard: 'Aneurin Bevan',
@@ -421,7 +421,7 @@ const MOCK_DATA = {
         {
             id: 'prac-006',
             email: 'admin@bridgmoresurgery.wales',
-            password: 'password',
+            password: 'Bridgmore!77',
             role: 'practice',
             practiceName: 'Bridgmore Surgery',
             healthBoard: 'Cardiff and Vale',
@@ -441,7 +441,7 @@ const MOCK_DATA = {
         {
             id: 'prac-007',
             email: 'admin@kingsroad.wales',
-            password: 'password',
+            password: 'KingsRd#88',
             role: 'practice',
             practiceName: 'Kings Road Surgery',
             healthBoard: 'Cardiff and Vale',
@@ -461,7 +461,7 @@ const MOCK_DATA = {
         {
             id: 'prac-008',
             email: 'admin@clydach.wales',
-            password: 'password',
+            password: 'Clydach!99',
             role: 'practice',
             practiceName: 'Clydach Primary Care Centre',
             healthBoard: 'Swansea Bay',
@@ -481,7 +481,7 @@ const MOCK_DATA = {
         {
             id: 'prac-009',
             email: 'admin@porttalbot.wales',
-            password: 'password',
+            password: 'PortT#2026',
             role: 'practice',
             practiceName: 'Port Talbot Medical Practice',
             healthBoard: 'Swansea Bay',
@@ -501,7 +501,7 @@ const MOCK_DATA = {
         {
             id: 'prac-010',
             email: 'admin@wrexhamtown.wales',
-            password: 'password',
+            password: 'Wrexham!Town',
             role: 'practice',
             practiceName: 'Wrexham Town Surgery',
             healthBoard: 'Betsi Cadwaladr',
@@ -521,7 +521,7 @@ const MOCK_DATA = {
         {
             id: 'prac-011',
             email: 'admin@aberystwyth.wales',
-            password: 'password',
+            password: 'Aber#Med123',
             role: 'practice',
             practiceName: 'Aberystwyth Medical Centre',
             healthBoard: 'Hywel Dda',
@@ -541,7 +541,7 @@ const MOCK_DATA = {
         {
             id: 'prac-012',
             email: 'admin@brecon.wales',
-            password: 'password',
+            password: 'Brecon!Med45',
             role: 'practice',
             practiceName: 'Brecon Medical Practice',
             healthBoard: 'Powys',
@@ -785,6 +785,79 @@ function generateOffers() {
             housecalls: i % 3 !== 0
         });
     }
+    // Add 12 completed historical offers for loc-001 across last 3 months
+    var histPractices = [MOCK_DATA.practices[0], MOCK_DATA.practices[1], MOCK_DATA.practices[2], MOCK_DATA.practices[3]];
+    var histSessions = ['AM', 'PM', 'Full Day', 'AM', 'PM', 'Full Day', 'AM', 'PM', 'Full Day', 'AM', 'PM', 'Full Day'];
+    for (var h = 0; h < 12; h++) {
+        var daysBack = 7 + (h * 7); // spread across ~12 weeks
+        var histShiftDate = new Date(today);
+        histShiftDate.setDate(today.getDate() - daysBack);
+        // Skip weekends
+        if (histShiftDate.getDay() === 0) histShiftDate.setDate(histShiftDate.getDate() - 2);
+        if (histShiftDate.getDay() === 6) histShiftDate.setDate(histShiftDate.getDate() - 1);
+        var histPractice = histPractices[h % histPractices.length];
+        var histSession = histSessions[h];
+        var histRate = histSession === 'Full Day' ? 820 : 430;
+        offers.push({
+            id: 'offer-hist-loc001-' + String(h + 1).padStart(2, '0'),
+            shiftId: 'shift-hist-' + String(h + 1).padStart(3, '0'),
+            locumId: 'loc-001',
+            practiceId: histPractice.id,
+            practiceName: histPractice.practiceName,
+            healthBoard: histPractice.healthBoard,
+            shiftDate: histShiftDate.toISOString().split('T')[0],
+            startTime: histSession === 'PM' ? '13:00' : '08:30',
+            endTime: histSession === 'AM' ? '12:30' : '17:00',
+            sessionType: histSession,
+            rateAM: 430,
+            ratePM: 430,
+            rateFullDay: 820,
+            rateHousecall: 0,
+            status: 'completed',
+            offerDate: new Date(histShiftDate.getTime() - 7 * 86400000).toISOString().split('T')[0],
+            completedDate: histShiftDate.toISOString().split('T')[0],
+            completedByPractice: true,
+            comment: 'Booked through Immediate Booking. Agreed morning: 12 patients starting at 09:00.',
+            housecalls: h % 3 !== 0
+        });
+    }
+
+    // Add 8 completed offers for loc-002 and loc-003 at prac-001
+    var otherLocums = ['loc-002', 'loc-003'];
+    var otherSessions = ['AM', 'Full Day', 'PM', 'AM', 'Full Day', 'PM', 'AM', 'Full Day'];
+    for (var j = 0; j < 8; j++) {
+        var daysBack2 = 5 + (j * 10);
+        var histDate2 = new Date(today);
+        histDate2.setDate(today.getDate() - daysBack2);
+        if (histDate2.getDay() === 0) histDate2.setDate(histDate2.getDate() - 2);
+        if (histDate2.getDay() === 6) histDate2.setDate(histDate2.getDate() - 1);
+        var locId = otherLocums[j % otherLocums.length];
+        var sess2 = otherSessions[j];
+        var rate2 = locId === 'loc-002' ? (sess2 === 'Full Day' ? 850 : 450) : (sess2 === 'Full Day' ? 780 : 400);
+        offers.push({
+            id: 'offer-hist-prac001-' + String(j + 1).padStart(2, '0'),
+            shiftId: 'shift-hist-p-' + String(j + 1).padStart(3, '0'),
+            locumId: locId,
+            practiceId: 'prac-001',
+            practiceName: 'Ringland Medical Practice',
+            healthBoard: 'Aneurin Bevan',
+            shiftDate: histDate2.toISOString().split('T')[0],
+            startTime: sess2 === 'PM' ? '13:00' : '08:30',
+            endTime: sess2 === 'AM' ? '12:30' : '17:00',
+            sessionType: sess2,
+            rateAM: locId === 'loc-002' ? 450 : 400,
+            ratePM: locId === 'loc-002' ? 450 : 400,
+            rateFullDay: locId === 'loc-002' ? 850 : 780,
+            rateHousecall: 0,
+            status: 'completed',
+            offerDate: new Date(histDate2.getTime() - 5 * 86400000).toISOString().split('T')[0],
+            completedDate: histDate2.toISOString().split('T')[0],
+            completedByPractice: true,
+            comment: 'Standard surgery day. Good session.',
+            housecalls: j % 4 === 0
+        });
+    }
+
     return offers;
 }
 
@@ -835,6 +908,52 @@ function generateNotifications() {
             message: 'Emergency Skills Workshop at Royal Gwent Hospital on April 25th. Register now.',
             date: addDays(today, -4).toISOString(),
             read: true
+        },
+        // Practice notifications for prac-001
+        {
+            id: 'notif-p001',
+            userId: 'prac-001',
+            type: 'new_offer',
+            title: 'New Application Received',
+            message: 'Dr Sarah Williams has applied for your shift on ' + formatDateShort(addDays(today, 3)) + '.',
+            date: addDays(today, -1).toISOString(),
+            read: false
+        },
+        {
+            id: 'notif-p002',
+            userId: 'prac-001',
+            type: 'shift_confirmed',
+            title: 'Shift Confirmed',
+            message: 'Dr Rhys Parry has acknowledged and confirmed attendance for ' + formatDateShort(addDays(today, 5)) + '.',
+            date: addDays(today, -1).toISOString(),
+            read: false
+        },
+        {
+            id: 'notif-p003',
+            userId: 'prac-001',
+            type: 'payment_reminder',
+            title: 'Payment Due',
+            message: 'Invoice GPRN-10001 for Dr Sarah Williams is due within 7 days. Amount: \u00a3820.00.',
+            date: addDays(today, -2).toISOString(),
+            read: false
+        },
+        {
+            id: 'notif-p004',
+            userId: 'prac-001',
+            type: 'new_offer',
+            title: 'New Application Received',
+            message: 'Dr Megan Jones has applied for your shift on ' + formatDateShort(addDays(today, 7)) + '.',
+            date: addDays(today, -3).toISOString(),
+            read: true
+        },
+        {
+            id: 'notif-p005',
+            userId: 'prac-001',
+            type: 'leave_feedback',
+            title: 'Leave Feedback',
+            message: 'Please rate Dr Rhys Parry who worked on ' + formatDateShort(addDays(today, -5)) + '.',
+            date: addDays(today, -5).toISOString(),
+            read: true
         }
     ];
 }
@@ -853,20 +972,42 @@ function formatDateShort(date) {
 }
 
 // Initialize mock data
+var GPRN_DATA_VERSION = '2.1';
+
 function initMockData() {
     MOCK_DATA.shifts = generateShifts();
     MOCK_DATA.offers = generateOffers();
     MOCK_DATA.notifications = generateNotifications();
 
-    if (!localStorage.getItem('gprn_data')) {
+    var storedVersion = localStorage.getItem('gprn_data_version');
+    if (!localStorage.getItem('gprn_data') || storedVersion !== GPRN_DATA_VERSION) {
         localStorage.setItem('gprn_data', JSON.stringify(MOCK_DATA));
+        localStorage.setItem('gprn_data_version', GPRN_DATA_VERSION);
     }
     return JSON.parse(localStorage.getItem('gprn_data'));
 }
 
 function getMockData() {
-    let data = localStorage.getItem('gprn_data');
+    var data = localStorage.getItem('gprn_data');
     if (!data) {
+        // Try fetching from backend if we have a token
+        var session = localStorage.getItem('gprn_session');
+        if (session) {
+            try {
+                var parsed = JSON.parse(session);
+                if (parsed.token) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('GET', '/api/data', false);
+                    xhr.setRequestHeader('Authorization', 'Bearer ' + parsed.token);
+                    xhr.send();
+                    if (xhr.status === 200) {
+                        data = xhr.responseText;
+                        localStorage.setItem('gprn_data', data);
+                        return JSON.parse(data);
+                    }
+                }
+            } catch (e) {}
+        }
         return initMockData();
     }
     return JSON.parse(data);
@@ -874,4 +1015,8 @@ function getMockData() {
 
 function saveMockData(data) {
     localStorage.setItem('gprn_data', JSON.stringify(data));
+    // Background sync to backend if available
+    if (typeof API !== 'undefined' && API.syncData) {
+        API.syncData(data);
+    }
 }

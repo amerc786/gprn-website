@@ -226,13 +226,50 @@
                                     </div>
                                 </div>
 
-                                <a href="locum-profile-view.html?id=${loc.id}" class="btn btn-primary btn-small" style="width: 100%; justify-content: center;">
-                                    View Profile
-                                </a>
+                                <div style="display: flex; gap: 8px;">
+                                    <a href="locum-profile-view.html?id=${loc.id}" class="btn btn-primary btn-small" style="flex: 1; justify-content: center;">
+                                        View Profile
+                                    </a>
+                                    <button class="btn btn-ghost btn-small" style="flex: 1; justify-content: center;" onclick="requestLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')">
+                                        Request Locum
+                                    </button>
+                                </div>
                             </div>
                         </div>`;
                     }).join('')}
                 </div>`;
+        }
+
+        function requestLocum(locumId, locumName) {
+            const currentData = getMockData();
+            const openShifts = currentData.shifts.filter(s => s.practiceId === session.id && s.status === 'open');
+            if (openShifts.length === 0) {
+                Toast.show('You have no open shifts. Post a shift first to request a locum.', 'warning');
+                return;
+            }
+            const shiftOptions = openShifts.map(s =>
+                '<option value="' + s.id + '">' + DateUtils.format(s.date, 'medium') + ' - ' + s.sessionType + ' (' + s.startTime + '-' + s.endTime + ')</option>'
+            ).join('');
+            Modal.show({
+                title: 'Request ' + locumName,
+                size: 'medium',
+                body: '<p style="font-size:0.92rem; color:var(--dark-600); margin-bottom:16px;">Select a shift to invite this locum to apply for:</p>' +
+                    '<div class="form-group"><label class="form-label">Open Shift</label><select class="form-select" id="requestShiftSelect">' + shiftOptions + '</select></div>' +
+                    '<div class="form-group"><label class="form-label">Message (optional)</label><textarea class="form-input" id="requestMessage" rows="3" placeholder="Add a personal message..."></textarea></div>',
+                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="sendRequestBtn">Send Request</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#sendRequestBtn').addEventListener('click', function() {
+                        var shiftId = overlay.querySelector('#requestShiftSelect').value;
+                        var message = overlay.querySelector('#requestMessage').value.trim();
+                        var shift = openShifts.find(function(s) { return s.id === shiftId; });
+                        var subject = 'Shift Request from ' + session.name;
+                        var body = 'You have been invited to apply for a shift on ' + DateUtils.format(shift.date, 'medium') + ' (' + shift.sessionType + ', ' + shift.startTime + '-' + shift.endTime + ').' + (message ? '\n\nMessage: ' + message : '');
+                        MessageManager.send(session.id, locumId, subject, body, shiftId);
+                        Modal.close(overlay);
+                        Toast.show('Request sent to ' + locumName + '!', 'success');
+                    });
+                }
+            });
         }
 
         function render() {

@@ -1,28 +1,139 @@
 // ===== GPRN Core Application Logic =====
 
+// ---- HTML Sanitizer (XSS prevention) ----
+function sanitizeHTML(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// ---- API Client ----
+const API = {
+    baseUrl: '',
+
+    getToken() {
+        var session = localStorage.getItem('gprn_session');
+        if (session) {
+            try { return JSON.parse(session).token; } catch(e) {}
+        }
+        return null;
+    },
+
+    async request(method, path, body) {
+        var headers = { 'Content-Type': 'application/json' };
+        var token = this.getToken();
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+
+        try {
+            var opts = { method: method, headers: headers };
+            if (body && method !== 'GET') opts.body = JSON.stringify(body);
+            var response = await fetch(this.baseUrl + path, opts);
+            var data = await response.json();
+            if (!response.ok) {
+                return { error: data.error || 'Request failed', status: response.status };
+            }
+            return data;
+        } catch (err) {
+            console.error('API request failed:', err.message);
+            return { error: 'Network error' };
+        }
+    },
+
+    async get(path) { return this.request('GET', path); },
+    async post(path, body) { return this.request('POST', path, body); },
+    async put(path, body) { return this.request('PUT', path, body); },
+    async del(path) { return this.request('DELETE', path); },
+
+    // Background sync — fire and forget
+    syncData(data) {
+        var token = this.getToken();
+        if (!token) return;
+        fetch(this.baseUrl + '/api/data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify(data)
+        }).catch(function() {}); // Silent fail for background sync
+    },
+
+    // Upload file
+    async uploadFile(file, type) {
+        var token = this.getToken();
+        var formData = new FormData();
+        formData.append('document', file);
+        formData.append('type', type || 'general');
+
+        try {
+            var response = await fetch(this.baseUrl + '/api/upload', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: formData
+            });
+            return await response.json();
+        } catch (err) {
+            return { error: 'Upload failed' };
+        }
+    }
+};
+
 // ---- Auth Manager ----
 const Auth = {
     login(email, password, expectedRole) {
-        const data = getMockData();
-        const allUsers = [...data.locums, ...data.practices];
-        const user = allUsers.find(u => u.email === email && u.password === password);
-        if (user) {
-            if (expectedRole && user.role !== expectedRole) {
-                return { error: 'wrong_role', actualRole: user.role };
+        // Try API login first (synchronous wrapper for backwards compatibility)
+        var session = null;
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/auth/login', false); // synchronous
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        try {
+            xhr.send(JSON.stringify({ email: email, password: password, role: expectedRole }));
+            if (xhr.status === 200) {
+                var result = JSON.parse(xhr.responseText);
+                if (result.session) {
+                    session = result.session;
+                    localStorage.setItem('gprn_session', JSON.stringify(session));
+                    // Fetch full data from backend
+                    var dataXhr = new XMLHttpRequest();
+                    dataXhr.open('GET', '/api/data', false);
+                    dataXhr.setRequestHeader('Authorization', 'Bearer ' + session.token);
+                    dataXhr.send();
+                    if (dataXhr.status === 200) {
+                        var data = JSON.parse(dataXhr.responseText);
+                        localStorage.setItem('gprn_data', JSON.stringify(data));
+                    }
+                    return session;
+                }
+            } else if (xhr.status === 401) {
+                var err = JSON.parse(xhr.responseText);
+                if (err.error === 'wrong_role') return { error: 'wrong_role', actualRole: err.actualRole };
+                return null;
             }
-            const session = {
-                id: user.id,
-                role: user.role,
-                email: user.email,
-                name: user.role === 'locum'
-                    ? `${user.title} ${user.firstName} ${user.lastName}`
-                    : user.practiceName,
-                firstName: user.role === 'locum' ? user.firstName : user.contactName.split(' ')[0]
-            };
-            localStorage.setItem('gprn_session', JSON.stringify(session));
-            return session;
+        } catch (e) {
+            // API unavailable, fall back to mock data login
+            console.log('API unavailable, using offline mode');
         }
-        return null;
+
+        // Fallback: mock data login (offline mode)
+        if (!session) {
+            var data = getMockData();
+            var allUsers = [].concat(data.locums, data.practices);
+            var user = allUsers.find(function(u) { return u.email === email && u.password === password; });
+            if (user) {
+                if (expectedRole && user.role !== expectedRole) {
+                    return { error: 'wrong_role', actualRole: user.role };
+                }
+                session = {
+                    id: user.id,
+                    role: user.role,
+                    email: user.email,
+                    name: user.role === 'locum'
+                        ? user.title + ' ' + user.firstName + ' ' + user.lastName
+                        : user.practiceName,
+                    firstName: user.role === 'locum' ? user.firstName : user.contactName.split(' ')[0]
+                };
+                localStorage.setItem('gprn_session', JSON.stringify(session));
+                return session;
+            }
+            return null;
+        }
+        return session;
     },
 
     logout() {
@@ -65,6 +176,45 @@ const Auth = {
             return false;
         }
         return true;
+    }
+};
+
+// ---- Password Reset (Simulated) ----
+const PasswordReset = {
+    request(email) {
+        const data = getMockData();
+        const allUsers = [...data.locums, ...data.practices];
+        const user = allUsers.find(u => u.email === email);
+        if (!user) return { error: 'not_found' };
+        var token = 'reset-' + Date.now();
+        if (!data.resetTokens) data.resetTokens = [];
+        data.resetTokens.push({ email: email, token: token, created: new Date().toISOString(), used: false });
+        EmailManager.send(data, user.id, 'Password Reset',
+            'A password reset link has been sent to your email. Use token: ' + token + ' to reset your password. This link expires in 1 hour.', 'password_reset');
+        saveMockData(data);
+        return { success: true, message: 'Reset link sent to ' + email };
+    },
+
+    reset(token, newPassword) {
+        const data = getMockData();
+        if (!data.resetTokens) return { error: 'invalid_token' };
+        const resetEntry = data.resetTokens.find(function(r) { return r.token === token && !r.used; });
+        if (!resetEntry) return { error: 'invalid_token' };
+        if (new Date() - new Date(resetEntry.created) > 3600000) return { error: 'expired' };
+        const allUsers = [...data.locums, ...data.practices];
+        const user = allUsers.find(function(u) { return u.email === resetEntry.email; });
+        if (!user) return { error: 'not_found' };
+        user.password = newPassword;
+        resetEntry.used = true;
+        if (user.role === 'locum') {
+            var idx = data.locums.findIndex(function(l) { return l.id === user.id; });
+            if (idx >= 0) data.locums[idx] = user;
+        } else {
+            var idx2 = data.practices.findIndex(function(p) { return p.id === user.id; });
+            if (idx2 >= 0) data.practices[idx2] = user;
+        }
+        saveMockData(data);
+        return { success: true };
     }
 };
 
@@ -187,6 +337,7 @@ const FormValidator = {
                     break;
                 case 'gmc':
                     if (!/^\d{7}$/.test(value)) return 'GMC number must be 7 digits';
+                    if (value.charAt(0) === '0') return 'GMC number cannot start with 0';
                     break;
                 case 'password':
                     if (value.length < 6) return 'Password must be at least 6 characters';
@@ -225,7 +376,7 @@ const Toast = {
         };
         toast.innerHTML = `
             <span class="toast-icon">${icons[type] || icons.info}</span>
-            <span class="toast-message">${message}</span>
+            <span class="toast-message">${sanitizeHTML(message)}</span>
             <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
         `;
         this.container.appendChild(toast);
@@ -240,6 +391,10 @@ const Toast = {
 // ---- Modal Manager ----
 const Modal = {
     show(config) {
+        // Prevent stacking: close any existing modal first
+        const existing = document.querySelector('.modal-overlay');
+        if (existing) this.close(existing);
+
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
@@ -260,6 +415,15 @@ const Modal = {
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) this.close(overlay);
         });
+
+        // Close on Escape key
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                this.close(overlay);
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
 
         if (config.onOpen) config.onOpen(overlay);
         return overlay;
@@ -318,6 +482,57 @@ function getStatusBadge(status) {
 
 // ---- Booking Manager ----
 const Booking = {
+    applyForShift(shiftId, sessionType, comment) {
+        const data = getMockData();
+        const session = Auth.getSession();
+        if (!session || session.role !== 'locum') return { error: 'not_logged_in', message: 'Please log in to apply for shifts' };
+        const locum = data.locums.find(l => l.id === session.id);
+        if (!locum) return { error: 'not_found', message: 'Your profile could not be found' };
+        const shift = data.shifts.find(s => s.id === shiftId);
+        if (!shift) return { error: 'shift_not_found', message: 'This shift is no longer available' };
+        if (shift.status !== 'open') return { error: 'shift_not_open', message: 'This shift has already been filled' };
+        // Barred check
+        if (BarredList.isBarred(shift.practiceId, session.id)) {
+            return { error: 'barred', message: 'You are unable to apply for shifts at this practice' };
+        }
+        // Duplicate offer check
+        const existingOffer = data.offers.find(o =>
+            o.shiftId === shiftId && o.locumId === session.id &&
+            !['declined', 'withdrawn', 'rejected_by_locum', 'cancelled'].includes(o.status)
+        );
+        if (existingOffer) return { error: 'already_applied', message: 'You have already applied for this shift' };
+        const rates = locum.rates || {};
+        const newOffer = {
+            id: 'offer-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+            shiftId: shift.id,
+            locumId: session.id,
+            practiceId: shift.practiceId,
+            practiceName: shift.practiceName,
+            healthBoard: shift.healthBoard,
+            shiftDate: shift.date,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            sessionType: sessionType || shift.sessionType,
+            rateAM: rates.am || 0,
+            ratePM: rates.pm || 0,
+            rateFullDay: rates.fullDay || 0,
+            rateHousecall: rates.housecall || 0,
+            status: 'pending',
+            offerDate: DateUtils.toISO(new Date()),
+            comment: comment || '',
+            housecalls: shift.housecalls
+        };
+        data.offers.push(newOffer);
+        shift.applicants = (shift.applicants || 0) + 1;
+        // Notify practice
+        this.addNotification(data, shift.practiceId, 'new_offer', 'New Application',
+            `${locum.title} ${locum.firstName} ${locum.lastName} has applied for your shift on ${DateUtils.format(shift.date, 'medium')}.`);
+        EmailManager.send(data, shift.practiceId, 'New Shift Application',
+            `A locum has applied for your shift on ${DateUtils.format(shift.date, 'medium')} at ${shift.practiceName}.`, 'new_offer');
+        saveMockData(data);
+        return { success: true, offer: newOffer };
+    },
+
     acceptOffer(offerId) {
         const data = getMockData();
         const offer = data.offers.find(o => o.id === offerId);
@@ -329,7 +544,19 @@ const Booking = {
         if (shift) shift.status = 'filled';
         // Auto-withdraw other pending offers for same shift
         data.offers.filter(o => o.shiftId === offer.shiftId && o.id !== offerId && o.status === 'pending')
-            .forEach(o => { o.status = 'declined'; });
+            .forEach(o => {
+                o.status = 'declined';
+                const declinedLoc = data.locums.find(l => l.id === o.locumId);
+                const declinedName = declinedLoc ? declinedLoc.firstName : 'Locum';
+                data.notifications.push({
+                    userId: o.locumId,
+                    title: 'Offer Not Selected',
+                    message: 'The practice has filled the shift for ' + DateUtils.format(o.shiftDate, 'full') + '. Your offer was not selected this time.',
+                    type: 'offer_auto_declined',
+                    date: new Date().toISOString(),
+                    read: false
+                });
+            });
         // Auto-withdraw locum's other offers for same date
         data.offers.filter(o => o.locumId === offer.locumId && o.shiftDate === offer.shiftDate && o.id !== offerId && o.status === 'pending')
             .forEach(o => { o.status = 'withdrawn'; o.autoWithdrawn = true; });
@@ -377,8 +604,12 @@ const Booking = {
         if (attended) {
             offer.status = 'completed';
             offer.completedDate = DateUtils.toISO(new Date());
-            // Auto-generate invoice
-            InvoiceManager.generateFromOffer(data, offer);
+            offer.completedByPractice = true;
+            // Auto-generate invoice (only if not already generated)
+            const existingInvoice = data.invoices && data.invoices.find(i => i.offerId === offer.id);
+            if (!existingInvoice) {
+                InvoiceManager.generateFromOffer(data, offer);
+            }
             // Prompt for feedback
             this.addNotification(data, offer.locumId, 'leave_feedback', 'Leave Feedback',
                 `Your shift at ${offer.practiceName} is complete. Please leave feedback.`);
@@ -391,7 +622,7 @@ const Booking = {
             const locum = data.locums.find(l => l.id === offer.locumId);
             if (locum) locum.bookingReliability = Math.max(0, locum.bookingReliability - 10);
             this.addNotification(data, offer.locumId, 'no_show', 'No-Show Recorded',
-                `A no-show was recorded for your shift at ${offer.practiceName} on ${DateUtils.format(offer.shiftDate, 'medium')}. Your reliability score has been affected.`);
+                `A no-show was recorded for your shift at ${offer.practiceName} on ${DateUtils.format(offer.shiftDate, 'full')}. Your reliability score has been reduced by 10 points.`);
         }
         saveMockData(data);
         return true;
@@ -413,6 +644,8 @@ const Booking = {
         if (cancelledBy === 'locum' && offer.lateCancellation) {
             const locum = data.locums.find(l => l.id === offer.locumId);
             if (locum) locum.bookingReliability = Math.max(0, locum.bookingReliability - 5);
+            this.addNotification(data, offer.locumId, 'late_cancellation', 'Late Cancellation Penalty',
+                `Your cancellation of the shift at ${offer.practiceName} on ${DateUtils.format(offer.shiftDate, 'full')} was within 48 hours. Your reliability score has been reduced by 5 points.`);
         }
         const notifyId = cancelledBy === 'locum' ? offer.practiceId : offer.locumId;
         this.addNotification(data, notifyId, 'cancellation', 'Shift Cancelled',
@@ -421,10 +654,20 @@ const Booking = {
         return true;
     },
 
-    isDoubleBooked(locumId, date, excludeOfferId) {
+    isDoubleBooked(locumId, date, excludeOfferId, sessionType) {
         const data = getMockData();
-        return data.offers.some(o => o.locumId === locumId && o.shiftDate === date &&
-            ['accepted', 'confirmed'].includes(o.status) && o.id !== excludeOfferId);
+        return data.offers.some(o => {
+            if (o.locumId !== locumId || o.shiftDate !== date) return false;
+            if (!['accepted', 'confirmed', 'acknowledged'].includes(o.status)) return false;
+            if (o.id === excludeOfferId) return false;
+            // If session types are provided, check for actual overlap
+            if (sessionType && o.sessionType) {
+                if (sessionType === 'Full Day' || o.sessionType === 'Full Day') return true;
+                if (sessionType === o.sessionType) return true;
+                return false; // AM + PM on same day is fine
+            }
+            return true; // If no session type info, assume conflict
+        });
     },
 
     acknowledgeOffer(offerId) {
@@ -474,7 +717,10 @@ const Booking = {
         offer.status = 'completed';
         offer.completedDate = DateUtils.toISO(new Date());
         offer.completedByLocum = true;
-        InvoiceManager.generateFromOffer(data, offer);
+        const existingInvoice = data.invoices && data.invoices.find(i => i.offerId === offer.id);
+        if (!existingInvoice) {
+            InvoiceManager.generateFromOffer(data, offer);
+        }
         this.addNotification(data, offer.practiceId, 'shift_confirmed', 'Shift Completed',
             `The locum has confirmed completion of the shift on ${DateUtils.format(offer.shiftDate, 'medium')}. An invoice has been generated.`);
         this.addNotification(data, offer.locumId, 'leave_feedback', 'Leave Feedback',
@@ -514,7 +760,7 @@ const Booking = {
             else if (offer.sessionType === 'PM') offer.ratePM = agreedRate;
             else offer.rateFullDay = agreedRate;
             offer.agreedRate = agreedRate;
-            offer.status = 'pending';
+            offer.status = 'accepted';
             offer.negotiations.push({ from: 'locum', accepted: true, rate: agreedRate, message: message || 'Rate accepted', date: new Date().toISOString() });
             this.addNotification(data, offer.practiceId, 'offer_accepted', 'Rate Agreed',
                 `The locum has accepted the proposed rate of ${formatCurrency(agreedRate)} for ${DateUtils.format(offer.shiftDate, 'medium')}.`);
@@ -553,6 +799,26 @@ const Booking = {
         return true;
     },
 
+    // Valid state transitions
+    validTransitions: {
+        'pending': ['accepted', 'declined', 'withdrawn', 'negotiating'],
+        'negotiating': ['pending', 'declined', 'withdrawn'],
+        'accepted': ['acknowledged', 'confirmed', 'rejected_by_locum', 'cancelled'],
+        'acknowledged': ['confirmed', 'rejected_by_locum', 'cancelled', 'completed'],
+        'confirmed': ['completed', 'no_show', 'cancelled', 'rejected_by_locum'],
+        'completed': [],
+        'declined': [],
+        'withdrawn': [],
+        'cancelled': [],
+        'no_show': [],
+        'rejected_by_locum': []
+    },
+
+    canTransition(fromStatus, toStatus) {
+        const allowed = this.validTransitions[fromStatus];
+        return allowed ? allowed.includes(toStatus) : false;
+    },
+
     addNotification(data, userId, type, title, message) {
         if (!data.notifications) data.notifications = [];
         data.notifications.push({
@@ -564,14 +830,50 @@ const Booking = {
             date: new Date().toISOString(),
             read: false
         });
+    },
+
+    deleteShift(shiftId) {
+        const data = getMockData();
+        const shift = data.shifts.find(s => s.id === shiftId);
+        if (!shift) return { error: 'shift_not_found', message: 'Shift not found.' };
+        const acceptedOffers = data.offers.filter(o => o.shiftId === shiftId && ['accepted','acknowledged','confirmed'].includes(o.status));
+        if (acceptedOffers.length > 0) {
+            return { error: 'has_accepted_offers', message: 'This shift has accepted offers and cannot be cancelled. Please contact the locum first.' };
+        }
+        // Withdraw all pending offers and notify applicants
+        const pendingOffers = data.offers.filter(o => o.shiftId === shiftId && (o.status === 'pending' || o.status === 'negotiating'));
+        pendingOffers.forEach(o => {
+            o.status = 'withdrawn';
+            o.autoWithdrawn = true;
+            this.addNotification(data, o.locumId, 'shift_cancelled', 'Shift Cancelled',
+                'The shift at ' + shift.practiceName + ' on ' + DateUtils.format(shift.date, 'full') + ' has been cancelled by the practice.');
+            EmailManager.send(data, o.locumId, 'Shift Cancelled',
+                'The shift at ' + shift.practiceName + ' on ' + DateUtils.format(shift.date, 'full') + ' has been cancelled. Any pending applications have been withdrawn.', 'shift_cancelled');
+        });
+        shift.status = 'cancelled';
+        saveMockData(data);
+        return { success: true };
     }
 };
 
 // ---- Message Manager ----
 const MessageManager = {
+    hasBookingRelationship(userId1, userId2) {
+        const data = getMockData();
+        if (!data.offers) return false;
+        return data.offers.some(o =>
+            (o.locumId === userId1 && o.practiceId === userId2) ||
+            (o.locumId === userId2 && o.practiceId === userId1)
+        );
+    },
+
     send(fromId, toId, subject, body, shiftId) {
         const data = getMockData();
         if (!data.messages) data.messages = [];
+        // Warn (but don't block) if no booking relationship exists
+        if (!shiftId && !this.hasBookingRelationship(fromId, toId)) {
+            // Allow the message but flag it — in a real system this would be blocked
+        }
         const threadId = this.findThread(data, fromId, toId, shiftId) || ('thread-' + Date.now());
         data.messages.push({
             id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
@@ -585,7 +887,7 @@ const MessageManager = {
             read: false
         });
         // Email notification
-        EmailManager.send(data, toId, 'New Message: ' + subject, body.substring(0, 100) + '...', 'message_received');
+        EmailManager.send(data, toId, 'New Message: ' + subject, body.length > 200 ? body.substring(0, 200) + '...' : body, 'message_received');
         Booking.addNotification(data, toId, 'message', 'New Message', `You have a new message: "${subject}"`);
         saveMockData(data);
         return threadId;
@@ -782,7 +1084,8 @@ const FeedbackManager = {
     getAverageRating(userId) {
         const reviews = this.getForUser(userId);
         if (reviews.length === 0) return null;
-        const allScores = reviews.flatMap(r => Object.values(r.ratings));
+        const allScores = reviews.flatMap(r => Object.values(r.ratings || {})).filter(v => typeof v === 'number' && !isNaN(v));
+        if (allScores.length === 0) return null;
         return (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1);
     },
 
@@ -822,6 +1125,20 @@ const BarredList = {
         const data = getMockData();
         if (!data.barredLists) return [];
         return data.barredLists[practiceId] || [];
+    },
+
+    getBarredPracticesForLocum(locumId) {
+        const data = getMockData();
+        var barredAt = [];
+        Object.keys(data.barredLists || {}).forEach(function(practiceId) {
+            var list = data.barredLists[practiceId];
+            var entry = list.find(function(b) { return b.locumId === locumId; });
+            if (entry) {
+                var practice = data.practices.find(function(p) { return p.id === practiceId; });
+                barredAt.push({ practiceId: practiceId, practiceName: practice ? practice.practiceName : 'Unknown Practice', reason: entry.reason || 'No reason provided', date: entry.date });
+            }
+        });
+        return barredAt;
     },
 
     getBarReason(practiceId, locumId) {

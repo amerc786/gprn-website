@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gprn-site",
+      "runtimeExecutable": "/usr/local/bin/node",
+      "runtimeArgs": ["backend/server.js"],
+      "port": 3000
+    }
+  ]
+}

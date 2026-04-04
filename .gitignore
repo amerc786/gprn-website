@@ -1,2 +1,7 @@
 .aidesigner/*
 !.aidesigner/.gitkeep
+.DS_Store
+.mcp.json
+backend/node_modules/
+backend/gprn-data.json
+backend/uploads/

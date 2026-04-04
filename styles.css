@@ -2272,9 +2272,24 @@ img { max-width: 100%; }
 
 @media print {
     .sidebar, .top-header, .no-print { display: none !important; }
-    .main-content { margin-left: 0 !important; }
+    .main-content { margin-left: 0 !important; width: 100% !important; }
     .page-content { padding: 0 !important; }
-    .invoice-page { box-shadow: none; border: none; }
+    .invoice-page { box-shadow: none !important; border: none !important; }
+    .content-card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
+    .btn { display: none !important; }
+    a[href] { color: inherit !important; text-decoration: none !important; }
+    .badge { border: 1px solid #999 !important; background: transparent !important; color: #333 !important; }
+    body { background: white !important; }
+    /* Shift detail: collapse 2-column to single column */
+    .grid-2-1 { display: block !important; }
+    .grid-2-1 > div:last-child { position: static !important; }
+    .grid-2-1 > div:last-child .content-card { position: static !important; }
+    /* Invoice: clean printing */
+    .invoice-header-row { break-inside: avoid; }
+    .invoice-parties { break-inside: avoid; }
+    .data-table { border-collapse: collapse; }
+    .data-table th, .data-table td { border: 1px solid #ddd !important; }
+    .invoice-total-row { break-inside: avoid; }
 }
 
 /* ===== CHARTS (CSS-only) ===== */

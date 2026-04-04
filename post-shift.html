@@ -55,7 +55,7 @@
                         <div class="form-hint">Select a saved template to pre-fill the form, or start from scratch.</div>
                     </div>
 
-                    <form id="postShiftForm" novalidate>
+                    <form id="postShiftForm">
                         <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label" for="shiftDate">Date</label>
@@ -243,6 +243,12 @@
 
             if (!date || !sessionType || !startTime || !endTime) {
                 Toast.show('Please fill in all required fields.', 'error');
+                return;
+            }
+
+            // Time validation
+            if (endTime && startTime && endTime <= startTime) {
+                Toast.show('End time must be after start time.', 'error');
                 return;
             }
 

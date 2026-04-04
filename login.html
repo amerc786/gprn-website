@@ -55,7 +55,19 @@
                     <label class="form-checkbox">
                         <input type="checkbox" id="remember"> Remember me
                     </label>
-                    <a href="forgot-password.html" style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">Forgot Password?</a>
+                    <a href="#" id="forgotPasswordLink" style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">Forgot Password?</a>
+                </div>
+
+                <!-- Forgot Password Inline Form (hidden by default) -->
+                <div id="forgotPasswordForm" style="display:none; margin-bottom: 24px; padding: 16px; background: var(--gray-50, #f8f9fa); border-radius: 12px; border: 1px solid var(--gray-200, #e5e7eb);">
+                    <p style="font-size: 0.85rem; color: var(--dark-600, #555); margin-bottom: 12px;">Enter your email address and we will send you a reset link.</p>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <input type="email" id="resetEmail" class="form-input" placeholder="you@example.com">
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" id="sendResetBtn" class="btn btn-primary btn-small" style="flex:1;">Send Reset Link</button>
+                        <button type="button" id="cancelResetBtn" class="btn btn-ghost btn-small">Cancel</button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">Log In</button>
@@ -65,10 +77,13 @@
                 Don't have an account? <a href="register-locum.html" id="registerLink">Register</a>
             </div>
 
-            <div class="demo-credentials">
-                <strong>Demo Credentials</strong><br>
-                <span style="display:inline-block; margin-top:4px;">Locum: <code>sarah.williams@gprn.wales</code> / <code>password</code></span><br>
-                <span>Practice: <code>manager@ringland.wales</code> / <code>password</code></span>
+            <div class="demo-credentials" style="cursor: pointer; border-top: 1px solid var(--gray-200, #e5e7eb); padding-top: 16px; margin-top: 8px;" onclick="var d=this.querySelector('.demo-details');if(d.style.display==='none'){d.style.display='block';this.querySelector('.demo-toggle-text').textContent='Hide demo credentials';}else{d.style.display='none';this.querySelector('.demo-toggle-text').textContent='Show demo credentials';}">
+                <span class="demo-toggle-text" style="font-weight:600; color: var(--dark-400, #888); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">Show demo credentials</span>
+                <div class="demo-details" style="display:none; margin-top:10px;">
+                    <p style="font-size: 0.75rem; color: var(--dark-400, #999); margin-bottom: 8px; font-style: italic;">Demo Mode &mdash; These credentials are for testing purposes only</p>
+                    <span style="display:inline-block; margin-top:4px; font-size: 0.85rem;">Locum: <code>sarah.williams@gprn.wales</code> / <code>Locum2026!</code></span><br>
+                    <span style="font-size: 0.85rem;">Practice: <code>manager@ringland.wales</code> / <code>Practice2026!</code></span>
+                </div>
             </div>
         </div>
     </div>
@@ -114,6 +129,64 @@
                 this.innerHTML = isPassword
                     ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
                     : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+            });
+
+            // Forgot password flow
+            var forgotLink = document.getElementById('forgotPasswordLink');
+            var forgotForm = document.getElementById('forgotPasswordForm');
+            var sendResetBtn = document.getElementById('sendResetBtn');
+            var cancelResetBtn = document.getElementById('cancelResetBtn');
+            var resetEmailInput = document.getElementById('resetEmail');
+
+            forgotLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                forgotForm.style.display = forgotForm.style.display === 'none' ? 'block' : 'none';
+                if (forgotForm.style.display === 'block') {
+                    resetEmailInput.focus();
+                }
+            });
+
+            cancelResetBtn.addEventListener('click', function() {
+                forgotForm.style.display = 'none';
+                resetEmailInput.value = '';
+            });
+
+            sendResetBtn.addEventListener('click', function() {
+                var resetEmail = resetEmailInput.value.trim();
+                if (!resetEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail)) {
+                    Toast.show('Please enter a valid email address.', 'warning');
+                    return;
+                }
+                // Try API forgot-password first
+                fetch('/api/auth/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: resetEmail })
+                }).then(function(r) { return r.json(); }).then(function(result) {
+                    if (result.success) {
+                        Toast.show('Password reset link sent to ' + resetEmail + '. Check your email.', 'success');
+                        // Show the token for demo purposes
+                        if (result.token) {
+                            Toast.show('Demo: Reset token is ' + result.token, 'info', 8000);
+                        }
+                        forgotForm.style.display = 'none';
+                        resetEmailInput.value = '';
+                    } else {
+                        Toast.show(result.error || 'Failed to send reset email', 'error');
+                    }
+                }).catch(function() {
+                    // Fallback to mock
+                    if (typeof PasswordReset !== 'undefined') {
+                        var r = PasswordReset.request(resetEmail);
+                        if (r.success) {
+                            Toast.show('Password reset link has been sent to ' + resetEmail, 'success');
+                            forgotForm.style.display = 'none';
+                            resetEmailInput.value = '';
+                        } else {
+                            Toast.show('No account found with that email address.', 'error');
+                        }
+                    }
+                });
             });
 
             // Form submit

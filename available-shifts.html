@@ -25,7 +25,8 @@
 
         const SHIFTS_PER_PAGE = 10;
         let currentPage = 1;
-        let filteredShifts = [...getMockData().shifts].filter(s => s.status === 'open');
+        const todayISO = new Date().toISOString().split('T')[0];
+        let filteredShifts = [...getMockData().shifts].filter(s => s.status === 'open' && s.date >= todayISO);
 
         const healthBoards = [
             'All Health Boards',
@@ -46,7 +47,7 @@
             pageContent.innerHTML = `
                 <div class="filter-bar">
                     <div class="form-group">
-                        <label class="form-label">Date</label>
+                        <label class="form-label">From Date</label>
                         <input type="date" class="form-input" id="filterDate">
                     </div>
                     <div class="form-group">
@@ -63,6 +64,7 @@
                             <option value="PM">PM</option>
                             <option value="Full Day">Full Day</option>
                         </select>
+                        <span style="font-size:0.72rem;color:var(--dark-600);margin-top:4px;display:block;">AM: 08:30-12:30 | PM: 13:00-17:00 | Full Day: 08:30-17:00</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Search</label>
@@ -93,9 +95,21 @@
             // Bind filter button
             document.getElementById('filterBtn').addEventListener('click', applyFilters);
 
+            // Real-time filtering on dropdowns and date
+            document.getElementById('filterDate').addEventListener('change', applyFilters);
+            document.getElementById('filterHealthBoard').addEventListener('change', applyFilters);
+            document.getElementById('filterShiftType').addEventListener('change', applyFilters);
+
+            // Debounced search input
+            var searchTimer = null;
+            document.getElementById('filterSearch').addEventListener('input', function() {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(applyFilters, 300);
+            });
+
             // Bind Enter key on search
             document.getElementById('filterSearch').addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') applyFilters();
+                if (e.key === 'Enter') { clearTimeout(searchTimer); applyFilters(); }
             });
 
             // Bind pagination
@@ -121,6 +135,7 @@
             const currentData = getMockData();
             filteredShifts = currentData.shifts.filter(s => {
                 if (s.status !== 'open') return false;
+                if (s.date < todayISO) return false;
                 if (dateVal && s.date !== dateVal) return false;
                 if (hbVal && s.healthBoard !== hbVal) return false;
                 if (typeVal && s.sessionType !== typeVal) return false;

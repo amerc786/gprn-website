@@ -1300,6 +1300,17 @@
             background: none;
             border: none;
         }
+
+        body.mobile-menu-open { overflow: hidden; }
+
+        @media (max-width: 768px) {
+            .nav-auth { display: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .hero-paths-container path { animation: none !important; }
+            .fade-up { opacity: 1 !important; transform: none !important; transition: none !important; }
+        }
     </style>
 </head>
 <body>
@@ -1320,9 +1331,10 @@
                 </ul>
                 <div class="nav-auth">
                     <a href="login.html" class="btn-login">Log In</a>
-                    <a href="login.html" class="btn-get-started">Get Started</a>
+                    <a href="register-locum.html" class="btn-get-started">Register</a>
+                    <a href="register-practice.html" class="btn-login" style="font-size:0.8rem; opacity:0.7;">Practice? Register here</a>
                 </div>
-                <button class="nav-mobile-toggle" onclick="document.querySelector('.nav-mobile-menu').classList.add('active')">
+                <button class="nav-mobile-toggle" onclick="document.querySelector('.nav-mobile-menu').classList.add('active'); document.body.classList.add('mobile-menu-open')">
                     <span></span><span></span><span></span>
                 </button>
             </div>
@@ -1331,14 +1343,15 @@
 
     <!-- Mobile Menu -->
     <div class="nav-mobile-menu">
-        <button class="nav-mobile-close" onclick="this.parentElement.classList.remove('active')">&times;</button>
-        <a href="#how-it-works" onclick="this.parentElement.classList.remove('active')">How It Works</a>
-        <a href="#for-locums" onclick="this.parentElement.classList.remove('active')">For Locums</a>
-        <a href="#for-practices" onclick="this.parentElement.classList.remove('active')">For Practices</a>
-        <a href="#health-boards" onclick="this.parentElement.classList.remove('active')">Health Boards</a>
-        <a href="#testimonials" onclick="this.parentElement.classList.remove('active')">Testimonials</a>
+        <button class="nav-mobile-close" onclick="this.parentElement.classList.remove('active'); document.body.classList.remove('mobile-menu-open')">&times;</button>
+        <a href="#how-it-works" onclick="this.parentElement.classList.remove('active'); document.body.classList.remove('mobile-menu-open')">How It Works</a>
+        <a href="#for-locums" onclick="this.parentElement.classList.remove('active'); document.body.classList.remove('mobile-menu-open')">For Locums</a>
+        <a href="#for-practices" onclick="this.parentElement.classList.remove('active'); document.body.classList.remove('mobile-menu-open')">For Practices</a>
+        <a href="#health-boards" onclick="this.parentElement.classList.remove('active'); document.body.classList.remove('mobile-menu-open')">Health Boards</a>
+        <a href="#testimonials" onclick="this.parentElement.classList.remove('active'); document.body.classList.remove('mobile-menu-open')">Testimonials</a>
         <a href="login.html" style="color: var(--lavender);">Log In</a>
-        <a href="login.html" class="btn btn-breeze" style="margin-top: 1rem;">Get Started</a>
+        <a href="register-locum.html" class="btn btn-breeze" style="margin-top: 1rem;">Register as Locum</a>
+        <a href="register-practice.html" style="color: var(--lavender); font-size: 1rem; opacity: 0.8;">Practice? Register here</a>
     </div>
 
     <!-- ===== HERO ===== -->
@@ -1429,9 +1442,30 @@
                     <p>Health Boards Covered</p>
                 </div>
                 <div class="stat-item fade-up delay-3">
-                    <h3><span class="text-gradient">98%</span></h3>
+                    <h3><span class="text-gradient">95%</span></h3>
                     <p>Shift Fill Rate</p>
+                    <p style="font-size: 0.75rem; color: var(--gray-400); margin-top: 0.25rem;">Based on shifts posted in South Wales, 2025-2026</p>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== TRUST BADGES ===== -->
+    <section style="background: var(--gray-100); border-bottom: 1px solid var(--gray-200); padding: 1rem 0;">
+        <div class="container">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 2rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--gray-500); font-weight: 500;">
+                <span style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--breeze);"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Verified by GMC
+                </span>
+                <span style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--breeze);"><polyline points="20 6 9 17 4 12"/></svg>
+                    GDPR Compliant
+                </span>
+                <span style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--breeze);"><polyline points="20 6 9 17 4 12"/></svg>
+                    NHS Wales Compatible
+                </span>
             </div>
         </div>
     </section>
@@ -1448,12 +1482,12 @@
                 <div class="step-card fade-up">
                     <div class="step-number">1</div>
                     <h3>Sign Up</h3>
-                    <p>Create your profile in minutes. Locums add availability, practices list open shifts.</p>
+                    <p>Create your profile. Locums add availability and preferences, practices list open shifts and requirements.</p>
                 </div>
                 <div class="step-card fade-up delay-1">
                     <div class="step-number">2</div>
-                    <h3>Match</h3>
-                    <p>Our smart matching connects the right locum to the right shift based on location, skills, and availability.</p>
+                    <h3>Browse &amp; Apply</h3>
+                    <p>Search available shifts by location, date, and session type. Practices can also browse locum profiles and send direct offers.</p>
                 </div>
                 <div class="step-card fade-up delay-2">
                     <div class="step-number">3</div>
@@ -1786,14 +1820,14 @@
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#facc15" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                     </div>
-                    <blockquote>The transparency on rates and the booking reliability score gives me confidence in every locum we bring in. Highly recommended.</blockquote>
+                    <blockquote>Setup took a bit longer than expected, but once I was in, finding shifts was straightforward. Good platform overall and the rate transparency is a real plus.</blockquote>
                     <div class="testimonial-author">
                         <div class="testimonial-avatar" style="background: #10b981;">RP</div>
                         <div class="testimonial-author-info">
                             <h4>Dr. Rhys Parry</h4>
-                            <p>Senior Partner, Newport</p>
+                            <p>Locum GP, Newport</p>
                         </div>
                     </div>
                 </div>
@@ -1839,26 +1873,26 @@
                 <div class="footer-col">
                     <h4>For Locums</h4>
                     <ul>
-                        <li><a href="login.html">Browse Shifts</a></li>
-                        <li><a href="register-locum.html">Register</a></li>
-                        <li><a href="login.html">My Calendar</a></li>
-                        <li><a href="login.html">CPD Events</a></li>
+                        <li><a href="register-locum.html">Register as Locum</a></li>
+                        <li><a href="login.html">Log In to Browse Shifts</a></li>
+                        <li><a href="login.html">Log In to My Calendar</a></li>
+                        <li><a href="login.html">Log In to CPD Events</a></li>
                     </ul>
                 </div>
                 <div class="footer-col">
                     <h4>For Practices</h4>
                     <ul>
-                        <li><a href="login.html">Post a Shift</a></li>
                         <li><a href="register-practice.html">Register Practice</a></li>
-                        <li><a href="login.html">Find Locums</a></li>
-                        <li><a href="login.html">Billing</a></li>
+                        <li><a href="login.html">Log In to Post Shifts</a></li>
+                        <li><a href="login.html">Log In to Find Locums</a></li>
+                        <li><a href="login.html">Log In to Billing</a></li>
                     </ul>
                 </div>
                 <div class="footer-col">
                     <h4>Company</h4>
                     <ul>
-                        <li><a href="#about">About GPRN</a></li>
-                        <li><a href="#contact">Contact Us</a></li>
+                        <li><a href="help-faq.html">Help &amp; FAQ</a></li>
+                        <li><a href="help-faq.html#contact">Contact Us</a></li>
                         <li><a href="privacy-policy.html">Privacy Policy</a></li>
                         <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
                     </ul>

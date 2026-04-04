@@ -233,7 +233,7 @@
                         ${invoice.status === 'disputed' && invoice.disputeReason ? `
                             <div style="margin-top: 24px; padding: 16px; background: rgba(239,68,68,0.05); border-radius: 8px; border-left: 3px solid var(--danger);">
                                 <p style="font-weight: 600; color: var(--danger); margin-bottom: 4px;">Dispute Reason</p>
-                                <p style="color: var(--dark-700);">${invoice.disputeReason}</p>
+                                <p style="color: var(--dark-700);">${sanitizeHTML(invoice.disputeReason)}</p>
                             </div>
                         ` : ''}
 

@@ -185,7 +185,7 @@
             </div>
 
             <div class="dash-stats-row">
-                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('openShifts')">
+                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('openShifts')" role="button" aria-label="View open shifts details" tabindex="0">
                     <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
                         ${getIcon('search')}
                     </div>
@@ -194,7 +194,7 @@
                         <span class="dash-stat-label">Open Shifts</span>
                     </div>
                 </div>
-                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('pendingApps')">
+                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('pendingApps')" role="button" aria-label="View pending applications details" tabindex="0">
                     <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
                         ${getIcon('file-text')}
                     </div>
@@ -203,7 +203,7 @@
                         <span class="dash-stat-label">Pending Applications</span>
                     </div>
                 </div>
-                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('fillRate')">
+                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('fillRate')" role="button" aria-label="View fill rate details" tabindex="0">
                     <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
                         ${getIcon('check')}
                     </div>
@@ -212,7 +212,7 @@
                         <span class="dash-stat-label">Fill Rate</span>
                     </div>
                 </div>
-                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('monthlySpend')">
+                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('monthlySpend')" role="button" aria-label="View monthly spend details" tabindex="0">
                     <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
                         ${getIcon('pound')}
                     </div>
@@ -232,10 +232,10 @@
                         ${coverageData.map((c, i) => {
                             if (c.totalShifts === 0) {
                                 return `
-                                <div class="coverage-bar-container" style="cursor: pointer;" onclick="showDayCoverage(${i})">
+                                <div class="coverage-bar-container" style="cursor: pointer;" onclick="showDayCoverage(${i})" role="button" aria-label="${c.day} shift coverage - no shifts" tabindex="0">
                                     <div class="coverage-label">
                                         <span>${c.day}</span>
-                                        <span class="coverage-pct" style="color: var(--gray-400);">No shifts</span>
+                                        <span class="coverage-pct" style="color: var(--gray-400);">No shifts posted</span>
                                     </div>
                                     <div class="coverage-bar">
                                         <div class="coverage-fill" style="width: 0%"></div>
@@ -245,7 +245,7 @@
                             const colorClass = c.pct >= 80 ? '' : (c.pct >= 50 ? 'warn' : 'danger');
                             const fillClass = c.pct < 50 ? 'warning' : '';
                             return `
-                                <div class="coverage-bar-container" style="cursor: pointer;" onclick="showDayCoverage(${i})">
+                                <div class="coverage-bar-container" style="cursor: pointer;" onclick="showDayCoverage(${i})" role="button" aria-label="${c.day} shift coverage - ${c.filledShifts} of ${c.totalShifts} filled" tabindex="0">
                                     <div class="coverage-label">
                                         <span>${c.day}</span>
                                         <span class="coverage-pct ${colorClass}">${c.filledShifts}/${c.totalShifts} (${c.pct}%)</span>
@@ -265,7 +265,7 @@
                     <div class="content-card-body">
                         <div class="bar-chart">
                             ${spendingData.map((e, i) => `
-                                <div class="bar-chart-item" style="cursor: pointer;" onclick="showMonthSpend(${i})">
+                                <div class="bar-chart-item" style="cursor: pointer;" onclick="showMonthSpend(${i})" role="button" aria-label="${e.label} spending - ${e.value > 0 ? formatCurrency(e.value) : 'no spend'}" tabindex="0">
                                     <div class="bar-chart-value">${e.value > 0 ? formatCurrency(e.value) : '-'}</div>
                                     <div class="bar-chart-bar" style="height: ${e.value > 0 ? Math.max((e.value / maxSpend) * 120, 4) : 4}px;"></div>
                                     <div class="bar-chart-label">${e.label}</div>
@@ -314,7 +314,7 @@
                             <div style="padding: 14px 0; border-bottom: 1px solid var(--gray-100);">
                                 ${(app.isBarred || app.isPreferred) ? renderBarredWarning(session.id, app.locumId) : ''}
                                 <div style="display: flex; align-items: center; justify-content: space-between;">
-                                    <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showApplicantDetail('${app.offerId}')">
+                                    <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showApplicantDetail('${app.offerId}')" role="button" aria-label="View details for ${app.locumName}" tabindex="0">
                                         <div class="header-avatar" style="width: 40px; height: 40px; font-size: 0.8rem;">${getInitials(app.locumName)}</div>
                                         <div>
                                             <strong style="display: block; font-size: 0.9rem; color: var(--primary); text-decoration: underline;">${app.locumName}</strong>
@@ -323,7 +323,7 @@
                                         </div>
                                     </div>
                                     <div style="display: flex; gap: 8px;">
-                                        <button class="btn btn-primary btn-small" onclick="acceptApp('${app.offerId}')" ${app.isBarred ? 'disabled style="opacity:0.5"' : ''}>Accept</button>
+                                        <button class="btn btn-primary btn-small" onclick="acceptApp('${app.offerId}')" ${app.isBarred ? 'disabled style="opacity:0.5"' : ''}>Accept</button>${app.isBarred ? '<span style="font-size:0.75rem;color:var(--danger);margin-left:4px;">Barred from this practice</span>' : ''}
                                         <button class="btn btn-ghost btn-small" onclick="declineApp('${app.offerId}')">Decline</button>
                                     </div>
                                 </div>
@@ -341,16 +341,21 @@
                         <style>#notifPane::-webkit-scrollbar { display: none; }</style>
                         ${notifications.length === 0
                             ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No notifications.</p>'
-                            : notifications.slice(0, 5).map((n, idx) => `
-                                <div class="notif-item" id="notif-${idx}" style="cursor: pointer;" onclick="expandNotification(${idx})">
-                                    <div class="notif-dot ${n.read ? 'read' : 'unread'}"></div>
+                            : notifications.slice(0, 5).map((n, idx) => {
+                                const dotColor = n.type === 'offer_accepted' ? 'var(--success)' :
+                                    n.type === 'shift_cancelled' || n.type === 'no_show' ? 'var(--danger)' :
+                                    n.type === 'new_offer' || n.type === 'offer_received' ? 'var(--primary)' :
+                                    'var(--coral)';
+                                return `
+                                <div class="notif-item" id="notif-${idx}" style="cursor: pointer;" onclick="expandNotification(${idx})" role="button" aria-label="Notification: ${n.title}" tabindex="0">
+                                    <div class="notif-dot ${n.read ? 'read' : 'unread'}" style="background: ${dotColor};"></div>
                                     <div style="flex: 1;">
                                         <div class="notif-title">${n.title}</div>
                                         <div class="notif-message" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${n.message}</div>
                                         <div class="notif-time">${DateUtils.relative(n.date)}</div>
                                     </div>
                                 </div>
-                            `).join('')
+                            `}).join('')
                         }
                     </div>
                 </div>
@@ -372,7 +377,7 @@
                                 <strong style="font-size: 0.9rem;">${locumName}</strong>
                                 <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${DateUtils.format(offer.shiftDate, 'medium')} &bull; ${offer.sessionType}</span>
                             </div>
-                            <button class="btn btn-secondary btn-small" onclick="leaveFeedback('${offer.id}', '${offer.locumId}')">
+                            <button class="btn btn-secondary btn-small" onclick="leaveFeedback('${offer.id}', '${offer.locumId}')" aria-label="Rate locum for ${DateUtils.format(offer.shiftDate, 'medium')} shift">
                                 ${getIcon('award')} Rate Locum
                             </button>
                         </div>`;
@@ -513,7 +518,7 @@
                     </div>
                 `,
                 footer: `
-                    <button class="btn btn-primary" id="modalAcceptBtn" ${isBarred ? 'disabled style="opacity:0.5"' : ''}>Accept</button>
+                    <button class="btn btn-primary" id="modalAcceptBtn" ${isBarred ? 'disabled style="opacity:0.5"' : ''}>Accept</button>${isBarred ? '<span style="font-size:0.75rem;color:var(--danger);margin-left:4px;">Barred from this practice</span>' : ''}
                     <button class="btn btn-secondary" id="modalCounterBtn">Counter-Offer</button>
                     <button class="btn btn-ghost" id="modalDeclineBtn">Decline</button>
                 `,
@@ -899,6 +904,13 @@
                 }
             });
         }
+        // Keyboard support for role="button" elements
+        document.addEventListener('keydown', function(e) {
+            if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute('role') === 'button') {
+                e.preventDefault();
+                e.target.click();
+            }
+        });
     </script>
 </body>
 </html>

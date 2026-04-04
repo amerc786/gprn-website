@@ -222,7 +222,7 @@
                                             <div style="display: flex; gap: 6px; align-items: center;">
                                                 <a href="invoice-view.html?id=${inv.id}" class="btn btn-ghost btn-small">View</a>
                                                 ${inv.status === 'pending' || inv.status === 'overdue' ? `
-                                                    <button class="btn btn-small btn-warning" onclick="handleChasePayment('${inv.id}')">Chase Payment</button>
+                                                    <button class="btn btn-small btn-warning" onclick="handleChasePayment('${inv.id}')">Send Payment Reminder</button>
                                                 ` : ''}
                                             </div>
                                         </td>

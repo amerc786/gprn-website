@@ -328,19 +328,8 @@
         // Accordion toggle
         function toggleAccordion(trigger) {
             const content = trigger.nextElementSibling;
-            const isOpen = trigger.classList.contains('open');
-
-            // Close all in same section
-            const section = trigger.closest('.faq-section');
-            section.querySelectorAll('.accordion-trigger.open').forEach(t => {
-                t.classList.remove('open');
-                t.nextElementSibling.classList.remove('open');
-            });
-
-            if (!isOpen) {
-                trigger.classList.add('open');
-                content.classList.add('open');
-            }
+            trigger.classList.toggle('open');
+            content.classList.toggle('open');
         }
 
         // Search filter
@@ -349,16 +338,16 @@
             const query = this.value.toLowerCase().trim();
             document.querySelectorAll('.accordion-item').forEach(item => {
                 const text = item.textContent.toLowerCase();
-                item.style.display = query === '' || text.includes(query) ? '' : 'none';
+                item.style.display = (query === '' || text.includes(query)) ? '' : 'none';
             });
             // Hide section headers with no visible items
             document.querySelectorAll('.faq-section').forEach(section => {
-                const visibleItems = section.querySelectorAll('.accordion-item[style=""], .accordion-item:not([style])');
+                const hasVisible = Array.from(section.querySelectorAll('.accordion-item')).some(i => i.style.display !== 'none');
                 const heading = section.previousElementSibling;
                 if (heading && heading.tagName === 'H2') {
-                    const hasVisible = Array.from(section.querySelectorAll('.accordion-item')).some(i => i.style.display !== 'none');
                     heading.style.display = hasVisible ? '' : 'none';
                 }
+                section.style.display = hasVisible ? '' : 'none';
             });
         });
     </script>

@@ -35,7 +35,11 @@
             grouped[hb].push(evt);
         });
 
-        let html = '';
+        var session = Auth.getSession();
+        var html = '';
+
+        // My Registrations section
+        html += renderMyRegistrations();
 
         // Web-based CPD card
         html += `
@@ -44,7 +48,7 @@
                 <h2>Web-based CPD</h2>
             </div>
             <div class="content-card-body">
-                ${webCpd.map(item => `
+                ${webCpd.length === 0 ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No web-based CPD resources available at this time.</p>' : webCpd.map(item => `
                 <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">
                         <h3 style="font-size: 1.05rem; margin-bottom: 4px;">${item.title}</h3>
@@ -69,6 +73,9 @@
             <div class="content-card-body">`;
 
         const sortedBoards = Object.keys(grouped).sort();
+        if (sortedBoards.length === 0) {
+            html += '<p style="color: var(--dark-600); font-size: 0.88rem;">No upcoming events scheduled at this time. Check back soon.</p>';
+        }
         sortedBoards.forEach(board => {
             html += `<h3 style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 12px; margin-top: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100);">
                 <span class="badge badge-primary" style="margin-right: 8px;">${board}</span>
@@ -103,7 +110,8 @@
                     <p style="font-size: 0.88rem; color: var(--dark-600); line-height: 1.6; margin-top: 12px; padding: 0 4px;">${evt.description}</p>
                     <div class="shift-card-footer" style="margin-top: 12px;">
                         <div></div>
-                        <button class="btn btn-primary btn-small" onclick="Toast.show('Registration interest submitted for ${evt.title}', 'success')">Register Interest</button>
+                        <button class="btn btn-primary btn-small" id="cpd-btn-${evt.id}" onclick="registerCPDInterest('${evt.id}')">Register Interest</button>
+                        <p style="font-size: 0.75rem; color: var(--dark-600); margin-top: 4px;">The organiser will be notified of your interest.</p>
                     </div>
                 </div>`;
             });
@@ -112,6 +120,94 @@
         html += `</div></div>`;
 
         pageContent.innerHTML = html;
+
+        // Render My Registrations section
+        function renderMyRegistrations() {
+            var data = getMockData();
+            if (!data.cpdInterests || data.cpdInterests.length === 0) return '';
+            var registeredEvents = data.cpdInterests.map(function(id) {
+                return data.cpdEvents.find(function(e) { return e.id === id; });
+            }).filter(Boolean);
+            if (registeredEvents.length === 0) return '';
+            var items = registeredEvents.map(function(evt) {
+                return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--gray-50);border-radius:8px;margin-bottom:8px;">'
+                    + '<div><strong style="font-size:0.9rem;color:var(--dark);">' + evt.title + '</strong>'
+                    + '<div style="font-size:0.82rem;color:var(--dark-600);">' + DateUtils.format(evt.date, 'full') + ' &bull; ' + evt.time + '</div></div>'
+                    + '<span class="badge badge-success" style="font-size:0.75rem;">Registered</span></div>';
+            }).join('');
+            return '<div class="content-card" style="margin-bottom:24px;"><div class="content-card-header"><h2>My CPD Registrations</h2></div>'
+                + '<div class="content-card-body" id="myRegistrations">' + items + '</div></div>';
+        }
+
+        function updateMyRegistrations() {
+            var section = document.getElementById('myRegistrations');
+            if (section) {
+                var parent = section.closest('.content-card');
+                if (parent) parent.outerHTML = renderMyRegistrations();
+            } else {
+                var newHtml = renderMyRegistrations();
+                if (newHtml) {
+                    pageContent.insertAdjacentHTML('afterbegin', newHtml);
+                }
+            }
+        }
+
+        // CPD Interest Registration
+        function registerCPDInterest(eventId) {
+            var data = getMockData();
+            var session = Auth.getSession();
+            if (!data.cpdInterests) data.cpdInterests = [];
+            if (data.cpdInterests.includes(eventId)) {
+                Toast.show('You have already registered interest for this event.', 'info');
+                return;
+            }
+            data.cpdInterests.push(eventId);
+
+            var evt = data.cpdEvents.find(function(e) { return e.id === eventId; });
+
+            // Create confirmation notification
+            if (!data.notifications) data.notifications = [];
+            data.notifications.push({
+                userId: session.id,
+                type: 'cpd_registered',
+                title: 'CPD Registration Confirmed',
+                message: 'Your interest in "' + (evt ? evt.title : 'this event') + '" has been registered. The organiser will contact you with further details.',
+                date: new Date().toISOString(),
+                read: false
+            });
+
+            // Log confirmation email to user
+            EmailManager.send(data, session.id, 'CPD Registration Confirmed',
+                'You have registered interest for ' + (evt ? evt.title : 'a CPD event') + (evt ? ' on ' + DateUtils.format(evt.date, 'full') : '') + '. The event organiser has been notified and will contact you with joining instructions.',
+                'cpd_registration');
+
+            saveMockData(data);
+
+            var btn = document.getElementById('cpd-btn-' + eventId);
+            if (btn) {
+                btn.textContent = 'Registered';
+                btn.disabled = true;
+                btn.style.opacity = '0.7';
+            }
+            Toast.show('Registration confirmed! Check your email for details.', 'success');
+
+            updateMyRegistrations();
+        }
+
+        // Update buttons for already-registered events
+        (function() {
+            var data = getMockData();
+            if (data.cpdInterests) {
+                data.cpdInterests.forEach(function(id) {
+                    var btn = document.getElementById('cpd-btn-' + id);
+                    if (btn) {
+                        btn.textContent = 'Registered';
+                        btn.disabled = true;
+                        btn.style.opacity = '0.7';
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 </html>

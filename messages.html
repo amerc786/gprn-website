@@ -120,7 +120,7 @@
                             ${threads.map(t => {
                                 const name = MessageManager.getUserName(t.otherId);
                                 const initials = getInitials(name);
-                                const preview = t.lastMessage.body.length > 50 ? t.lastMessage.body.substring(0, 50) + '...' : t.lastMessage.body;
+                                const preview = sanitizeHTML(t.lastMessage.body.length > 50 ? t.lastMessage.body.substring(0, 50) + '...' : t.lastMessage.body);
                                 const time = formatMessageTime(t.lastMessage.timestamp);
                                 return `
                                 <div class="thread-item ${activeThreadId === t.threadId ? 'active' : ''}" data-thread-id="${t.threadId}">
@@ -132,6 +132,7 @@
                                     <div class="thread-meta">
                                         <div class="thread-time">${time}</div>
                                         ${t.unread > 0 ? `<div class="thread-unread">${t.unread}</div>` : ''}
+                                        <div style="font-size:0.7rem;color:var(--gray-400);margin-top:2px;">Last active: ${time}</div>
                                     </div>
                                 </div>`;
                             }).join('')}
@@ -174,7 +175,7 @@
                 }
             }
 
-            const subjectInfo = firstMsg.subject ? `<div class="chat-header-sub">${firstMsg.subject}</div>` : '';
+            const subjectInfo = firstMsg.subject ? `<div class="chat-header-sub">${sanitizeHTML(firstMsg.subject)}</div>` : '';
 
             return `
                 <div class="chat-header">

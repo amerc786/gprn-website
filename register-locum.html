@@ -99,6 +99,8 @@
                                 </button>
                             </div>
                             <div class="form-error"></div>
+                            <p class="form-hint">Minimum 6 characters</p>
+                            <div id="passwordStrength" style="margin-top:6px; font-size:0.8rem; font-weight:600;"></div>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="confirmPassword">Confirm Password</label>
@@ -139,6 +141,7 @@
                                 <label class="form-radio"><input type="radio" name="performerList" value="yes" required> Yes</label>
                                 <label class="form-radio"><input type="radio" name="performerList" value="no"> No</label>
                             </div>
+                            <p class="form-hint">The NHS Performers List allows you to work in NHS general practice in Wales. If unsure, select No — you can update this later.</p>
                             <div class="form-error"></div>
                         </div>
                         <div class="form-group">
@@ -147,6 +150,7 @@
                                 <label class="form-radio"><input type="radio" name="nhsPension" value="yes" required> Yes</label>
                                 <label class="form-radio"><input type="radio" name="nhsPension" value="no"> No</label>
                             </div>
+                            <p class="form-hint">Select Yes if you contribute to the NHS pension scheme. This helps practices with payroll processing.</p>
                             <div class="form-error"></div>
                         </div>
                     </div>
@@ -165,6 +169,7 @@
                             <option value="Would negotiate a separate fee">Would negotiate a separate fee</option>
                             <option value="Will not sign scripts">Will not sign scripts</option>
                         </select>
+                        <p class="form-hint">Whether you're willing to sign prescriptions at the practice. Most locum GPs select 'Will sign scripts'.</p>
                     </div>
                 </div>
 
@@ -172,6 +177,7 @@
                 <div class="form-step" id="step3" style="display:none;">
                     <div class="form-group">
                         <label class="form-label">Health Boards</label>
+                        <p class="form-hint" style="margin-bottom:4px;">Select the areas where you're willing to work. You can change this anytime from your dashboard.</p>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px; margin-top:4px;">
                             <label class="form-checkbox"><input type="checkbox" name="healthBoards" value="Aneurin Bevan"> Aneurin Bevan</label>
                             <label class="form-checkbox"><input type="checkbox" name="healthBoards" value="Betsi Cadwaladr"> Betsi Cadwaladr</label>
@@ -206,7 +212,7 @@
 
                 <!-- Step 4: Documents -->
                 <div class="form-step" id="step4" style="display:none;">
-                    <p style="font-size:0.9rem; color:var(--dark-600); margin-bottom:24px;">Upload your documents to complete your profile. You can also do this later from your dashboard.</p>
+                    <p style="font-size:0.9rem; color:var(--dark-600); margin-bottom:24px;">Upload your documents to complete your profile. You can upload these now or add them later from your dashboard.</p>
 
                     <div class="form-group">
                         <label class="form-label">Indemnity Certificate</label>
@@ -214,17 +220,18 @@
                             <div class="upload-zone-icon">
                                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             </div>
-                            <p>Click to upload or drag and drop</p>
+                            <p>Click to upload or drag and drop (PDF, max 10MB)</p>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Performer List Status</label>
+                        <p class="form-hint">NHS England/Wales performers list registration</p>
                         <div class="upload-zone" id="uploadPerformer">
                             <div class="upload-zone-icon">
                                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             </div>
-                            <p>Click to upload or drag and drop</p>
+                            <p>Click to upload or drag and drop (PDF, max 10MB)</p>
                         </div>
                     </div>
 
@@ -234,7 +241,7 @@
                             <div class="upload-zone-icon">
                                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             </div>
-                            <p>Click to upload or drag and drop</p>
+                            <p>Click to upload or drag and drop (PDF, max 10MB)</p>
                         </div>
                     </div>
 
@@ -244,9 +251,18 @@
                             <div class="upload-zone-icon">
                                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             </div>
-                            <p>Click to upload or drag and drop</p>
+                            <p>Click to upload or drag and drop (PDF, max 10MB)</p>
                         </div>
                     </div>
+                </div>
+
+                <!-- Terms Checkbox -->
+                <div class="form-group" id="termsGroup" style="margin-bottom: 16px; display: none;">
+                    <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.85rem; color: var(--dark-600); cursor: pointer;">
+                        <input type="checkbox" id="agreeTerms" required style="margin-top: 3px;">
+                        I agree to the <a href="terms-conditions.html" target="_blank" style="color: var(--primary);">Terms &amp; Conditions</a> and <a href="privacy-policy.html" target="_blank" style="color: var(--primary);">Privacy Policy</a>
+                    </label>
+                    <div class="form-error" id="termsError"></div>
                 </div>
 
                 <!-- Navigation Buttons -->
@@ -288,10 +304,36 @@
                 travelValue.textContent = this.value + ' miles';
             });
 
-            // Simulated upload zones
+            // Upload zones with real file input and API upload
             document.querySelectorAll('.upload-zone').forEach(zone => {
+                // Create a hidden file input for each zone
+                var fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
+                fileInput.style.display = 'none';
+                zone.parentElement.appendChild(fileInput);
+
                 zone.addEventListener('click', function() {
-                    this.innerHTML = '<p class="uploaded"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px;"><polyline points="20 6 9 17 4 12"/></svg>File uploaded successfully</p>';
+                    fileInput.click();
+                });
+
+                fileInput.addEventListener('change', function() {
+                    var file = this.files[0];
+                    if (!file) return;
+                    var docType = zone.getAttribute('data-doc-type') || 'general';
+                    zone.innerHTML = '<p class="uploaded"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px;"><polyline points="20 6 9 17 4 12"/></svg>' + file.name + '<span class="upload-remove" onclick="event.stopPropagation(); removeUpload(this)" style="color: var(--danger); cursor: pointer; font-size: 0.8rem; margin-left: 8px; text-decoration: underline;">Remove</span></p>';
+                    zone.style.borderColor = '';
+                    var err = zone.parentElement.querySelector('.form-error');
+                    if (err) err.remove();
+
+                    // Upload to server if API available
+                    if (typeof API !== 'undefined' && file) {
+                        API.uploadFile(file, docType).then(function(result) {
+                            if (result.success) {
+                                console.log('File uploaded:', result.document.name);
+                            }
+                        }).catch(function() {});
+                    }
                 });
             });
 
@@ -315,6 +357,7 @@
 
                 btnBack.style.display = step > 1 ? 'inline-flex' : 'none';
                 btnNext.textContent = step === totalSteps ? 'Create Account' : 'Next Step';
+                document.getElementById('termsGroup').style.display = step === totalSteps ? 'block' : 'none';
             }
 
             function validateCurrentStep() {
@@ -333,11 +376,24 @@
                         if (errorEl) errorEl.textContent = '';
                     }
                 });
+                // Step 4: Documents are all optional — no validation needed
                 return valid;
             }
 
             btnNext.addEventListener('click', function() {
                 if (!validateCurrentStep()) return;
+
+                if (currentStep === totalSteps) {
+                    var termsCheckbox = document.getElementById('agreeTerms');
+                    var termsError = document.getElementById('termsError');
+                    if (!termsCheckbox.checked) {
+                        termsError.textContent = 'You must agree to the Terms & Conditions and Privacy Policy';
+                        termsError.style.color = 'var(--danger)';
+                        return;
+                    } else {
+                        termsError.textContent = '';
+                    }
+                }
 
                 if (currentStep < totalSteps) {
                     currentStep++;
@@ -386,16 +442,67 @@
                         practiceRates: {}
                     };
 
+                    // Try API registration first
+                    try {
+                        var regXhr = new XMLHttpRequest();
+                        regXhr.open('POST', '/api/auth/register/locum', false);
+                        regXhr.setRequestHeader('Content-Type', 'application/json');
+                        regXhr.send(JSON.stringify({
+                            email: newLocum.email,
+                            password: newLocum.password,
+                            title: newLocum.title,
+                            firstName: newLocum.firstName,
+                            lastName: newLocum.lastName,
+                            phone: newLocum.phone,
+                            gmcNumber: newLocum.gmcNumber,
+                            medicalSchool: newLocum.medicalSchool,
+                            yearQualified: newLocum.yearQualified,
+                            performerList: newLocum.performerList,
+                            nhsPension: newLocum.nhsPension,
+                            computerSystems: newLocum.computerSystems,
+                            signingScripts: newLocum.signingScripts,
+                            healthBoards: newLocum.healthBoards,
+                            preferredShiftTypes: newLocum.preferredShiftTypes,
+                            travelDistance: newLocum.travelDistance,
+                            bio: newLocum.bio
+                        }));
+                        if (regXhr.status === 201) {
+                            var apiResult = JSON.parse(regXhr.responseText);
+                            if (apiResult.session) {
+                                localStorage.setItem('gprn_session', JSON.stringify(apiResult.session));
+                                // Fetch data from API
+                                var dataXhr = new XMLHttpRequest();
+                                dataXhr.open('GET', '/api/data', false);
+                                dataXhr.setRequestHeader('Authorization', 'Bearer ' + apiResult.session.token);
+                                dataXhr.send();
+                                if (dataXhr.status === 200) {
+                                    localStorage.setItem('gprn_data', dataXhr.responseText);
+                                }
+                            }
+                        }
+                    } catch(e) {
+                        console.log('API registration unavailable, using offline mode');
+                    }
+
+                    // Fallback: save to mock data (also serves as local cache)
                     data.locums.push(newLocum);
                     saveMockData(data);
 
                     // Log in automatically
-                    const session = Auth.login(newLocum.email, newLocum.password);
+                    var session = Auth.login(newLocum.email, newLocum.password);
                     if (session) {
-                        Toast.show('Account created successfully! Welcome to GPRN.', 'success');
-                        setTimeout(() => {
+                        // Show verification email modal
+                        var userEmail = newLocum.email;
+                        var overlay = document.createElement('div');
+                        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+                        var modal = document.createElement('div');
+                        modal.style.cssText = 'background:#fff;border-radius:12px;padding:2.5rem;max-width:440px;width:90%;text-align:center;font-family:Inter,sans-serif;';
+                        modal.innerHTML = '<div style="width:56px;height:56px;border-radius:50%;background:rgba(69,65,254,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4541fe" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><h3 style="font-size:1.3rem;font-weight:700;margin-bottom:0.5rem;color:#101722;">Welcome to GPRN!</h3><p style="color:#64748b;font-size:0.95rem;line-height:1.6;margin-bottom:1.5rem;">A verification email has been sent to <strong>' + userEmail + '</strong>. Please check your inbox to verify your account.</p><button id="modalContinueBtn" style="background:#4541fe;color:#fff;border:none;border-radius:8px;padding:0.75rem 1.5rem;font-size:1rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Continue to Dashboard</button>';
+                        overlay.appendChild(modal);
+                        document.body.appendChild(overlay);
+                        document.getElementById('modalContinueBtn').addEventListener('click', function() {
                             window.location.href = 'locum-dashboard.html';
-                        }, 800);
+                        });
                     }
                 }
             });
@@ -410,14 +517,51 @@
             showStep(1);
         })();
 
+        function removeUpload(el) {
+            var zone = el.closest('.upload-zone');
+            if (zone) {
+                zone.classList.remove('uploaded');
+                zone.innerHTML = '<div class="upload-zone-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div><p>Click to upload or drag and drop (PDF, max 10MB)</p>';
+                zone.style.borderColor = '';
+                zone.style.background = '';
+            }
+        }
+
         function togglePw(inputId, btn) {
-            const input = document.getElementById(inputId);
-            const isPassword = input.type === 'password';
+            var input = document.getElementById(inputId);
+            var isPassword = input.type === 'password';
             input.type = isPassword ? 'text' : 'password';
             btn.innerHTML = isPassword
                 ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
                 : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
         }
+
+        // Password strength indicator
+        (function() {
+            var pwInput = document.getElementById('password');
+            var strengthEl = document.getElementById('passwordStrength');
+            if (pwInput && strengthEl) {
+                pwInput.addEventListener('input', function() {
+                    var val = this.value;
+                    var hasUpper = /[A-Z]/.test(val);
+                    var hasLower = /[a-z]/.test(val);
+                    var hasNum = /[0-9]/.test(val);
+                    var hasMix = (hasUpper && hasLower) || (hasLower && hasNum) || (hasUpper && hasNum);
+                    if (val.length === 0) {
+                        strengthEl.textContent = '';
+                    } else if (val.length < 6) {
+                        strengthEl.textContent = 'Weak';
+                        strengthEl.style.color = '#ef4444';
+                    } else if (val.length < 8 || !hasMix) {
+                        strengthEl.textContent = 'Fair';
+                        strengthEl.style.color = '#f59e0b';
+                    } else {
+                        strengthEl.textContent = 'Good';
+                        strengthEl.style.color = '#10b981';
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 </html>
