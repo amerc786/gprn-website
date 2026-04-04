@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Shift Detail - GPRN</title>
+    <title>Invitation Detail - GPRN</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -22,35 +22,42 @@
         const session = Auth.getSession();
         const user = Auth.getCurrentUser();
         const data = getMockData();
-        const pageContent = initAppLayout('locum', 'shifts', 'Shift Detail', [
-            { label: 'Available Shifts', href: 'available-shifts.html' },
-            { label: 'Shift Detail' }
+        const pageContent = initAppLayout('locum', 'invitations', 'Invitation Detail', [
+            { label: 'My Invitations', href: 'available-shifts.html' },
+            { label: 'Invitation Detail' }
         ]);
 
-        const shiftId = new URLSearchParams(window.location.search).get('id');
-        const shift = data.shifts.find(s => s.id === shiftId);
+        const offerId = new URLSearchParams(window.location.search).get('id');
+        const offer = data.offers.find(o => o.id === offerId && o.locumId === session.id);
 
-        if (!shift) {
-            pageContent.innerHTML = renderEmptyState('search', 'Shift Not Found', 'This shift could not be found. It may have been removed or filled.', 'Back to Shifts', 'available-shifts.html');
+        if (!offer) {
+            pageContent.innerHTML = renderEmptyState('search', 'Invitation Not Found', 'This invitation could not be found. It may have been withdrawn or expired.', 'Back to Invitations', 'available-shifts.html');
         } else {
-            const practice = data.practices.find(p => p.id === shift.practiceId);
-            const rates = user ? user.rates : { am: 0, pm: 0, fullDay: 0, housecall: 0 };
+            // Auto-mark as viewed
+            if (offer.status === 'sent') {
+                Booking.viewOffer(offer.id);
+                offer.status = 'viewed';
+            }
 
-            // Nearby practices with open shifts (different practice, same health board)
-            const nearbyShifts = data.shifts
-                .filter(s => s.status === 'open' && s.healthBoard === shift.healthBoard && s.practiceId !== shift.practiceId)
-                .reduce((acc, s) => {
-                    if (!acc.find(x => x.practiceId === s.practiceId)) acc.push(s);
-                    return acc;
-                }, [])
-                .slice(0, 6);
+            const practice = data.practices.find(p => p.id === offer.practiceId);
+            const rates = user ? user.rates : { am: 0, pm: 0, fullDay: 0, housecall: 0 };
+            const offerDate = offer.sessionDate || offer.shiftDate;
+            const proposedRate = offer.proposedRate || 0;
+            const locumRate = offer.sessionType === 'Full Day' ? rates.fullDay : offer.sessionType === 'PM' ? rates.pm : rates.am;
+            const rateMatch = proposedRate >= locumRate;
+
+            // Negotiation history
+            const negotiations = offer.negotiations || [];
+
+            // Is this actionable?
+            const isActionable = ['viewed', 'negotiating'].includes(offer.status);
 
             pageContent.innerHTML = `
                 <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <a href="available-shifts.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; color: var(--primary);">
-                        ${getIcon('arrow-left')} Back to Available Shifts
+                        ${getIcon('arrow-left')} Back to Invitations
                     </a>
-                    <button class="btn btn-ghost btn-small" onclick="window.print()">${getIcon('download')} Print</button>
+                    <span class="badge ${getStatusBadge(offer.status)}" style="font-size: 0.85rem; padding: 6px 14px;">${getStatusLabel(offer.status)}</span>
                 </div>
 
                 <div class="grid-2-1">
@@ -60,20 +67,21 @@
                         <div class="content-card">
                             <div class="content-card-body" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
                                 <div>
-                                    <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">${shift.practiceName}</h2>
-                                    <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 8px;">${shift.city}</p>
-                                    <span class="badge badge-primary">${shift.healthBoard}</span>
-                                    ${shift.urgent ? '<span class="badge badge-danger" style="margin-left: 6px;">Urgent</span>' : ''}
-                                    <span class="badge badge-info" style="margin-left: 6px;">${shift.sessionType}</span>
+                                    <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">${offer.practiceName}</h2>
+                                    <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 8px;">${practice ? practice.city : ''}</p>
+                                    <span class="badge badge-primary">${offer.healthBoard}</span>
+                                    <span class="badge badge-info" style="margin-left: 6px;">${offer.sessionType}</span>
                                 </div>
                                 <div style="text-align: right;">
-                                    <div style="font-size: 1rem; font-weight: 700; color: var(--dark);">${DateUtils.format(shift.date, 'full')}</div>
-                                    <div style="font-size: 0.88rem; color: var(--dark-600);">${shift.startTime} - ${shift.endTime}</div>
+                                    <div style="font-size: 1rem; font-weight: 700; color: var(--dark);">${DateUtils.format(offerDate, 'full')}</div>
+                                    <div style="font-size: 0.88rem; color: var(--dark-600);">${offer.startTime} - ${offer.endTime}</div>
+                                    ${offer.sentDate ? `<div style="font-size: 0.8rem; color: var(--dark-600); margin-top: 4px;">Sent: ${DateUtils.relative(offer.sentDate)}</div>` : ''}
                                 </div>
                             </div>
                         </div>
 
                         <!-- Location Card -->
+                        ${practice ? `
                         <div class="content-card">
                             <div class="content-card-header">
                                 <h2>${getIcon('map-pin')} Location</h2>
@@ -82,69 +90,71 @@
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                                     <div>
                                         <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Address</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${practice ? practice.address : 'N/A'}</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${practice.address || 'N/A'}</div>
                                     </div>
                                     <div>
                                         <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Postcode</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${practice ? practice.postcode : 'N/A'}</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${practice.postcode || 'N/A'}</div>
                                     </div>
                                     <div>
                                         <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">City</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.city}</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${practice.city || 'N/A'}</div>
                                     </div>
                                     <div>
                                         <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Directions</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);"><a href="https://www.google.com/maps/search/${encodeURIComponent((practice ? practice.address + ', ' + practice.city + ', ' + practice.postcode : ''))}" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline;">Get directions</a></div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);"><a href="https://www.google.com/maps/search/${encodeURIComponent((practice.address || '') + ', ' + (practice.city || '') + ', ' + (practice.postcode || ''))}" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline;">Get directions</a></div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div>` : ''}
 
-                        <!-- Work Details Card -->
+                        <!-- Session Details -->
                         <div class="content-card">
                             <div class="content-card-header">
-                                <h2>${getIcon('monitor')} Work Details</h2>
+                                <h2>${getIcon('monitor')} Session Details</h2>
                             </div>
                             <div class="content-card-body">
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                                     <div>
-                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Computer System</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.computerSystem}</div>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Session Type</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${offer.sessionType}</div>
                                     </div>
-                                    <div>
-                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Shift Type</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.shiftType}</div>
-                                    </div>
-                                    ${shift.morningPatients > 0 ? `
-                                    <div>
-                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Morning Patients</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.morningPatients}</div>
-                                    </div>` : ''}
-                                    ${shift.afternoonPatients > 0 ? `
-                                    <div>
-                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Afternoon Patients</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.afternoonPatients}</div>
-                                    </div>` : ''}
                                     <div>
                                         <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Housecalls</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.housecalls ? 'Yes - may be required' : 'No housecalls'}</div>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Applicants</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${shift.applicants} so far</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${offer.housecalls ? 'Yes - may be required' : 'No housecalls'}</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Comments -->
-                        ${shift.comment ? `
+                        <!-- Practice Message -->
+                        ${offer.practiceMessage ? `
                         <div class="content-card">
                             <div class="content-card-header">
-                                <h2>Practice Comments</h2>
+                                <h2>${getIcon('mail')} Message from Practice</h2>
                             </div>
                             <div class="content-card-body">
-                                <p style="font-size: 0.9rem; color: var(--dark-600); line-height: 1.7;">${sanitizeHTML(shift.comment)}</p>
+                                <p style="font-size: 0.9rem; color: var(--dark-600); line-height: 1.7;">${sanitizeHTML(offer.practiceMessage)}</p>
+                            </div>
+                        </div>` : ''}
+
+                        <!-- Negotiation History -->
+                        ${negotiations.length > 0 ? `
+                        <div class="content-card">
+                            <div class="content-card-header">
+                                <h2>${getIcon('pound')} Negotiation History</h2>
+                            </div>
+                            <div class="content-card-body">
+                                ${negotiations.map(n => `
+                                    <div style="padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <strong style="font-size: 0.88rem;">${n.from === 'practice' ? offer.practiceName : 'You'}</strong>
+                                            <span style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">${formatCurrency(n.rate)}</span>
+                                        </div>
+                                        ${n.message ? `<p style="font-size: 0.85rem; color: var(--dark-600); margin-top: 4px;">${sanitizeHTML(n.message)}</p>` : ''}
+                                        ${n.accepted ? '<span class="badge badge-success" style="margin-top: 4px;">Agreed</span>' : ''}
+                                    </div>
+                                `).join('')}
                             </div>
                         </div>` : ''}
                     </div>
@@ -153,130 +163,124 @@
                     <div>
                         <div class="content-card" style="position: sticky; top: 80px;">
                             <div class="content-card-header">
-                                <h2>Apply for Shift</h2>
+                                <h2>${isActionable ? 'Respond to Invitation' : 'Offer Summary'}</h2>
                             </div>
                             <div class="content-card-body">
-                                <div class="form-group">
-                                    <label class="form-label">Session Type</label>
-                                    <select class="form-select" id="offerSessionType">
-                                        <option value="">-- Select Session Type --</option>
-                                        <option value="AM" ${shift.sessionType === 'AM' ? 'selected' : ''}>AM Session</option>
-                                        <option value="PM" ${shift.sessionType === 'PM' ? 'selected' : ''}>PM Session</option>
-                                        <option value="Full Day" ${shift.sessionType === 'Full Day' ? 'selected' : ''}>Full Day</option>
-                                    </select>
-                                </div>
-
+                                <!-- Rate Comparison -->
                                 <div style="background: var(--gray-50); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
-                                    <div style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 12px;">Your Current Rates</div>
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                        <span style="font-size: 0.85rem; color: var(--dark-600);">AM Rate</span>
-                                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--dark);">${formatCurrency(rates.am)}</span>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                        <span style="font-size: 0.85rem; color: var(--dark-600);">Offered Rate</span>
+                                        <span style="font-size: 1.1rem; font-weight: 700; color: ${rateMatch ? 'var(--success)' : 'var(--warning)'};">${formatCurrency(proposedRate)}</span>
                                     </div>
                                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                        <span style="font-size: 0.85rem; color: var(--dark-600);">PM Rate</span>
-                                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--dark);">${formatCurrency(rates.pm)}</span>
+                                        <span style="font-size: 0.85rem; color: var(--dark-600);">Your ${offer.sessionType} Rate</span>
+                                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--dark);">${formatCurrency(locumRate)}</span>
                                     </div>
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                        <span style="font-size: 0.85rem; color: var(--dark-600);">Full Day Rate</span>
-                                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--dark);">${formatCurrency(rates.fullDay)}</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between;">
-                                        <span style="font-size: 0.85rem; color: var(--dark-600);">Housecall</span>
-                                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--dark);">${rates.housecall > 0 ? formatCurrency(rates.housecall) : 'Included'}</span>
-                                    </div>
+                                    ${!rateMatch ? `
+                                    <div style="padding: 8px 12px; background: rgba(245,158,11,0.08); border-radius: 6px; margin-top: 8px; font-size: 0.82rem; color: var(--warning); font-weight: 500;">
+                                        Offered rate is below your published rate
+                                    </div>` : `
+                                    <div style="padding: 8px 12px; background: rgba(16,185,129,0.08); border-radius: 6px; margin-top: 8px; font-size: 0.82rem; color: var(--success); font-weight: 500;">
+                                        ${getIcon('check')} Rate meets or exceeds your published rate
+                                    </div>`}
                                 </div>
 
-                                ${shift.housecalls ? `
+                                ${offer.housecalls ? `
                                 <div style="padding: 10px 14px; background: rgba(245,158,11,0.08); border-radius: 8px; margin-bottom: 16px; font-size: 0.82rem; color: var(--warning); font-weight: 500;">
-                                    ${getIcon('activity')} This shift may include housecalls.
+                                    ${getIcon('activity')} This session may include housecalls.
                                 </div>` : ''}
 
-                                <button class="btn btn-primary" style="width: 100%;" id="submitOfferBtn">Apply for Shift</button>
-                                <button class="btn btn-ghost" style="width: 100%; margin-top: 10px;" id="requestInfoBtn">${getIcon('mail')} Request Info from Practice</button>
+                                ${offer.expiresAt ? `
+                                <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 16px;">
+                                    ${getIcon('clock')} Expires: ${DateUtils.format(offer.expiresAt, 'full')}
+                                </div>` : ''}
+
+                                ${isActionable ? `
+                                <button class="btn btn-primary" style="width: 100%;" onclick="handleAccept('${offer.id}')">
+                                    ${getIcon('check')} Accept Invitation
+                                </button>
+                                <button class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="handleCounter('${offer.id}')">
+                                    ${getIcon('pound')} Counter-Offer
+                                </button>
+                                <button class="btn btn-ghost" style="width: 100%; margin-top: 10px; color: var(--danger);" onclick="handleDecline('${offer.id}')">
+                                    Decline
+                                </button>
+                                ` : `
+                                <div style="text-align: center; padding: 12px;">
+                                    <span class="badge ${getStatusBadge(offer.status)}" style="font-size: 0.88rem; padding: 8px 16px;">${getStatusLabel(offer.status)}</span>
+                                </div>
+                                `}
+
+                                <button class="btn btn-ghost" style="width: 100%; margin-top: 10px;" id="msgPracticeBtn">
+                                    ${getIcon('mail')} Message Practice
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Nearby Practices -->
-                ${nearbyShifts.length > 0 ? `
-                <div class="content-card" style="margin-top: 24px;">
-                    <div class="content-card-header">
-                        <h2>Nearby Practices with Open Shifts</h2>
-                    </div>
-                    <div class="content-card-body">
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            ${nearbyShifts.map(s => `
-                                <a href="shift-detail.html?id=${s.id}" class="filter-chip" style="text-decoration: none;">
-                                    ${s.practiceName}
-                                </a>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>` : ''}
             `;
 
-            // Submit Offer handler
-            function doSubmitOffer() {
-                var sessionType = document.getElementById('offerSessionType').value;
-                var result = Booking.applyForShift(shift.id, sessionType);
-                if (result.error) {
-                    if (result.error === 'already_applied') {
-                        Toast.show(result.message || 'You have already applied for this shift.', 'error');
-                        var offerLink = document.getElementById('alreadyAppliedLink');
-                        if (!offerLink) {
-                            var linkDiv = document.createElement('div');
-                            linkDiv.id = 'alreadyAppliedLink';
-                            linkDiv.style.cssText = 'text-align:center;margin-top:12px;';
-                            linkDiv.innerHTML = '<a href="my-offers.html" style="color:var(--primary);font-weight:600;font-size:0.88rem;">View My Offers &rarr;</a>';
-                            document.getElementById('submitOfferBtn').parentNode.appendChild(linkDiv);
-                        }
-                        return;
-                    }
-                    var errors = {
-                        'barred': 'You cannot apply to shifts at this practice.',
-                        'shift_not_open': 'This shift is no longer available.',
-                        'not_logged_in': 'Please log in to apply.',
-                        'shift_not_found': 'This shift could not be found.'
-                    };
-                    Toast.show(result.message || errors[result.error] || 'Unable to apply for this shift.', 'error');
-                    return;
+            // Action handlers
+            window.handleAccept = function(id) {
+                const result = Booking.respondToOffer(id, 'accept');
+                if (result && !result.error) {
+                    Toast.show('Offer accepted! Awaiting practice confirmation.', 'success');
+                    setTimeout(function() { window.location.href = 'my-offers.html'; }, 1500);
+                } else {
+                    Toast.show((result && result.message) || 'Failed to accept offer.', 'error');
                 }
-                Toast.show('Your application has been submitted successfully!', 'success');
-                setTimeout(function() { window.location.href = 'my-offers.html'; }, 1500);
-            }
+            };
 
-            document.getElementById('submitOfferBtn').addEventListener('click', function() {
-                const sessionType = document.getElementById('offerSessionType').value;
-                if (!sessionType) {
-                    Toast.show('Please select a session type to apply.', 'warning');
-                    return;
-                }
-
-                // Double-booking check (now session-aware)
-                if (Booking.isDoubleBooked(session.id, shift.date, null, sessionType)) {
-                    Modal.show({
-                        title: 'Double Booking Warning',
-                        body: '<div style="padding: 8px 0;"><p style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 12px;">You already have an <strong>accepted or confirmed</strong> shift on <strong>' + DateUtils.format(shift.date, 'full') + '</strong> that overlaps with this session.</p><p style="font-size: 0.9rem; color: var(--dark-600);">Submitting this offer may result in a scheduling conflict if accepted. Do you want to proceed anyway?</p></div>',
-                        footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="confirmDoubleBookBtn">Submit Anyway</button>',
-                        onOpen: function(overlay) {
-                            overlay.querySelector('#confirmDoubleBookBtn').addEventListener('click', function() {
-                                Modal.close(overlay);
-                                doSubmitOffer();
-                            });
-                        }
-                    });
-                    return;
-                }
-
-                doSubmitOffer();
-            });
-
-            // Request Info button - opens compose message modal
-            document.getElementById('requestInfoBtn').addEventListener('click', function() {
-                const defaultSubject = 'Enquiry about shift on ' + DateUtils.format(shift.date, 'medium');
+            window.handleDecline = function(id) {
                 Modal.show({
-                    title: 'Send Message to ' + shift.practiceName,
+                    title: 'Decline Invitation',
+                    body: '<p style="font-size: 0.9rem; color: var(--dark-600); padding: 8px 0;">Are you sure you want to decline this invitation?</p>',
+                    footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" id="confirmDecBtn">Decline</button>',
+                    onOpen: function(overlay) {
+                        overlay.querySelector('#confirmDecBtn').addEventListener('click', function() {
+                            Modal.close(overlay);
+                            Booking.respondToOffer(id, 'decline');
+                            Toast.show('Invitation declined.', 'info');
+                            setTimeout(function() { window.location.href = 'available-shifts.html'; }, 1000);
+                        });
+                    }
+                });
+            };
+
+            window.handleCounter = function(id) {
+                Modal.show({
+                    title: 'Counter-Offer',
+                    body: `<div style="padding: 8px 0;">
+                        <p style="font-size: 0.88rem; color: var(--dark-600); margin-bottom: 16px;">Practice offered: <strong>${formatCurrency(proposedRate)}</strong></p>
+                        <div class="form-group">
+                            <label class="form-label">Your counter-rate (£)</label>
+                            <input type="number" id="counterRate" class="form-input" placeholder="e.g. 450" step="10" min="0" value="${locumRate}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Message (optional)</label>
+                            <textarea id="counterMsg" class="form-textarea" rows="2" placeholder="e.g. I'd be happy to do this for..."></textarea>
+                        </div>
+                    </div>`,
+                    footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="sendCtrBtn">Send Counter</button>',
+                    onOpen: function(overlay) {
+                        overlay.querySelector('#sendCtrBtn').addEventListener('click', function() {
+                            var rate = Number(overlay.querySelector('#counterRate').value);
+                            var msg = overlay.querySelector('#counterMsg').value.trim();
+                            if (!rate || rate <= 0) { Toast.show('Enter a valid rate.', 'error'); return; }
+                            Booking.respondToOffer(id, 'counter', rate, msg);
+                            Modal.close(overlay);
+                            Toast.show('Counter-offer sent!', 'success');
+                            setTimeout(function() { location.reload(); }, 1000);
+                        });
+                    }
+                });
+            };
+
+            // Message practice
+            document.getElementById('msgPracticeBtn').addEventListener('click', function() {
+                const defaultSubject = 'Question about session on ' + DateUtils.format(offerDate, 'medium');
+                Modal.show({
+                    title: 'Send Message to ' + offer.practiceName,
                     size: 'medium',
                     body: `
                         <div class="form-group">
@@ -290,19 +294,15 @@
                     `,
                     footer: `
                         <button class="btn btn-ghost" data-modal-close>Cancel</button>
-                        <button class="btn btn-primary" id="sendMsgBtn">${getIcon('mail')} Send Message</button>
+                        <button class="btn btn-primary" id="sendMsgBtn">${getIcon('mail')} Send</button>
                     `,
                     onOpen: function(overlay) {
                         overlay.querySelector('#sendMsgBtn').addEventListener('click', function() {
-                            const subject = overlay.querySelector('#msgSubject').value.trim();
                             const body = overlay.querySelector('#msgBody').value.trim();
-                            if (!body) {
-                                Toast.show('Please enter a message.', 'warning');
-                                return;
-                            }
-                            MessageManager.send(session.id, shift.practiceId, subject, body, shift.id);
+                            if (!body) { Toast.show('Please enter a message.', 'warning'); return; }
+                            MessageManager.send(session.id, offer.practiceId, overlay.querySelector('#msgSubject').value.trim(), body);
                             Modal.close(overlay);
-                            Toast.show('Message sent to ' + shift.practiceName + '!', 'success');
+                            Toast.show('Message sent!', 'success');
                         });
                     }
                 });

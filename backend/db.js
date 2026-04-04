@@ -7,6 +7,7 @@ const DB_PATH = path.join(__dirname, 'gprn-data.json');
 var store = {
     users: [],
     shifts: [],
+    session_needs: [],
     offers: [],
     invoices: [],
     notifications: [],

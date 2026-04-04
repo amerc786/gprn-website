@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>My Offers - GPRN</title>
+    <title>My Bookings - GPRN</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -19,73 +19,40 @@
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
-        const pageContent = initAppLayout('locum', 'offers', 'My Offers');
-        let currentTab = 'future';
+        const session = Auth.getSession();
+        const pageContent = initAppLayout('locum', 'bookings', 'My Bookings');
+        let currentTab = 'active';
 
-        function getOffers() {
+        function getBookings() {
             const data = getMockData();
-            const user = Auth.getCurrentUser();
-            return (data.offers || []).filter(o => o.locumId === user.id);
+            return (data.offers || []).filter(o => o.locumId === session.id);
         }
 
-        function renderOfferCardEnhanced(offer) {
+        function renderBookingCard(offer) {
             const now = new Date();
-            const shiftDate = new Date(offer.shiftDate);
+            const offerDate = offer.sessionDate || offer.shiftDate;
+            const shiftDate = new Date(offerDate);
             const hoursUntilShift = (shiftDate - now) / (1000 * 60 * 60);
+            const proposedRate = offer.agreedRate || offer.proposedRate || 0;
 
-            // Build status-specific actions
             let actionsHtml = '';
             switch (offer.status) {
-                case 'pending':
-                    actionsHtml = `
-                        <div class="offer-actions">
-                            <button class="btn btn-small btn-ghost" onclick="withdrawOffer('${offer.id}')">Withdraw</button>
-                        </div>`;
-                    break;
                 case 'accepted':
                     actionsHtml = `
                         <div class="offer-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <button class="btn btn-small btn-primary" onclick="confirmAndAccept('${offer.id}')">Confirm &amp; Accept Shift</button>
-                            <span style="display: block; font-size: 11px; color: var(--text-light); margin-top: 4px;">Confirm you will attend this shift</span>
-                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="rejectOffer('${offer.id}', ${hoursUntilShift < 48})">Reject</button>
-                        </div>`;
-                    break;
-                case 'acknowledged':
-                    actionsHtml = `
-                        <div class="offer-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <span class="badge badge-success" style="font-size: 0.82rem; padding: 6px 12px;">Confirmed - awaiting shift date</span>
-                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="rejectOffer('${offer.id}', ${hoursUntilShift < 48})">Reject</button>
+                            <span class="badge badge-success" style="font-size: 0.82rem; padding: 6px 12px;">Accepted — awaiting practice to confirm</span>
+                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="cancelBooking('${offer.id}', ${hoursUntilShift < 48})">Cancel</button>
                         </div>`;
                     break;
                 case 'confirmed':
                     actionsHtml = `
                         <div class="offer-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            ${new Date(offer.shiftDate) < new Date() ? `<button class="btn btn-small btn-primary" onclick="confirmComplete('${offer.id}')">Confirm Shift Complete</button>` : `<span class="badge badge-success" style="font-size: 0.82rem; padding: 6px 12px;">Confirmed - awaiting shift date</span>`}
-                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="rejectOffer('${offer.id}', ${hoursUntilShift < 48})">Reject</button>
-                        </div>`;
-                    break;
-                case 'negotiating':
-                    actionsHtml = `
-                        <div class="offer-actions">
-                            ${offer.negotiations ? `
-                                <div style="background: rgba(14,165,233,0.06); border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; width: 100%;">
-                                    <div style="font-size: 0.78rem; font-weight: 600; color: var(--secondary); margin-bottom: 6px;">Rate Negotiation</div>
-                                    ${offer.negotiations.map(n => '<div style="font-size:0.8rem;color:var(--dark-600);margin-bottom:3px;"><strong>' + (n.from === 'practice' ? offer.practiceName : 'You') + ':</strong> ' + formatCurrency(n.rate) + (n.accepted ? ' ✓ Agreed' : '') + (n.message ? ' — ' + n.message : '') + '</div>').join('')}
-                                </div>
-                            ` : ''}
-                            ${offer.negotiations && offer.negotiations.length > 0 && offer.negotiations[offer.negotiations.length - 1].from === 'practice' ? `
-                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                    <button class="btn btn-small btn-primary" onclick="acceptNegotiation('${offer.id}')">Accept Rate (${formatCurrency(offer.counterRate)})</button>
-                                    <button class="btn btn-small" style="background: var(--secondary); color: white; border-color: var(--secondary);" onclick="counterNegotiation('${offer.id}', ${offer.counterRate})">Counter</button>
-                                    <button class="btn btn-small btn-ghost" onclick="withdrawOffer('${offer.id}')">Withdraw</button>
-                                </div>
-                            ` : `
-                                <span class="badge badge-warning" style="font-size: 0.82rem; padding: 6px 12px;">Waiting for practice response</span>
-                            `}
+                            ${shiftDate < now ? `<button class="btn btn-small btn-primary" onclick="confirmComplete('${offer.id}')">Confirm Complete</button>` : `<span class="badge badge-success" style="font-size: 0.82rem; padding: 6px 12px;">Confirmed — awaiting session date</span>`}
+                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="cancelBooking('${offer.id}', ${hoursUntilShift < 48})">Cancel</button>
                         </div>`;
                     break;
                 case 'completed':
-                    const hasReviewed = FeedbackManager.hasReviewed(Auth.getSession().id, offer.id);
+                    const hasReviewed = FeedbackManager.hasReviewed(session.id, offer.id);
                     actionsHtml = `
                         <div class="offer-actions">
                             ${hasReviewed
@@ -97,39 +64,24 @@
                 case 'cancelled':
                     actionsHtml = `
                         <div class="offer-actions">
-                            <span class="badge badge-danger" style="font-size: 0.82rem; padding: 6px 12px;">Cancelled${offer.lateCancellation ? ' (late - reliability affected)' : ''}</span>
-                            ${offer.lateCancellation ? '<div style="font-size:0.78rem;color:var(--danger);margin-top:6px;">Late cancellations (within 48 hours) reduce your reliability score by 5 points. Scores below 80% may limit your visibility to practices.</div>' : ''}
+                            <span class="badge badge-danger" style="font-size: 0.82rem; padding: 6px 12px;">Cancelled${offer.lateCancellation ? ' (late — reliability affected)' : ''}</span>
                         </div>`;
                     break;
                 case 'no_show':
                     actionsHtml = `
                         <div class="offer-actions">
-                            <span class="badge badge-danger" style="font-size: 0.82rem; padding: 6px 12px;">No-show recorded - reliability score affected</span>
-                            ${offer.disputeReason ? '<div style="font-size:0.78rem;color:var(--dark-600);margin-top:6px;">Dispute submitted: ' + offer.disputeReason + '</div>' : '<button class="btn btn-small btn-ghost" style="margin-top:6px;" onclick="disputeNoShow(\'' + offer.id + '\')">Dispute</button>'}
-                        </div>`;
-                    break;
-                case 'rejected_by_locum':
-                    actionsHtml = `
-                        <div class="offer-actions">
-                            <span class="badge badge-danger" style="font-size: 0.82rem; padding: 6px 12px;">You rejected this shift${offer.lateCancellation ? ' (late - reliability affected)' : ''}</span>
+                            <span class="badge badge-danger" style="font-size: 0.82rem; padding: 6px 12px;">No-show — reliability affected</span>
+                            ${offer.disputeReason ? '<div style="font-size:0.78rem;color:var(--dark-600);margin-top:6px;">Dispute: ' + sanitizeHTML(offer.disputeReason) + '</div>' : `<button class="btn btn-small btn-ghost" style="margin-top:6px;" onclick="disputeNoShow('${offer.id}')">Dispute</button>`}
                         </div>`;
                     break;
                 case 'declined':
-                    actionsHtml = `
-                        <div class="offer-actions">
-                            <span class="badge badge-neutral" style="font-size: 0.82rem; padding: 6px 12px;">Declined by practice</span>
-                        </div>`;
+                    actionsHtml = '<div class="offer-actions"><span class="badge badge-neutral" style="font-size: 0.82rem; padding: 6px 12px;">You declined this invitation</span></div>';
                     break;
                 case 'withdrawn':
-                    actionsHtml = `
-                        <div class="offer-actions">
-                            <span class="badge badge-neutral" style="font-size: 0.82rem; padding: 6px 12px;">${offer.autoWithdrawn ? 'Auto-withdrawn (another offer accepted)' : 'Withdrawn'}</span>
-                            ${offer.autoWithdrawn ? (function() {
-                                var allOffers = getOffers();
-                                var acceptedForDate = allOffers.find(function(o) { return o.shiftDate === offer.shiftDate && (o.status === 'accepted' || o.status === 'confirmed' || o.status === 'acknowledged' || o.status === 'completed') && o.id !== offer.id; });
-                                return acceptedForDate ? '<div style="font-size:0.78rem;color:var(--dark-600);margin-top:6px;">Auto-withdrawn because you were accepted for ' + acceptedForDate.practiceName + ' on this date</div>' : '';
-                            })() : ''}
-                        </div>`;
+                    actionsHtml = '<div class="offer-actions"><span class="badge badge-neutral" style="font-size: 0.82rem; padding: 6px 12px;">Withdrawn by practice</span></div>';
+                    break;
+                case 'expired':
+                    actionsHtml = '<div class="offer-actions"><span class="badge badge-neutral" style="font-size: 0.82rem; padding: 6px 12px;">Expired</span></div>';
                     break;
             }
 
@@ -140,284 +92,149 @@
                         <h3 class="offer-card-title">${offer.practiceName}</h3>
                         <p class="offer-card-location">${offer.healthBoard}</p>
                     </div>
-                    <span class="badge ${getStatusBadge(offer.status)}">${offer.status.charAt(0).toUpperCase() + offer.status.slice(1).replace('_', ' ')}</span>
+                    <span class="badge ${getStatusBadge(offer.status)}">${getStatusLabel(offer.status)}</span>
                 </div>
                 <div class="offer-card-details">
-                    <div class="offer-detail">
-                        ${getIcon('calendar')}
-                        <span>${DateUtils.format(offer.shiftDate, 'full')}</span>
-                    </div>
-                    <div class="offer-detail">
-                        ${getIcon('clock')}
-                        <span>${offer.startTime} - ${offer.endTime}</span>
-                    </div>
-                    <div class="offer-detail">
-                        ${getIcon('tag')}
-                        <span>${offer.sessionType}</span>
-                    </div>
+                    <div class="offer-detail">${getIcon('calendar')} <span>${DateUtils.format(offerDate, 'full')}</span></div>
+                    <div class="offer-detail">${getIcon('clock')} <span>${offer.startTime} - ${offer.endTime}</span></div>
+                    <div class="offer-detail">${getIcon('tag')} <span>${offer.sessionType}</span></div>
                 </div>
                 <div class="offer-card-footer">
                     <div class="offer-rates">
-                        <span>Your rate: ${offer.sessionType === 'Full Day' ? formatCurrency(offer.rateFullDay) : offer.sessionType === 'PM' ? formatCurrency(offer.ratePM) : formatCurrency(offer.rateAM)}/${offer.sessionType} session</span>
+                        <span>Rate: ${formatCurrency(proposedRate)} / ${offer.sessionType} session</span>
                     </div>
-                    <span class="offer-date">Offer made: ${DateUtils.format(offer.offerDate, 'medium')}</span>
+                    <span class="offer-date">${offer.sentDate ? 'Invited: ' + DateUtils.format(offer.sentDate, 'medium') : ''}</span>
                 </div>
-                ${offer.comment ? '<div class="offer-comment"><strong>Your comment:</strong> ' + offer.comment + '</div>' : ''}
                 ${actionsHtml}
             </div>`;
         }
 
-        function renderOffers() {
-            const offers = getOffers();
+        function renderBookings() {
+            const bookings = getBookings();
             const now = new Date();
-            const future = offers.filter(o => new Date(o.shiftDate) >= now);
-            const past = offers.filter(o => new Date(o.shiftDate) < now);
+
+            // Active: accepted, confirmed (future)
+            const active = bookings.filter(o => ['accepted', 'confirmed'].includes(o.status) && new Date(o.sessionDate || o.shiftDate) >= now);
+            // Past: completed, cancelled, no_show, declined, withdrawn, expired, or past-date accepted/confirmed
+            const past = bookings.filter(o =>
+                ['completed', 'cancelled', 'no_show', 'declined', 'withdrawn', 'expired'].includes(o.status) ||
+                (['accepted', 'confirmed'].includes(o.status) && new Date(o.sessionDate || o.shiftDate) < now)
+            );
 
             let filtered;
-            if (currentTab === 'future') filtered = future;
+            if (currentTab === 'active') filtered = active;
             else if (currentTab === 'past') filtered = past;
-            else filtered = offers;
+            else filtered = bookings.filter(o => !['sent', 'viewed', 'negotiating'].includes(o.status));
+
+            // Sort by date descending
+            filtered.sort((a, b) => new Date(b.sessionDate || b.shiftDate) - new Date(a.sessionDate || a.shiftDate));
 
             pageContent.innerHTML = `
+                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 8px;">My Bookings</h1>
+
                 <div class="tabs">
-                    <button class="tab-item ${currentTab === 'future' ? 'active' : ''}" onclick="switchTab('future')">Future Shifts</button>
-                    <button class="tab-item ${currentTab === 'past' ? 'active' : ''}" onclick="switchTab('past')">Past Shifts</button>
+                    <button class="tab-item ${currentTab === 'active' ? 'active' : ''}" onclick="switchTab('active')">Active Bookings</button>
+                    <button class="tab-item ${currentTab === 'past' ? 'active' : ''}" onclick="switchTab('past')">Past</button>
                     <button class="tab-item ${currentTab === 'all' ? 'active' : ''}" onclick="switchTab('all')">All</button>
                 </div>
+
                 <div style="background: var(--gray-50); border-radius: var(--radius); padding: 10px 16px; margin-bottom: 16px; font-size: 0.8rem; color: var(--dark-600); line-height: 1.6;">
-                    <strong>Offer stages:</strong> Pending (awaiting practice response) → Accepted (confirm &amp; accept) → Confirmed (awaiting shift date) → Completed (shift done)
+                    <strong>Booking flow:</strong> Invitation received &rarr; Accepted &rarr; Practice confirms &rarr; Session date &rarr; Completed
                 </div>
-                <div id="offersList">
+
+                <div id="bookingsList">
                     ${filtered.length > 0
-                        ? filtered.map(o => renderOfferCardEnhanced(o)).join('')
-                        : renderEmptyState('file-text', 'No offers found', 'No pending offers or upcoming bookings', 'Browse Shifts', 'available-shifts.html')
+                        ? filtered.map(o => renderBookingCard(o)).join('')
+                        : renderEmptyState('file-text', 'No bookings found', currentTab === 'active' ? 'No active bookings. Visit your invitations to review pending session offers.' : 'No past bookings.', 'View Invitations', 'available-shifts.html')
                     }
                 </div>
             `;
         }
 
-        function switchTab(tab) {
+        window.switchTab = function(tab) {
             currentTab = tab;
-            renderOffers();
-        }
+            renderBookings();
+        };
 
-        function withdrawOffer(offerId) {
-            const data = getMockData();
-            const offer = data.offers.find(o => o.id === offerId);
-            if (offer) {
-                offer.status = 'withdrawn';
-                // Decrement the shift's applicant count
-                const shift = data.shifts.find(s => s.id === offer.shiftId);
-                if (shift && shift.applicants > 0) {
-                    shift.applicants--;
+        window.cancelBooking = function(offerId, isLate) {
+            const warningMsg = isLate
+                ? '<p style="font-size:0.95rem;color:var(--danger);font-weight:600;margin-bottom:12px;">This session is less than 48 hours away!</p><p style="font-size:0.9rem;color:var(--dark-600);margin-bottom:8px;">Late cancellations reduce your reliability score by 5 points.</p>'
+                : '';
+            Modal.show({
+                title: isLate ? 'Late Cancellation Warning' : 'Cancel Booking',
+                body: `<div style="padding: 8px 0;">${warningMsg}<p style="font-size: 0.9rem; color: var(--dark-600);">Are you sure you want to cancel this booking? The practice will be notified.</p></div>`,
+                footer: '<button class="btn btn-ghost" data-modal-close>Keep Booking</button><button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" id="confirmCancelBtn">Cancel Booking</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#confirmCancelBtn').addEventListener('click', function() {
+                        Modal.close(overlay);
+                        const result = Booking.cancelBooking(offerId, 'locum');
+                        if (result && !result.error) {
+                            Toast.show('Booking cancelled. The practice has been notified.', 'info');
+                        } else {
+                            Toast.show((result && result.message) || 'Failed to cancel.', 'error');
+                        }
+                        renderBookings();
+                    });
                 }
-                saveMockData(data);
-                Toast.show('Offer withdrawn successfully', 'success');
-                renderOffers();
-            }
-        }
+            });
+        };
 
-        function confirmAttendance(offerId) {
-            const success = Booking.confirmAttendance(offerId);
-            if (success) {
-                Toast.show('Attendance confirmed! You are all set for this shift.', 'success');
-            } else {
-                Toast.show('Failed to confirm attendance. Please try again.', 'error');
-            }
-            renderOffers();
-        }
-
-        function cancelShift(offerId, isLateCancellation) {
-            if (isLateCancellation) {
-                Modal.show({
-                    title: 'Late Cancellation Warning',
-                    body: `
-                        <div style="padding: 8px 0;">
-                            <p style="font-size: 0.95rem; color: var(--danger); font-weight: 600; margin-bottom: 12px;">
-                                This shift is less than 48 hours away!
-                            </p>
-                            <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 8px;">
-                                Late cancellations will negatively affect your booking reliability score. This may impact your visibility to practices.
-                            </p>
-                            <p style="font-size: 0.85rem; color: var(--danger); margin-bottom: 8px;">
-                                Late cancellations (within 48 hours) reduce your reliability score by 5 points. Scores below 80% may limit your visibility to practices.
-                            </p>
-                            <p style="font-size: 0.9rem; color: var(--dark-600);">
-                                Are you sure you want to cancel?
-                            </p>
-                        </div>
-                    `,
-                    footer: `
-                        <button class="btn btn-ghost" data-modal-close>Keep Shift</button>
-                        <button class="btn btn-primary" style="background: var(--danger); border-color: var(--danger);" id="confirmCancelBtn">Cancel Shift</button>
-                    `,
-                    onOpen: function(overlay) {
-                        overlay.querySelector('#confirmCancelBtn').addEventListener('click', function() {
-                            Modal.close(overlay);
-                            performCancel(offerId);
-                        });
-                    }
-                });
-            } else {
-                Modal.show({
-                    title: 'Cancel Shift',
-                    body: '<p style="font-size: 0.9rem; color: var(--dark-600); padding: 8px 0;">Are you sure you want to cancel this shift? The practice will be notified.</p>',
-                    footer: `
-                        <button class="btn btn-ghost" data-modal-close>Keep Shift</button>
-                        <button class="btn btn-primary" style="background: var(--danger); border-color: var(--danger);" id="confirmCancelBtn">Cancel Shift</button>
-                    `,
-                    onOpen: function(overlay) {
-                        overlay.querySelector('#confirmCancelBtn').addEventListener('click', function() {
-                            Modal.close(overlay);
-                            performCancel(offerId);
-                        });
-                    }
-                });
-            }
-        }
-
-        function performCancel(offerId) {
-            const success = Booking.cancelShift(offerId, 'locum');
-            if (success) {
-                Toast.show('Shift cancelled. The practice has been notified.', 'info');
-            } else {
-                Toast.show('Failed to cancel shift. Please try again.', 'error');
-            }
-            renderOffers();
-        }
-
-        function acknowledgeOffer(offerId) {
-            const success = Booking.acknowledgeOffer(offerId);
-            if (success) {
-                Toast.show('Offer acknowledged! The practice has been notified.', 'success');
-            } else {
-                Toast.show('Failed to acknowledge offer.', 'error');
-            }
-            renderOffers();
-        }
-
-        function rejectOffer(offerId, isLate) {
-            if (isLate) {
-                Modal.show({
-                    title: 'Late Rejection Warning',
-                    body: '<div style="padding:8px 0;"><p style="font-size:0.95rem;color:var(--danger);font-weight:600;margin-bottom:12px;">This shift is less than 48 hours away!</p><p style="font-size:0.9rem;color:var(--dark-600);margin-bottom:8px;">Late rejections negatively affect your booking reliability score.</p><p style="font-size:0.9rem;color:var(--dark-600);">The shift will be automatically relisted for other locums.</p></div>',
-                    footer: '<button class="btn btn-ghost" data-modal-close>Keep Shift</button><button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" id="confirmRejectBtn">Reject Shift</button>',
-                    onOpen: function(overlay) { overlay.querySelector('#confirmRejectBtn').addEventListener('click', function() { Modal.close(overlay); doReject(offerId); }); }
-                });
-            } else {
-                Modal.show({
-                    title: 'Reject Shift',
-                    body: '<p style="font-size:0.9rem;color:var(--dark-600);padding:8px 0;">Are you sure you want to reject this shift? The practice will be notified and the shift will be automatically relisted.</p>',
-                    footer: '<button class="btn btn-ghost" data-modal-close>Keep Shift</button><button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" id="confirmRejectBtn">Reject Shift</button>',
-                    onOpen: function(overlay) { overlay.querySelector('#confirmRejectBtn').addEventListener('click', function() { Modal.close(overlay); doReject(offerId); }); }
-                });
-            }
-        }
-
-        function doReject(offerId) {
-            const success = Booking.rejectAcceptedOffer(offerId);
-            if (success) {
-                Toast.show('Shift rejected. The practice has been notified and the shift has been relisted.', 'info');
-            } else {
-                Toast.show('Failed to reject shift.', 'error');
-            }
-            renderOffers();
-        }
-
-        function confirmComplete(offerId) {
-            const result = Booking.confirmCompletion(offerId);
+        window.confirmComplete = function(offerId) {
+            const result = Booking.markComplete(offerId, true, 'locum');
             if (result === 'too_early') {
                 const data = getMockData();
                 const offer = data.offers.find(o => o.id === offerId);
-                const dateStr = offer ? DateUtils.format(offer.shiftDate, 'full') : 'the scheduled date';
-                Toast.show('This shift cannot be completed yet. The shift date (' + dateStr + ') has not passed.', 'warning', 5000);
+                const dateStr = offer ? DateUtils.format(offer.sessionDate || offer.shiftDate, 'full') : 'the scheduled date';
+                Toast.show('This session cannot be completed yet. The date (' + dateStr + ') has not passed.', 'warning', 5000);
                 return;
             }
-            if (result === true) {
-                Toast.show('Shift marked as complete! Invoice generated. The practice has been notified.', 'success');
+            if (result && !result.error) {
+                Toast.show('Session marked as complete! Invoice generated.', 'success');
             } else {
-                Toast.show('Failed to confirm completion.', 'error');
+                Toast.show((result && result.message) || 'Failed to confirm completion.', 'error');
             }
-            renderOffers();
-        }
+            renderBookings();
+        };
 
-        function acceptNegotiation(offerId) {
-            Booking.respondToCounter(offerId, true);
-            Toast.show('Rate accepted! Your offer is now pending approval.', 'success');
-            renderOffers();
-        }
-
-        function counterNegotiation(offerId, currentRate) {
-            Modal.show({
-                title: 'Counter-Offer',
-                body: '<div style="padding:8px 0;"><p style="font-size:0.88rem;color:var(--dark-600);margin-bottom:16px;">Practice offered: <strong>' + formatCurrency(currentRate) + '</strong></p><div class="form-group"><label class="form-label">Your counter-rate (£)</label><input type="number" id="locumCounterRate" class="form-input" placeholder="e.g. 450" step="10" min="0"></div><div class="form-group"><label class="form-label">Message (optional)</label><textarea id="locumCounterMsg" class="form-input" rows="2" placeholder="e.g. I can do it for this rate..."></textarea></div></div>',
-                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="sendLocumCounterBtn">Send Counter</button>',
-                onOpen: function(overlay) {
-                    overlay.querySelector('#sendLocumCounterBtn').addEventListener('click', function() {
-                        var rate = Number(overlay.querySelector('#locumCounterRate').value);
-                        var msg = overlay.querySelector('#locumCounterMsg').value.trim();
-                        if (!rate || rate <= 0) { Toast.show('Please enter a valid rate', 'error'); return; }
-                        Booking.respondToCounter(offerId, false, rate, msg);
-                        Modal.close(overlay);
-                        Toast.show('Counter-offer sent to practice', 'success');
-                        renderOffers();
-                    });
-                }
-            });
-        }
-
-        function confirmAndAccept(offerId) {
-            var data = getMockData();
-            var offer = data.offers.find(function(o) { return o.id === offerId; });
-            if (!offer) return;
-            offer.status = 'confirmed';
-            offer.acknowledgedDate = DateUtils.toISO(new Date());
-            offer.confirmedDate = DateUtils.toISO(new Date());
-            Booking.addNotification(data, offer.practiceId, 'offer_accepted', 'Shift Confirmed',
-                'The locum has confirmed they will attend the shift on ' + DateUtils.format(offer.shiftDate, 'medium') + '.');
-            saveMockData(data);
-            Toast.show('Shift confirmed! You are booked for this shift.', 'success');
-            setTimeout(function() { location.reload(); }, 1000);
-        }
-
-        function disputeNoShow(offerId) {
+        window.disputeNoShow = function(offerId) {
             Modal.show({
                 title: 'Dispute No-Show',
                 size: 'medium',
-                body: '<p style="margin-bottom:16px;color:var(--dark-600);">If you believe this no-show was recorded in error, please provide an explanation below. The practice will be notified of your dispute.</p><div class="form-group"><label class="form-label">Reason for Dispute</label><textarea id="disputeNoShowReason" class="form-textarea" rows="4" placeholder="Explain why you believe this no-show is incorrect..." required></textarea></div>',
-                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="submitNoShowDispute">Submit Dispute</button>',
+                body: '<p style="margin-bottom:16px;color:var(--dark-600);">Explain why you believe this no-show was recorded in error.</p><div class="form-group"><label class="form-label">Reason</label><textarea id="disputeReason" class="form-textarea" rows="4" placeholder="Explain..." required></textarea></div>',
+                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="submitDisputeBtn">Submit</button>',
                 onOpen: function(overlay) {
-                    overlay.querySelector('#submitNoShowDispute').addEventListener('click', function() {
-                        var reason = overlay.querySelector('#disputeNoShowReason').value.trim();
-                        if (!reason) {
-                            Toast.show('Please provide a reason for your dispute.', 'warning');
-                            return;
-                        }
+                    overlay.querySelector('#submitDisputeBtn').addEventListener('click', function() {
+                        var reason = overlay.querySelector('#disputeReason').value.trim();
+                        if (!reason) { Toast.show('Please provide a reason.', 'warning'); return; }
                         var data = getMockData();
-                        var offer = data.offers.find(function(o) { return o.id === offerId; });
+                        var offer = data.offers.find(o => o.id === offerId);
                         if (offer) {
                             offer.disputeReason = reason;
-                            // Notify the practice
-                            if (!data.notifications) data.notifications = [];
-                            data.notifications.push({
-                                userId: offer.practiceId,
-                                type: 'no_show_disputed',
-                                title: 'No-Show Disputed',
-                                message: 'A locum has disputed the no-show recorded for ' + DateUtils.format(offer.shiftDate, 'medium') + '. Reason: ' + reason,
-                                date: new Date().toISOString(),
-                                read: false
-                            });
+                            if (typeof Booking.addNotification === 'function') {
+                                Booking.addNotification(data, offer.practiceId, 'no_show_disputed', 'No-Show Disputed',
+                                    'A locum has disputed the no-show for ' + DateUtils.format(offer.sessionDate || offer.shiftDate, 'medium') + '.');
+                            } else {
+                                if (!data.notifications) data.notifications = [];
+                                data.notifications.push({
+                                    userId: offer.practiceId,
+                                    type: 'no_show_disputed',
+                                    title: 'No-Show Disputed',
+                                    message: 'A locum has disputed the no-show for ' + DateUtils.format(offer.sessionDate || offer.shiftDate, 'medium') + '. Reason: ' + reason,
+                                    date: new Date().toISOString(),
+                                    read: false
+                                });
+                            }
                             saveMockData(data);
                         }
                         Modal.close(overlay);
-                        Toast.show('Dispute submitted. The practice will be notified.', 'success');
-                        setTimeout(function() { renderOffers(); }, 500);
+                        Toast.show('Dispute submitted.', 'success');
+                        setTimeout(function() { renderBookings(); }, 500);
                     });
                 }
             });
-        }
+        };
 
-        renderOffers();
+        renderBookings();
     </script>
 </body>
 </html>

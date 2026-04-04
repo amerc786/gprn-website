@@ -39,8 +39,8 @@
                 practiceInvoices = d.invoices.filter(function(i) { return i.practiceId === session.id; });
             }
 
-            // If still none, seed manually
-            if (practiceInvoices.length === 0) {
+            // No fake seed data — only show real invoices from completed bookings
+            if (false) {
                 var today = new Date();
                 var locums = d.locums || [];
                 var seedStatuses = ['paid', 'pending', 'paid', 'overdue', 'paid', 'paid', 'pending', 'paid', 'paid', 'pending', 'paid', 'paid'];
@@ -329,7 +329,14 @@
 
             if (filtered.length === 0) {
                 if (tableEl) tableEl.style.display = 'none';
-                if (emptyState) emptyState.style.display = 'block';
+                if (emptyState) {
+                    emptyState.style.display = 'block';
+                    var msgEl = document.getElementById('invoiceEmptyMsg');
+                    if (msgEl) {
+                        var hasFilter = billingFilterMonth !== '' || billingFilterStatus !== '';
+                        msgEl.textContent = hasFilter ? 'No invoices match the current filter.' : 'No invoices yet. Invoices are generated when completed sessions are confirmed.';
+                    }
+                }
                 return;
             }
 
@@ -341,9 +348,9 @@
                 var inv = filtered[i];
                 var statusLabel = inv.status.charAt(0).toUpperCase() + inv.status.slice(1);
                 var badgeClass = getStatusBadgeClass(inv.status);
-                var actions = '<a href="invoice-view.html?id=' + inv.id + '" class="btn btn-ghost btn-small">View</a>';
+                var actions = '<a href="invoice-view.html?id=' + inv.id + '" class="btn btn-ghost btn-small">View Details</a>';
                 if (inv.status === 'pending' || inv.status === 'overdue') {
-                    actions += ' <button class="btn btn-small btn-primary" onclick="handleMarkPaid(\'' + inv.id + '\')">Mark Paid</button>';
+                    actions += ' <button class="btn btn-small btn-primary" onclick="handleMarkPaid(\'' + inv.id + '\')">Record Payment</button>';
                     actions += ' <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="handleDispute(\'' + inv.id + '\')">Dispute</button>';
                 }
                 html += '<tr id="inv-row-' + inv.id + '">'
@@ -414,7 +421,7 @@
 
                 + '<div class="content-card" style="margin-bottom:24px;background:var(--cream);border:1px solid var(--primary-light);">'
                 + '<div class="content-card-body" style="padding:16px;">'
-                + '<h3 style="font-size:0.95rem;margin-bottom:8px;">Payment Information</h3>'
+                + '<h3 style="font-size:0.95rem;margin-bottom:8px;">How Billing Works</h3>'
                 + '<p style="font-size:0.85rem;color:var(--dark-600);line-height:1.6;">'
                 + 'Payments are processed directly between practices and locums via BACS transfer. '
                 + 'Standard payment terms are <strong>Net 30 days</strong> from invoice date. '
@@ -436,8 +443,8 @@
                 + '<div class="form-group"><label class="form-label">Status</label><select id="filterInvStatus" class="form-select" onchange="applyBillingFilter()"><option value="">All Statuses</option><option value="paid">Paid</option><option value="pending">Pending</option><option value="overdue">Overdue</option><option value="disputed">Disputed</option></select></div>'
                 + '</div></div>'
                 + '<div class="content-card-body" style="padding: 0; overflow-x: auto;">'
-                + '<div id="invoiceEmptyState" class="empty-state" style="padding: 40px; display: none;"><p style="color: var(--dark-600);">No invoices match your filters.</p></div>'
-                + '<table id="invoiceTable" class="data-table"><thead><tr><th>Invoice #</th><th>Date</th><th>Locum</th><th>Shift Date</th><th>Session</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody id="invoiceTableBody"></tbody></table>'
+                + '<div id="invoiceEmptyState" class="empty-state" style="padding: 40px; display: none;"><p id="invoiceEmptyMsg" style="color: var(--dark-600);">No invoices yet. Invoices are generated when completed sessions are confirmed.</p></div>'
+                + '<table id="invoiceTable" class="data-table"><thead><tr><th>Invoice #</th><th>Date</th><th>Locum</th><th>Session Date</th><th>Session</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody id="invoiceTableBody"></tbody></table>'
                 + '</div></div>';
 
             renderBillingTable();

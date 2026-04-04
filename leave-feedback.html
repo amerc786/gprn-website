@@ -141,7 +141,7 @@
                             </div>
                             <div>
                                 <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Date</span>
-                                <p style="font-size: 0.95rem; color: var(--dark); margin-top: 4px;">${DateUtils.format(offer.shiftDate, 'full')}</p>
+                                <p style="font-size: 0.95rem; color: var(--dark); margin-top: 4px;">${DateUtils.format(offer.sessionDate || offer.shiftDate, 'full')}</p>
                             </div>
                             <div>
                                 <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Session Type</span>

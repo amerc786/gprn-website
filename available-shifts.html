@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Available Shifts - GPRN</title>
+    <title>My Invitations - GPRN</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -20,35 +20,72 @@
         if (!initPage('locum')) throw new Error('Auth required');
 
         const session = Auth.getSession();
-        const data = getMockData();
-        const pageContent = initAppLayout('locum', 'shifts', 'Available Shifts');
+        const pageContent = initAppLayout('locum', 'invitations', 'My Invitations');
 
-        const SHIFTS_PER_PAGE = 10;
-        let currentPage = 1;
-        const todayISO = new Date().toISOString().split('T')[0];
-        let filteredShifts = [...getMockData().shifts].filter(s => s.status === 'open' && s.date >= todayISO);
+        // Auto-expire old offers
+        Booking.expireOffers();
 
         const healthBoards = [
             'All Health Boards',
-            'Aneurin Bevan',
-            'Betsi Cadwaladr',
-            'Cardiff and Vale',
-            'Cwm Taf Morgannwg',
-            'Hywel Dda',
-            'Powys',
-            'Swansea Bay'
+            'Aneurin Bevan', 'Betsi Cadwaladr', 'Cardiff and Vale',
+            'Cwm Taf Morgannwg', 'Hywel Dda', 'Powys', 'Swansea Bay'
         ];
 
+        let currentFilter = { status: '', healthBoard: '', sessionType: '', search: '' };
+
+        function getInvitations() {
+            const data = getMockData();
+            return (data.offers || []).filter(o =>
+                o.locumId === session.id &&
+                ['sent', 'viewed', 'negotiating'].includes(o.status)
+            ).sort((a, b) => new Date(a.sessionDate || a.shiftDate) - new Date(b.sessionDate || b.shiftDate));
+        }
+
         function renderPage() {
-            const totalPages = Math.ceil(filteredShifts.length / SHIFTS_PER_PAGE);
-            const startIdx = (currentPage - 1) * SHIFTS_PER_PAGE;
-            const pageShifts = filteredShifts.slice(startIdx, startIdx + SHIFTS_PER_PAGE);
+            let invitations = getInvitations();
+
+            // Auto-mark sent offers as viewed
+            invitations.forEach(inv => {
+                if (inv.status === 'sent') {
+                    Booking.viewOffer(inv.id);
+                    inv.status = 'viewed';
+                }
+            });
+
+            // Apply filters
+            if (currentFilter.status) {
+                invitations = invitations.filter(i => i.status === currentFilter.status);
+            }
+            if (currentFilter.healthBoard) {
+                invitations = invitations.filter(i => i.healthBoard === currentFilter.healthBoard);
+            }
+            if (currentFilter.sessionType) {
+                invitations = invitations.filter(i => i.sessionType === currentFilter.sessionType);
+            }
+            if (currentFilter.search) {
+                const q = currentFilter.search.toLowerCase();
+                invitations = invitations.filter(i =>
+                    (i.practiceName || '').toLowerCase().includes(q) ||
+                    (i.healthBoard || '').toLowerCase().includes(q)
+                );
+            }
 
             pageContent.innerHTML = `
+                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 8px;">
+                    My Invitations
+                </h1>
+                <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 20px;">
+                    Review session invitations from practices. Accept, negotiate, or decline.
+                </p>
+
                 <div class="filter-bar">
                     <div class="form-group">
-                        <label class="form-label">From Date</label>
-                        <input type="date" class="form-input" id="filterDate">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="filterStatus">
+                            <option value="">All</option>
+                            <option value="viewed">New</option>
+                            <option value="negotiating">Negotiating</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Health Board</label>
@@ -57,98 +94,123 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Shift Type</label>
-                        <select class="form-select" id="filterShiftType">
+                        <label class="form-label">Session Type</label>
+                        <select class="form-select" id="filterSessionType">
                             <option value="">Any</option>
                             <option value="AM">AM</option>
                             <option value="PM">PM</option>
                             <option value="Full Day">Full Day</option>
                         </select>
-                        <span style="font-size:0.72rem;color:var(--dark-600);margin-top:4px;display:block;">AM: 08:30-12:30 | PM: 13:00-17:00 | Full Day: 08:30-17:00</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Search</label>
-                        <input type="text" class="form-input" id="filterSearch" placeholder="Practice name, city...">
-                    </div>
-                    <div class="form-group" style="flex: 0;">
-                        <label class="form-label">&nbsp;</label>
-                        <button class="btn btn-primary btn-small" id="filterBtn">${getIcon('filter')} Filter</button>
+                        <input type="text" class="form-input" id="filterSearch" placeholder="Practice name...">
                     </div>
                 </div>
 
-                <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 16px;">
-                    <strong>${filteredShifts.length}</strong> shift${filteredShifts.length !== 1 ? 's' : ''} available for you to apply
+                <p style="font-size: 0.88rem; color: var(--dark-600); margin-bottom: 16px;">
+                    <strong>${invitations.length}</strong> invitation${invitations.length !== 1 ? 's' : ''} awaiting your response
                 </p>
 
-                <div id="shiftsList">
-                    ${pageShifts.length === 0
-                        ? renderEmptyState('search', 'No shifts found', 'No shifts match your current filters. Try adjusting your search criteria.')
-                        : pageShifts.map(shift => renderShiftCard(shift)).join('')
+                <div id="invitationsList">
+                    ${invitations.length === 0
+                        ? renderEmptyState('mail', 'No invitations', 'You have no pending invitations from practices. Make sure your availability is up to date so practices can find you.', 'Update Calendar', 'my-calendar.html')
+                        : invitations.map(offer => renderOfferCard(offer)).join('')
                     }
-                </div>
-
-                <div id="paginationContainer">
-                    ${renderPagination(currentPage, totalPages)}
                 </div>
             `;
 
-            // Bind filter button
-            document.getElementById('filterBtn').addEventListener('click', applyFilters);
-
-            // Real-time filtering on dropdowns and date
-            document.getElementById('filterDate').addEventListener('change', applyFilters);
-            document.getElementById('filterHealthBoard').addEventListener('change', applyFilters);
-            document.getElementById('filterShiftType').addEventListener('change', applyFilters);
-
-            // Debounced search input
+            // Bind filters
+            ['filterStatus', 'filterHealthBoard', 'filterSessionType'].forEach(id => {
+                document.getElementById(id).addEventListener('change', applyFilters);
+            });
             var searchTimer = null;
             document.getElementById('filterSearch').addEventListener('input', function() {
                 clearTimeout(searchTimer);
                 searchTimer = setTimeout(applyFilters, 300);
             });
-
-            // Bind Enter key on search
-            document.getElementById('filterSearch').addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') { clearTimeout(searchTimer); applyFilters(); }
-            });
-
-            // Bind pagination
-            document.querySelectorAll('.page-btn[data-page]').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const page = parseInt(this.dataset.page);
-                    if (page !== currentPage && page >= 1 && page <= totalPages) {
-                        currentPage = page;
-                        renderPage();
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                });
-            });
         }
 
         function applyFilters() {
-            const dateVal = document.getElementById('filterDate').value;
-            const hbVal = document.getElementById('filterHealthBoard').value;
-            const typeVal = document.getElementById('filterShiftType').value;
-            const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
-
-            // Re-read fresh data so filled shifts are excluded
-            const currentData = getMockData();
-            filteredShifts = currentData.shifts.filter(s => {
-                if (s.status !== 'open') return false;
-                if (s.date < todayISO) return false;
-                if (dateVal && s.date !== dateVal) return false;
-                if (hbVal && s.healthBoard !== hbVal) return false;
-                if (typeVal && s.sessionType !== typeVal) return false;
-                if (searchVal) {
-                    const haystack = (s.practiceName + ' ' + s.city + ' ' + s.healthBoard).toLowerCase();
-                    if (!haystack.includes(searchVal)) return false;
-                }
-                return true;
-            });
-
-            currentPage = 1;
+            currentFilter.status = document.getElementById('filterStatus').value;
+            currentFilter.healthBoard = document.getElementById('filterHealthBoard').value;
+            currentFilter.sessionType = document.getElementById('filterSessionType').value;
+            currentFilter.search = document.getElementById('filterSearch').value.trim();
             renderPage();
         }
+
+        // Action handlers called by renderOfferCard
+        window.acceptOffer = function(offerId) {
+            const result = Booking.respondToOffer(offerId, 'accept');
+            if (result && !result.error) {
+                Toast.show('Offer accepted! The practice will confirm your booking.', 'success');
+            } else {
+                Toast.show((result && result.message) || 'Failed to accept offer.', 'error');
+            }
+            renderPage();
+        };
+
+        window.declineOffer = function(offerId) {
+            Modal.show({
+                title: 'Decline Invitation',
+                body: '<p style="font-size: 0.9rem; color: var(--dark-600); padding: 8px 0;">Are you sure you want to decline this invitation? The practice will be notified.</p>',
+                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" style="background: var(--danger); border-color: var(--danger);" id="confirmDeclineBtn">Decline</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#confirmDeclineBtn').addEventListener('click', function() {
+                        Modal.close(overlay);
+                        const result = Booking.respondToOffer(offerId, 'decline');
+                        if (result && !result.error) {
+                            Toast.show('Invitation declined.', 'info');
+                        } else {
+                            Toast.show((result && result.message) || 'Failed to decline.', 'error');
+                        }
+                        renderPage();
+                    });
+                }
+            });
+        };
+
+        window.counterOffer = function(offerId) {
+            const data = getMockData();
+            const offer = data.offers.find(o => o.id === offerId);
+            if (!offer) return;
+            const currentRate = offer.proposedRate || 0;
+
+            Modal.show({
+                title: 'Counter-Offer',
+                body: `<div style="padding: 8px 0;">
+                    <p style="font-size: 0.88rem; color: var(--dark-600); margin-bottom: 16px;">Practice offered: <strong>${formatCurrency(currentRate)}</strong> for ${offer.sessionType} session</p>
+                    <div class="form-group">
+                        <label class="form-label">Your counter-rate (£)</label>
+                        <input type="number" id="counterRate" class="form-input" placeholder="e.g. 450" step="10" min="0" value="${currentRate}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message (optional)</label>
+                        <textarea id="counterMsg" class="form-textarea" rows="2" placeholder="e.g. I can do it for this rate..."></textarea>
+                    </div>
+                </div>`,
+                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="sendCounterBtn">Send Counter</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#sendCounterBtn').addEventListener('click', function() {
+                        var rate = Number(overlay.querySelector('#counterRate').value);
+                        var msg = overlay.querySelector('#counterMsg').value.trim();
+                        if (!rate || rate <= 0) { Toast.show('Please enter a valid rate.', 'error'); return; }
+                        const result = Booking.respondToOffer(offerId, 'counter', rate, msg);
+                        Modal.close(overlay);
+                        if (result && !result.error) {
+                            Toast.show('Counter-offer sent to practice.', 'success');
+                        } else {
+                            Toast.show((result && result.message) || 'Failed to send counter.', 'error');
+                        }
+                        renderPage();
+                    });
+                }
+            });
+        };
+
+        window.viewBookingDetail = function(offerId) {
+            window.location.href = 'my-offers.html';
+        };
 
         renderPage();
     </script>

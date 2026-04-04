@@ -192,7 +192,7 @@
                             <div class="empty-state" style="padding: 40px;">
                                 <div class="empty-state-icon">${getIcon('file-text')}</div>
                                 <h3>No invoices found</h3>
-                                <p>Invoices will appear here once your shifts are completed.</p>
+                                <p>${filterStatus ? 'No invoices match the selected filter. Try changing the status filter above.' : 'Invoices will appear here once your sessions are completed.'}</p>
                             </div>
                         ` : `
                         <table class="data-table">

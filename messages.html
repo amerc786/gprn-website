@@ -23,83 +23,17 @@
         const role = Auth.getRole();
         const pageContent = initAppLayout(role, 'messages', 'Messages');
 
-        // ---- Seed mock messages on first load ----
-        function seedMessages() {
-            const data = getMockData();
-            if (data.messages && data.messages.length > 0) return;
-            if (!data.messages) data.messages = [];
-
-            const now = new Date();
-
-            // Thread 1: loc-001 <-> prac-001 about a shift
-            const thread1 = 'thread-seed-001';
-            data.messages.push(
-                {
-                    id: 'msg-seed-001',
-                    threadId: thread1,
-                    fromId: 'prac-001',
-                    toId: 'loc-001',
-                    subject: 'Shift on ' + DateUtils.format(DateUtils.toISO(addDays(now, 3)), 'medium'),
-                    body: 'Hi Dr Williams, we have a full day shift available this week. Would you be interested in covering it? The morning surgery has around 16 patients and afternoon around 12.',
-                    shiftId: 'shift-001',
-                    timestamp: addDays(now, -2).toISOString(),
-                    read: true
-                },
-                {
-                    id: 'msg-seed-002',
-                    threadId: thread1,
-                    fromId: 'loc-001',
-                    toId: 'prac-001',
-                    subject: 'Shift on ' + DateUtils.format(DateUtils.toISO(addDays(now, 3)), 'medium'),
-                    body: 'Hello Jane, thanks for reaching out. I would be happy to cover the shift. Could you confirm what computer system you are running and whether there will be any housecalls?',
-                    shiftId: 'shift-001',
-                    timestamp: addDays(now, -1).toISOString(),
-                    read: true
-                },
-                {
-                    id: 'msg-seed-003',
-                    threadId: thread1,
-                    fromId: 'prac-001',
-                    toId: 'loc-001',
-                    subject: 'Shift on ' + DateUtils.format(DateUtils.toISO(addDays(now, 3)), 'medium'),
-                    body: 'We use EMIS Web. No housecalls expected for this session. Looking forward to having you. Please arrive by 8:15 for a quick orientation.',
-                    shiftId: 'shift-001',
-                    timestamp: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(),
-                    read: false
-                }
-            );
-
-            // Thread 2: loc-001 <-> prac-002 about pre-shift briefing
-            const thread2 = 'thread-seed-002';
-            data.messages.push(
-                {
-                    id: 'msg-seed-004',
-                    threadId: thread2,
-                    fromId: 'loc-001',
-                    toId: 'prac-002',
-                    subject: 'Pre-shift briefing request',
-                    body: 'Hi David, I am booked for a session at Whitchurch Road Surgery next week. Could I get a brief overview of any ongoing complex patients I should be aware of beforehand?',
-                    shiftId: null,
-                    timestamp: addDays(now, -3).toISOString(),
-                    read: true
-                },
-                {
-                    id: 'msg-seed-005',
-                    threadId: thread2,
-                    fromId: 'prac-002',
-                    toId: 'loc-001',
-                    subject: 'Pre-shift briefing request',
-                    body: 'Of course, Dr Williams. I will prepare a summary of current complex cases and email it to you the day before your session. We use Vision so please make sure you are comfortable with the system.',
-                    shiftId: null,
-                    timestamp: addDays(now, -2).toISOString(),
-                    read: true
-                }
-            );
-
-            saveMockData(data);
+        function addDays(date, days) {
+            const d = new Date(date);
+            d.setDate(d.getDate() + days);
+            return d;
         }
 
-        seedMessages();
+        // Initialize messages array if needed
+        (function() {
+            const data = getMockData();
+            if (!data.messages) { data.messages = []; saveMockData(data); }
+        })();
 
         // ---- State ----
         let activeThreadId = null;
@@ -165,13 +99,13 @@
             const otherId = firstMsg.fromId === session.id ? firstMsg.toId : firstMsg.fromId;
             const otherName = MessageManager.getUserName(otherId);
 
-            // Find shift info if linked
+            // Find session need info if linked
             let shiftInfo = '';
             if (firstMsg.shiftId) {
                 const data = getMockData();
-                const shift = data.shifts.find(s => s.id === firstMsg.shiftId);
-                if (shift) {
-                    shiftInfo = `<div class="chat-header-sub">Re: Shift at ${shift.practiceName} on ${DateUtils.format(shift.date, 'medium')}</div>`;
+                const need = (data.sessionNeeds || []).find(s => s.id === firstMsg.shiftId) || (data.shifts || []).find(s => s.id === firstMsg.shiftId);
+                if (need) {
+                    shiftInfo = `<div class="chat-header-sub">Re: Session at ${need.practiceName} on ${DateUtils.format(need.date, 'medium')}</div>`;
                 }
             }
 

@@ -53,7 +53,7 @@
         pageContent.innerHTML = `
             <div style="background: rgba(14,165,233,0.08); border: 1px solid rgba(14,165,233,0.2); border-radius: var(--radius); padding: 14px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: var(--secondary);">
                 ${getIcon('eye')}
-                <span>This is a preview of your profile as practice managers will see it. <a href="my-settings.html" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Edit in Settings</a></span>
+                <span>This is a preview of your profile as practice managers will see it. <a href="my-settings.html" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Update your details</a></span>
             </div>
 
             <!-- Document Expiry Warnings -->
@@ -113,7 +113,7 @@
             <div class="content-card">
                 <div class="content-card-header"><h2>About</h2></div>
                 <div class="content-card-body">
-                    <p style="font-size: 0.92rem; color: var(--dark-700); line-height: 1.7;">${user.bio}</p>
+                    <p style="font-size: 0.92rem; color: var(--dark-700); line-height: 1.7;">${user.bio || '<span style="color: var(--gray-400); font-style: italic;">No biography added yet. <a href="my-settings.html" style="color: var(--primary);">Add one in Settings</a>.</span>'}</p>
                 </div>
             </div>
 
@@ -176,7 +176,7 @@
                     </div>` : ''}
 
                     ${reviews.length === 0
-                        ? '<p style="font-size: 0.88rem; color: var(--dark-600);">No reviews received yet. Reviews will appear here after you complete shifts.</p>'
+                        ? '<p style="font-size: 0.88rem; color: var(--dark-600);">No reviews received yet. Reviews will appear here after you complete sessions.</p>'
                         : reviews.slice(0, 10).map(r => {
                             const reviewerName = MessageManager.getUserName(r.fromId);
                             const avgScore = (Object.values(r.ratings).reduce((a, b) => a + b, 0) / Object.values(r.ratings).length).toFixed(1);

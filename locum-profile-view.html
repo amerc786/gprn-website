@@ -46,19 +46,19 @@
 
         function barThisLocum() {
             Modal.show({
-                title: 'Bar Locum',
+                title: 'Block Locum',
                 body: `
                     <p style="font-size: 0.92rem; color: var(--dark-600); margin-bottom: 16px;">
-                        Are you sure you want to bar <strong>${locumName}</strong>?
+                        Are you sure you want to block <strong>${locumName}</strong>?
                     </p>
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label">Reason for barring</label>
+                        <label class="form-label">Reason for blocking</label>
                         <textarea id="barReason" class="form-input" rows="3" placeholder="Enter reason..." style="resize: vertical;"></textarea>
                     </div>
                 `,
                 footer: `
                     <button class="btn btn-ghost" data-modal-close>Cancel</button>
-                    <button class="btn btn-coral" onclick="confirmBar()">Bar Locum</button>
+                    <button class="btn btn-coral" onclick="confirmBar()">Block Locum</button>
                 `
             });
         }
@@ -67,13 +67,13 @@
             const reason = document.getElementById('barReason') ? document.getElementById('barReason').value.trim() : '';
             BarredList.bar(session.id, locumId, reason || 'No reason provided');
             Modal.close();
-            Toast.show('Locum has been barred.', 'warning');
+            Toast.show('Locum has been blocked.', 'warning');
             renderProfile();
         }
 
         function unbarThisLocum() {
             BarredList.unbar(session.id, locumId);
-            Toast.show('Locum removed from barred list.', 'success');
+            Toast.show('Locum has been unblocked.', 'success');
             renderProfile();
         }
 
@@ -132,13 +132,32 @@
                                     <span style="font-size: 0.82rem; color: var(--gray-400);">(${reviews.length} review${reviews.length !== 1 ? 's' : ''})</span>
                                 </div>` : ''}
                             </div>
-                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                <button class="btn btn-primary btn-large" onclick="requestLocum()">
-                                    ${getIcon('mail')} Request This Locum
-                                </button>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start;">
+                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                    <button class="btn btn-primary btn-large" onclick="requestLocum()">
+                                        ${getIcon('mail')} Send Offer
+                                    </button>
+                                    ${(() => {
+                                        const criticalDocs = ['indemnity', 'dbs'];
+                                        const expiredDocs = criticalDocs.filter(key => {
+                                            const doc = locum.documents[key];
+                                            if (!doc || !doc.expiry) return false;
+                                            const status = getDocumentExpiryStatus(doc.expiry);
+                                            return status && status.badge === 'badge-danger';
+                                        });
+                                        if (expiredDocs.length > 0) {
+                                            const labels = { indemnity: 'Indemnity', dbs: 'DBS' };
+                                            const names = expiredDocs.map(k => labels[k] || k).join(', ');
+                                            return `<div style="display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; font-size: 0.78rem; color: var(--danger); font-weight: 500;">
+                                                ${getIcon('alert-triangle')} Expired: ${names}
+                                            </div>`;
+                                        }
+                                        return '';
+                                    })()}
+                                </div>
                                 ${isBarred
-                                    ? `<button class="btn btn-secondary" onclick="unbarThisLocum()" style="color: var(--success);">Unbar</button>`
-                                    : `<button class="btn btn-secondary" onclick="barThisLocum()" style="color: var(--danger);">Bar This Locum</button>`
+                                    ? `<button class="btn btn-secondary" onclick="unbarThisLocum()" style="color: var(--success);">Unblock</button>`
+                                    : `<button class="btn btn-secondary" onclick="barThisLocum()" style="color: var(--danger);">Block Locum</button>`
                                 }
                                 ${isPreferred
                                     ? `<button class="btn btn-secondary" onclick="removeFromPreferred()">Remove Preferred</button>`
@@ -191,7 +210,7 @@
                                         <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.nhsPension ? 'Yes' : 'No'}</p>
                                     </div>
                                     <div>
-                                        <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Preferred Shifts</span>
+                                        <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Preferred Sessions</span>
                                         <div style="display: flex; gap: 6px; margin-top: 6px;">
                                             ${locum.preferredShiftTypes.map(t => `<span class="badge badge-neutral">${t}</span>`).join('')}
                                         </div>
@@ -298,7 +317,7 @@
                                     <div class="coverage-fill" style="width: ${locum.bookingReliability}%; background: ${reliabilityColor};"></div>
                                 </div>
                                 <p style="font-size: 0.82rem; color: var(--dark-600); margin-top: 12px; text-align: center;">
-                                    Based on ${locum.totalShifts} completed shifts
+                                    Based on ${locum.totalShifts} completed sessions
                                 </p>
                             </div>
                         </div>
@@ -319,7 +338,7 @@
                                 <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
                                     ${getIcon('activity')}
                                     <div>
-                                        <span style="font-size: 0.82rem; color: var(--dark-600);">Total Shifts</span>
+                                        <span style="font-size: 0.82rem; color: var(--dark-600);">Total Sessions</span>
                                         <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.totalShifts}</strong>
                                     </div>
                                 </div>
@@ -359,6 +378,59 @@
                                     <span style="font-size: 0.88rem; color: var(--dark-600);">Housecall</span>
                                     <strong style="font-size: 0.88rem; color: var(--dark);">${locum.rates.housecall > 0 ? formatCurrency(locum.rates.housecall) : 'Included'}</strong>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Availability Overview (next 14 days) -->
+                        <div class="content-card" style="margin-top: 24px;">
+                            <div class="content-card-header">
+                                <h2>Availability</h2>
+                                <span style="font-size: 0.75rem; color: var(--gray-400);">Next 14 days</span>
+                            </div>
+                            <div class="content-card-body" style="padding: 12px 16px;">
+                                ${(() => {
+                                    const rows = [];
+                                    const t = new Date();
+                                    for (let i = 0; i < 14; i++) {
+                                        const d = new Date(t);
+                                        d.setDate(d.getDate() + i);
+                                        const ds = DateUtils.toISO(d);
+                                        const dayOfWeek = d.getDay();
+                                        if (dayOfWeek === 0 || dayOfWeek === 6) continue; // skip weekends
+                                        const slot = Availability.getSlot(locumId, ds);
+                                        const am = slot.am === 'preferred' ? 'available' : (slot.am || 'none');
+                                        const pm = slot.pm === 'preferred' ? 'available' : (slot.pm || 'none');
+                                        const dayLabel = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dayOfWeek];
+                                        const dateLabel = d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+                                        const amColor = am === 'available' ? 'var(--success)' : am === 'unavailable' ? 'var(--danger)' : 'var(--gray-200)';
+                                        const pmColor = pm === 'available' ? 'var(--success)' : pm === 'unavailable' ? 'var(--danger)' : 'var(--gray-200)';
+                                        const amText = am === 'available' ? 'Available' : am === 'unavailable' ? 'Unavailable' : 'Not set';
+                                        const pmText = pm === 'available' ? 'Available' : pm === 'unavailable' ? 'Unavailable' : 'Not set';
+                                        rows.push(`
+                                            <div style="display: flex; align-items: center; gap: 8px; padding: 5px 0; ${i > 0 ? 'border-top: 1px solid var(--gray-50);' : ''}">
+                                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); width: 70px;">${dayLabel} ${dateLabel}</span>
+                                                <div style="display: flex; gap: 3px; flex: 1;">
+                                                    <div style="flex: 1; height: 8px; border-radius: 4px; background: ${amColor};" title="AM: ${amText}"></div>
+                                                    <div style="flex: 1; height: 8px; border-radius: 4px; background: ${pmColor};" title="PM: ${pmText}"></div>
+                                                </div>
+                                            </div>
+                                        `);
+                                    }
+                                    if (rows.length === 0) return '<p style="font-size: 0.82rem; color: var(--gray-400);">No weekdays in range.</p>';
+                                    return `
+                                        <div style="display: flex; gap: 3px; margin-bottom: 8px;">
+                                            <span style="font-size: 0.65rem; color: var(--gray-400); width: 70px;"></span>
+                                            <span style="flex: 1; text-align: center; font-size: 0.65rem; font-weight: 600; color: var(--gray-400);">AM</span>
+                                            <span style="flex: 1; text-align: center; font-size: 0.65rem; font-weight: 600; color: var(--gray-400);">PM</span>
+                                        </div>
+                                        ${rows.join('')}
+                                        <div style="display: flex; gap: 12px; margin-top: 10px; font-size: 0.7rem; color: var(--gray-400);">
+                                            <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--success);"></span> Available</span>
+                                            <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--danger);"></span> Unavailable</span>
+                                            <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--gray-200);"></span> Not set</span>
+                                        </div>
+                                    `;
+                                })()}
                             </div>
                         </div>
                     </div>

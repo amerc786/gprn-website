@@ -55,6 +55,7 @@ router.post('/data', authMiddleware, function(req, res) {
 
         // Sync individual collections
         if (incoming.offers) syncOffers(incoming.offers);
+        if (incoming.sessionNeeds) syncSessionNeeds(incoming.sessionNeeds);
         if (incoming.notifications) syncNotifications(incoming.notifications, req.user.id);
         if (incoming.invoices) syncInvoices(incoming.invoices);
         if (incoming.availability) syncAvailability(req.user.id, incoming.availability);
@@ -97,10 +98,29 @@ function buildFullDataBlob(userId, role) {
         return Object.assign({ id: s.id, practiceId: s.practice_id, practiceName: s.practice_name, healthBoard: s.health_board, city: s.city, date: s.date, startTime: s.start_time, endTime: s.end_time, sessionType: s.session_type, status: s.status }, d);
     });
 
+    // Session needs (new model)
+    var needRows = db.findAll('session_needs').sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
+    var sessionNeeds = needRows.map(function(n) {
+        var d = n.data || {};
+        return Object.assign({ id: n.id, practiceId: n.practice_id, practiceName: n.practice_name, healthBoard: n.health_board, date: n.date, startTime: n.start_time, endTime: n.end_time, sessionType: n.session_type, status: n.status }, d);
+    });
+
     var offerRows = db.findAll('offers').sort(function(a, b) { return (b.created_at || '').localeCompare(a.created_at || ''); });
     var offers = offerRows.map(function(o) {
         var d = o.data || {};
-        return Object.assign({ id: o.id, shiftId: o.shift_id, locumId: o.locum_id, practiceId: o.practice_id, practiceName: o.practice_name, healthBoard: o.health_board, shiftDate: o.shift_date, sessionType: o.session_type, status: o.status }, d);
+        return Object.assign({
+            id: o.id,
+            sessionNeedId: o.session_need_id || o.shift_id,
+            shiftId: o.shift_id,
+            locumId: o.locum_id,
+            practiceId: o.practice_id,
+            practiceName: o.practice_name,
+            healthBoard: o.health_board,
+            sessionDate: o.session_date || o.shift_date,
+            shiftDate: o.shift_date,
+            sessionType: o.session_type,
+            status: o.status
+        }, d);
     });
 
     var notifRows = db.findAll('notifications').sort(function(a, b) { return (b.created_at || '').localeCompare(a.created_at || ''); });
@@ -147,11 +167,25 @@ function buildFullDataBlob(userId, role) {
         preferredLists[p.practice_id].push({ locumId: p.locum_id, date: p.created_at });
     });
 
-    // Availability
+    // Availability (half-day granularity: { am: status, pm: status } per date)
     var availRows = db.findAll('availability', function(a) { return a.user_id === userId; });
     var availability = {};
     availability[userId] = {};
-    availRows.forEach(function(a) { availability[userId][a.date] = a.status; });
+    availRows.forEach(function(a) {
+        if (a.slot) {
+            // New half-day format
+            if (!availability[userId][a.date]) availability[userId][a.date] = {};
+            if (typeof availability[userId][a.date] === 'string') {
+                // Migrate old string format
+                var oldVal = availability[userId][a.date];
+                availability[userId][a.date] = { am: oldVal, pm: oldVal };
+            }
+            availability[userId][a.date][a.slot] = a.status;
+        } else {
+            // Legacy single-value format
+            availability[userId][a.date] = a.status;
+        }
+    });
 
     // User settings
     var settingsRow = db.findOne('user_settings', function(s) { return s.user_id === userId; });
@@ -196,7 +230,7 @@ function buildFullDataBlob(userId, role) {
     ];
 
     return {
-        locums: locums, practices: practices, shifts: shifts, offers: offers,
+        locums: locums, practices: practices, shifts: shifts, sessionNeeds: sessionNeeds, offers: offers,
         notifications: notifications, messages: messages, emailLog: emailLog, invoices: invoices,
         feedback: feedback, barredLists: barredLists, preferredLists: preferredLists,
         availability: availability, shiftTemplates: shiftTemplates,
@@ -214,24 +248,52 @@ function syncOffers(items) {
         if (!o.id) continue;
         var record = {
             id: o.id,
+            session_need_id: o.sessionNeedId || o.shiftId || null,
             shift_id: o.shiftId || null,
             locum_id: o.locumId || null,
             practice_id: o.practiceId || null,
             practice_name: o.practiceName || null,
             health_board: o.healthBoard || null,
-            shift_date: o.shiftDate || null,
+            session_date: o.sessionDate || o.shiftDate || null,
+            shift_date: o.shiftDate || o.sessionDate || null,
             session_type: o.sessionType || null,
-            status: o.status || 'pending',
+            status: o.status || 'sent',
             updated_at: new Date().toISOString()
         };
-        // Extract extra fields into data
-        var known = ['id', 'shiftId', 'locumId', 'practiceId', 'practiceName', 'healthBoard', 'shiftDate', 'sessionType', 'status'];
+        // Extract extra fields into data (new fields like proposedRate, agreedRate, sentDate, etc.)
+        var known = ['id', 'sessionNeedId', 'shiftId', 'locumId', 'practiceId', 'practiceName', 'healthBoard', 'sessionDate', 'shiftDate', 'sessionType', 'status'];
         var data = {};
         for (var key in o) {
             if (known.indexOf(key) === -1) data[key] = o[key];
         }
         record.data = data;
         db.upsert('offers', 'id', record);
+    }
+}
+
+function syncSessionNeeds(items) {
+    if (!Array.isArray(items)) return;
+    for (var i = 0; i < items.length; i++) {
+        var n = items[i];
+        if (!n.id) continue;
+        var known = ['id', 'practiceId', 'practiceName', 'healthBoard', 'date', 'startTime', 'endTime', 'sessionType', 'status'];
+        var data = {};
+        for (var key in n) {
+            if (known.indexOf(key) === -1) data[key] = n[key];
+        }
+        db.upsert('session_needs', 'id', {
+            id: n.id,
+            practice_id: n.practiceId || null,
+            practice_name: n.practiceName || null,
+            health_board: n.healthBoard || null,
+            date: n.date || null,
+            start_time: n.startTime || null,
+            end_time: n.endTime || null,
+            session_type: n.sessionType || null,
+            status: n.status || 'open',
+            data: data,
+            created_at: n.createdDate || new Date().toISOString()
+        });
     }
 }
 
@@ -287,16 +349,27 @@ function syncAvailability(userId, availability) {
     if (!availability || !availability[userId]) return;
     var entries = availability[userId];
     for (var date in entries) {
-        if (entries[date]) {
-            db.insertIgnore('availability',
-                function(a) { return a.user_id === userId && a.date === date; },
-                { user_id: userId, date: date, status: entries[date] }
+        var val = entries[date];
+        if (!val) continue;
+
+        if (typeof val === 'object' && (val.am || val.pm)) {
+            // Half-day format: { am: status, pm: status }
+            ['am', 'pm'].forEach(function(slot) {
+                if (val[slot]) {
+                    var matchFn = function(a) { return a.user_id === userId && a.date === date && a.slot === slot; };
+                    db.insertIgnore('availability', matchFn,
+                        { user_id: userId, date: date, slot: slot, status: val[slot] }
+                    );
+                    db.update('availability', matchFn, { status: val[slot] });
+                }
+            });
+        } else if (typeof val === 'string') {
+            // Legacy single-value format
+            var matchFn = function(a) { return a.user_id === userId && a.date === date && !a.slot; };
+            db.insertIgnore('availability', matchFn,
+                { user_id: userId, date: date, status: val }
             );
-            // Also update if it exists
-            db.update('availability',
-                function(a) { return a.user_id === userId && a.date === date; },
-                { status: entries[date] }
-            );
+            db.update('availability', matchFn, { status: val });
         }
     }
 }
@@ -363,7 +436,7 @@ function syncFeedback(feedback) {
 // INDIVIDUAL REST ENDPOINTS
 // ============================================================
 
-// --- Shifts ---
+// --- Shifts (legacy) ---
 router.post('/shifts', authMiddleware, function(req, res) {
     try {
         var shiftId = req.body.id || 'shift-' + Date.now();
@@ -399,24 +472,78 @@ router.delete('/shifts/:id', authMiddleware, function(req, res) {
         if (!shift) return res.status(404).json({ error: 'Shift not found' });
 
         var acceptedCount = db.count('offers', function(o) {
-            return o.shift_id === req.params.id && ['accepted', 'acknowledged', 'confirmed'].indexOf(o.status) !== -1;
+            return o.shift_id === req.params.id && ['accepted', 'confirmed'].indexOf(o.status) !== -1;
         });
         if (acceptedCount > 0) {
             return res.status(400).json({ error: 'has_accepted_offers', message: 'Cannot delete shift with accepted offers' });
         }
 
-        // Withdraw pending offers
         db.update('offers',
-            function(o) { return o.shift_id === req.params.id && o.status === 'pending'; },
+            function(o) { return o.shift_id === req.params.id && ['pending', 'sent', 'viewed', 'negotiating'].indexOf(o.status) !== -1; },
             { status: 'withdrawn' }
         );
 
-        // Mark shift as cancelled
         db.update('shifts', function(s) { return s.id === req.params.id; }, { status: 'cancelled' });
 
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete shift' });
+    }
+});
+
+// --- Session Needs (new model) ---
+router.post('/session-needs', authMiddleware, function(req, res) {
+    try {
+        var needId = req.body.id || 'need-' + Date.now();
+        var known = ['id', 'practiceId', 'practiceName', 'healthBoard', 'date', 'startTime', 'endTime', 'sessionType', 'status'];
+        var data = {};
+        for (var key in req.body) {
+            if (known.indexOf(key) === -1) data[key] = req.body[key];
+        }
+
+        db.insert('session_needs', {
+            id: needId,
+            practice_id: req.body.practiceId || req.user.id,
+            practice_name: req.body.practiceName || '',
+            health_board: req.body.healthBoard || '',
+            date: req.body.date,
+            start_time: req.body.startTime || '',
+            end_time: req.body.endTime || '',
+            session_type: req.body.sessionType || '',
+            status: req.body.status || 'open',
+            data: data,
+            created_at: new Date().toISOString()
+        });
+        res.status(201).json({ success: true, id: needId });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create session need: ' + err.message });
+    }
+});
+
+router.delete('/session-needs/:id', authMiddleware, function(req, res) {
+    try {
+        var need = db.findOne('session_needs', function(n) { return n.id === req.params.id && n.practice_id === req.user.id; });
+        if (!need) return res.status(404).json({ error: 'Session need not found' });
+
+        var acceptedCount = db.count('offers', function(o) {
+            return (o.session_need_id === req.params.id) && ['accepted', 'confirmed'].indexOf(o.status) !== -1;
+        });
+        if (acceptedCount > 0) {
+            return res.status(400).json({ error: 'has_accepted_offers', message: 'Cannot delete session need with accepted offers' });
+        }
+
+        // Withdraw pending offers
+        db.update('offers',
+            function(o) { return o.session_need_id === req.params.id && ['sent', 'viewed', 'negotiating'].indexOf(o.status) !== -1; },
+            { status: 'withdrawn' }
+        );
+
+        // Mark need as cancelled
+        db.update('session_needs', function(n) { return n.id === req.params.id; }, { status: 'cancelled' });
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete session need' });
     }
 });
 

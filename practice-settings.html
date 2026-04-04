@@ -52,7 +52,7 @@
 
                 <div class="tabs">
                     <button class="tab-item ${activeTab === 'practice-info' ? 'active' : ''}" onclick="switchTab('practice-info')">Practice Info</button>
-                    <button class="tab-item ${activeTab === 'contact-person' ? 'active' : ''}" onclick="switchTab('contact-person')">Contact Person</button>
+                    <button class="tab-item ${activeTab === 'contact-person' ? 'active' : ''}" onclick="switchTab('contact-person')">Primary Contact</button>
                     <button class="tab-item ${activeTab === 'notifications' ? 'active' : ''}" onclick="switchTab('notifications')">Notifications</button>
                 </div>
 
@@ -122,7 +122,7 @@
                 <div class="tab-pane ${activeTab === 'contact-person' ? 'active' : ''}" id="tab-contact-person">
                     <div class="content-card">
                         <div class="content-card-header">
-                            <h2>Contact Person</h2>
+                            <h2>Primary Contact</h2>
                         </div>
                         <div class="content-card-body">
                             <form id="contactForm" novalidate>
@@ -165,11 +165,11 @@
                         </div>
                         <div class="content-card-body">
                             <div class="form-toggle">
-                                <span class="form-toggle-label">New shift applications</span>
+                                <span class="form-toggle-label">Locum responses to your offers</span>
                                 <div class="toggle-switch ${notifPrefs.newApplications ? 'active' : ''}" data-pref="newApplications" onclick="toggleNotif(this)"></div>
                             </div>
                             <div class="form-toggle">
-                                <span class="form-toggle-label">Shift reminders (24 hours before)</span>
+                                <span class="form-toggle-label">Session reminders (24 hours before)</span>
                                 <div class="toggle-switch ${notifPrefs.shiftReminders ? 'active' : ''}" data-pref="shiftReminders" onclick="toggleNotif(this)"></div>
                             </div>
                             <div class="form-toggle">
@@ -181,7 +181,7 @@
                                 <div class="toggle-switch ${notifPrefs.billingAlerts ? 'active' : ''}" data-pref="billingAlerts" onclick="toggleNotif(this)"></div>
                             </div>
                             <div class="form-toggle">
-                                <span class="form-toggle-label">Weekly shift coverage report</span>
+                                <span class="form-toggle-label">Weekly session coverage report</span>
                                 <div class="toggle-switch ${notifPrefs.weeklyReport ? 'active' : ''}" data-pref="weeklyReport" onclick="toggleNotif(this)"></div>
                             </div>
                             <div class="form-toggle" style="border-bottom: none;">

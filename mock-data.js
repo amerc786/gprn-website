@@ -560,7 +560,8 @@ const MOCK_DATA = {
         }
     ],
 
-    shifts: [],
+    sessionNeeds: [],
+    shifts: [], // kept for backwards compat, no longer used
     offers: [],
     notifications: [],
     messages: [],
@@ -696,7 +697,7 @@ const MOCK_DATA = {
 };
 
 // Initialize mock data
-var GPRN_DATA_VERSION = '3.0';
+var GPRN_DATA_VERSION = '4.0';
 
 function initMockData() {
     var storedVersion = localStorage.getItem('gprn_data_version');

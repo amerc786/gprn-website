@@ -5,12 +5,12 @@ function renderSidebar(role, activePage) {
     const session = Auth.getSession();
     const locumNav = [
         { id: 'dashboard', label: 'Dashboard', icon: 'grid', href: 'locum-dashboard.html' },
-        { id: 'shifts', label: 'Available Shifts', icon: 'search', href: 'available-shifts.html' },
+        { id: 'invitations', label: 'My Invitations', icon: 'mail', href: 'available-shifts.html' },
         { id: 'calendar', label: 'My Calendar', icon: 'calendar', href: 'my-calendar.html' },
-        { id: 'offers', label: 'My Offers', icon: 'file-text', href: 'my-offers.html' },
+        { id: 'bookings', label: 'My Bookings', icon: 'file-text', href: 'my-offers.html' },
         { id: 'rates', label: 'My Rates', icon: 'pound', href: 'my-rates.html' },
         { id: 'profile', label: 'My Profile', icon: 'user', href: 'my-profile.html' },
-        { id: 'report', label: 'Report Extra Shifts', icon: 'plus-circle', href: 'report-extra-shifts.html' },
+        { id: 'report', label: 'Log Outside Work', icon: 'plus-circle', href: 'report-extra-shifts.html' },
         { id: 'invoices', label: 'My Invoices', icon: 'pound', href: 'my-invoices.html' },
         { id: 'messages', label: 'Messages', icon: 'mail', href: 'messages.html' },
         { divider: true, label: 'Resources' },
@@ -22,8 +22,8 @@ function renderSidebar(role, activePage) {
 
     const practiceNav = [
         { id: 'dashboard', label: 'Dashboard', icon: 'grid', href: 'practice-dashboard.html' },
-        { id: 'post-shift', label: 'Post a Shift', icon: 'plus-circle', href: 'post-shift.html' },
-        { id: 'view-shifts', label: 'View Shifts', icon: 'list', href: 'view-requested-shifts.html' },
+        { id: 'create-session', label: 'Create Session', icon: 'plus-circle', href: 'post-shift.html' },
+        { id: 'my-sessions', label: 'My Sessions', icon: 'list', href: 'view-requested-shifts.html' },
         { id: 'find-locums', label: 'Find Locums', icon: 'search', href: 'find-locums.html' },
         { id: 'billing', label: 'Billing', icon: 'pound', href: 'billing.html' },
         { id: 'messages', label: 'Messages', icon: 'mail', href: 'messages.html' },
@@ -79,10 +79,13 @@ function renderTopHeader(title, breadcrumbs) {
     const unreadCount = unreadNotifs + unreadMsgs;
 
     const notifTypeIcons = {
-        'shift_confirmed': 'check', 'new_shifts': 'calendar', 'offer_accepted': 'check',
-        'offer_declined': 'x', 'reliability_warning': 'activity', 'cpd_event': 'award',
+        'shift_confirmed': 'check', 'booking_confirmed': 'check', 'new_shifts': 'calendar',
+        'offer_accepted': 'check', 'offer_declined': 'x', 'offer_viewed': 'eye',
+        'offer_withdrawn': 'x', 'offer_expired': 'clock', 'counter_offer': 'pound',
+        'rate_agreed': 'check', 'reliability_warning': 'activity', 'cpd_event': 'award',
         'message': 'mail', 'no_show': 'x', 'cancellation': 'x',
-        'leave_feedback': 'award', 'payment_reminder': 'pound', 'new_offer': 'briefcase'
+        'leave_feedback': 'award', 'payment_reminder': 'pound', 'new_offer': 'briefcase',
+        'late_cancellation': 'x'
     };
 
     const settingsHref = session.role === 'locum' ? 'my-settings.html' : 'practice-settings.html';
@@ -246,51 +249,53 @@ function initAppLayout(role, activePage, pageTitle, breadcrumbs) {
     return document.getElementById('pageContent');
 }
 
-// ---- Shift Card Component ----
-function renderShiftCard(shift, showActions = true) {
-    const urgentBadge = shift.urgent ? '<span class="badge badge-danger">Urgent</span>' : '';
-    const housecallBadge = !shift.housecalls ? '<span class="badge badge-neutral">No Housecalls</span>' : '';
+// ---- Session Need Card Component (Practice view) ----
+function renderSessionNeedCard(need, showActions = true) {
+    const housecallBadge = need.housecalls ? '<span class="badge badge-info">Housecalls</span>' : '';
+    const statusBadge = `<span class="badge ${getStatusBadge(need.status)}">${getStatusLabel(need.status)}</span>`;
 
     return `
-    <div class="shift-card-full" data-shift-id="${shift.id}">
+    <div class="shift-card-full" data-need-id="${need.id}">
         <div class="shift-card-header">
             <div>
-                <h3 class="shift-card-title">${sanitizeHTML(shift.practiceName)}</h3>
-                <p class="shift-card-location">${sanitizeHTML(shift.city)} &bull; ${sanitizeHTML(shift.healthBoard)}</p>
+                <h3 class="shift-card-title">${DateUtils.format(need.date, 'full')}</h3>
+                <p class="shift-card-location">${sanitizeHTML(need.practiceName)} &bull; ${sanitizeHTML(need.healthBoard)}</p>
             </div>
             <div class="shift-card-badges">
-                ${urgentBadge}
-                <span class="badge badge-primary">${shift.sessionType}</span>
+                ${statusBadge}
+                <span class="badge badge-primary">${need.sessionType}</span>
                 ${housecallBadge}
             </div>
         </div>
         <div class="shift-card-details">
             <div class="shift-card-detail">
-                ${getIcon('calendar')}
-                <span>${DateUtils.format(shift.date, 'full')}</span>
-            </div>
-            <div class="shift-card-detail">
                 ${getIcon('clock')}
-                <span>${shift.startTime} - ${shift.endTime}</span>
+                <span>${need.startTime} - ${need.endTime}</span>
             </div>
-            <div class="shift-card-detail">
-                ${getIcon('monitor')}
-                <span>${shift.computerSystem}</span>
-            </div>
+            ${need.budgetRate ? `<div class="shift-card-detail">
+                ${getIcon('pound')}
+                <span>Budget: ${formatCurrency(need.budgetRate)}</span>
+            </div>` : ''}
             <div class="shift-card-detail">
                 ${getIcon('users')}
-                <span>${shift.applicants} applicant${shift.applicants !== 1 ? 's' : ''}</span>
+                <span>${need.offersCount || 0} offer${(need.offersCount || 0) !== 1 ? 's' : ''} sent</span>
             </div>
         </div>
-        ${showActions ? `
+        ${showActions && need.status === 'open' ? `
         <div class="shift-card-footer">
-            <span class="badge ${shift.shiftType === 'GP Only' ? 'badge-info' : 'badge-neutral'}">${shift.shiftType}</span>
             <div style="display:flex;align-items:center;gap:8px;">
-                ${shift.applicants >= 3 ? '<span class="badge badge-warning" style="font-size:0.72rem;padding:2px 8px;">High demand</span>' : ''}
-                <a href="shift-detail.html?id=${shift.id}" class="btn btn-primary btn-small">View Details</a>
+                <a href="find-locums.html?needId=${need.id}" class="btn btn-primary btn-small">Find Locum</a>
+                <button class="btn btn-small btn-ghost" onclick="cancelSessionNeed('${need.id}')">Cancel</button>
             </div>
         </div>` : ''}
+        ${need.notes ? `<div class="offer-comment"><strong>Notes:</strong> ${sanitizeHTML(need.notes)}</div>` : ''}
     </div>`;
+}
+
+// ---- Legacy alias for any pages still calling renderShiftCard ----
+function renderShiftCard(shift, showActions) {
+    // Convert old shift format to session need format for backward compat
+    return renderSessionNeedCard(shift, showActions);
 }
 
 // ---- Stat Card Component ----
@@ -335,8 +340,11 @@ function renderPagination(current, total) {
     </div>`;
 }
 
-// ---- Offer Card ----
+// ---- Offer Card (Locum view — invitations received from practices) ----
 function renderOfferCard(offer) {
+    const sessionDate = offer.sessionDate || offer.shiftDate;
+    const rate = offer.agreedRate || offer.proposedRate || 0;
+    const sentDate = offer.sentDate || offer.offerDate;
     return `
     <div class="offer-card" data-offer-id="${offer.id}">
         <div class="offer-card-header">
@@ -344,12 +352,12 @@ function renderOfferCard(offer) {
                 <h3 class="offer-card-title">${sanitizeHTML(offer.practiceName)}</h3>
                 <p class="offer-card-location">${sanitizeHTML(offer.healthBoard)}</p>
             </div>
-            <span class="badge ${getStatusBadge(offer.status)}">${offer.status.charAt(0).toUpperCase() + offer.status.slice(1)}</span>
+            <span class="badge ${getStatusBadge(offer.status)}">${getStatusLabel(offer.status)}</span>
         </div>
         <div class="offer-card-details">
             <div class="offer-detail">
                 ${getIcon('calendar')}
-                <span>${DateUtils.format(offer.shiftDate, 'full')}</span>
+                <span>${DateUtils.format(sessionDate, 'full')}</span>
             </div>
             <div class="offer-detail">
                 ${getIcon('clock')}
@@ -362,14 +370,71 @@ function renderOfferCard(offer) {
         </div>
         <div class="offer-card-footer">
             <div class="offer-rates">
-                <span>Your rate: ${offer.sessionType === 'Full Day' ? formatCurrency(offer.rateFullDay) : offer.sessionType === 'PM' ? formatCurrency(offer.ratePM) : formatCurrency(offer.rateAM)}/${offer.sessionType} session</span>
+                <span>Offered rate: ${formatCurrency(rate)}/${offer.sessionType} session</span>
+                ${offer.locumPublishedRate && offer.locumPublishedRate !== rate ? `<span style="font-size:0.75rem;color:var(--dark-600);margin-left:8px;">(Your rate: ${formatCurrency(offer.locumPublishedRate)})</span>` : ''}
             </div>
-            <span class="offer-date">Offer made: ${DateUtils.format(offer.offerDate, 'medium')}</span>
+            <span class="offer-date">Sent: ${DateUtils.format(sentDate, 'medium')}</span>
         </div>
-        ${offer.comment ? `<div class="offer-comment"><strong>Your comment:</strong> ${sanitizeHTML(offer.comment)}</div>` : ''}
-        ${offer.status === 'pending' ? `
+        ${offer.practiceMessage ? `<div class="offer-comment"><strong>Message:</strong> ${sanitizeHTML(offer.practiceMessage)}</div>` : ''}
+        ${['sent', 'viewed'].includes(offer.status) ? `
         <div class="offer-actions">
-            <button class="btn btn-small btn-ghost" onclick="withdrawOffer('${offer.id}')">Withdraw</button>
+            <button class="btn btn-small btn-primary" onclick="respondToInvitation('${offer.id}', 'accept')">Accept</button>
+            <button class="btn btn-small btn-warning" onclick="respondToInvitation('${offer.id}', 'counter')">Counter</button>
+            <button class="btn btn-small btn-ghost" onclick="respondToInvitation('${offer.id}', 'decline')">Decline</button>
+        </div>` : ''}
+        ${offer.status === 'negotiating' ? `
+        <div class="offer-actions">
+            <button class="btn btn-small btn-primary" onclick="respondToInvitation('${offer.id}', 'accept')">Accept Rate</button>
+            <button class="btn btn-small btn-warning" onclick="respondToInvitation('${offer.id}', 'counter')">Counter</button>
+            <button class="btn btn-small btn-ghost" onclick="respondToInvitation('${offer.id}', 'decline')">Decline</button>
+        </div>` : ''}
+        ${['accepted', 'confirmed'].includes(offer.status) ? `
+        <div class="offer-actions">
+            <a href="shift-detail.html?id=${offer.id}" class="btn btn-small btn-primary">View Booking</a>
+        </div>` : ''}
+    </div>`;
+}
+
+// ---- Offer Card (Practice view — offers sent to locums) ----
+function renderPracticeOfferCard(offer) {
+    const data = getMockData();
+    const locum = data.locums.find(l => l.id === offer.locumId);
+    const locumName = locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown';
+    const sessionDate = offer.sessionDate || offer.shiftDate;
+    const rate = offer.agreedRate || offer.proposedRate || 0;
+    return `
+    <div class="offer-card" data-offer-id="${offer.id}">
+        <div class="offer-card-header">
+            <div>
+                <h3 class="offer-card-title">${sanitizeHTML(locumName)}</h3>
+                <p class="offer-card-location">${offer.sessionType} &bull; ${DateUtils.format(sessionDate, 'medium')}</p>
+            </div>
+            <span class="badge ${getStatusBadge(offer.status)}">${getStatusLabel(offer.status)}</span>
+        </div>
+        <div class="offer-card-details">
+            <div class="offer-detail">
+                ${getIcon('clock')}
+                <span>${offer.startTime} - ${offer.endTime}</span>
+            </div>
+            <div class="offer-detail">
+                ${getIcon('pound')}
+                <span>Rate: ${formatCurrency(rate)}</span>
+                ${offer.locumPublishedRate ? `<span style="font-size:0.75rem;color:var(--dark-600);margin-left:4px;">(Locum asks: ${formatCurrency(offer.locumPublishedRate)})</span>` : ''}
+            </div>
+        </div>
+        ${['sent', 'viewed'].includes(offer.status) ? `
+        <div class="offer-actions">
+            <button class="btn btn-small btn-ghost" onclick="withdrawSentOffer('${offer.id}')">Withdraw</button>
+        </div>` : ''}
+        ${offer.status === 'negotiating' ? `
+        <div class="offer-actions">
+            <button class="btn btn-small btn-primary" onclick="practiceRespondNegotiation('${offer.id}', 'accept')">Accept Rate</button>
+            <button class="btn btn-small btn-warning" onclick="practiceRespondNegotiation('${offer.id}', 'counter')">Counter</button>
+            <button class="btn btn-small btn-ghost" onclick="practiceRespondNegotiation('${offer.id}', 'withdraw')">Withdraw</button>
+        </div>` : ''}
+        ${offer.status === 'accepted' ? `
+        <div class="offer-actions">
+            <button class="btn btn-small btn-primary" onclick="confirmOffer('${offer.id}')">Confirm Booking</button>
         </div>` : ''}
     </div>`;
 }
@@ -443,7 +508,7 @@ function renderRatingStars(rating, size = 16) {
 function renderBarredWarning(practiceId, locumId) {
     if (BarredList.isBarred(practiceId, locumId)) {
         const reason = BarredList.getBarReason(practiceId, locumId);
-        return `<div class="barred-warning"><span class="badge badge-danger">BARRED</span> <span class="barred-reason">${sanitizeHTML(reason) || 'This locum is on your barred list'}</span></div>`;
+        return `<div class="barred-warning"><span class="badge badge-danger">BLOCKED</span> <span class="barred-reason">${sanitizeHTML(reason) || 'This locum is on your blocked list'}</span></div>`;
     }
     if (BarredList.isPreferred(practiceId, locumId)) {
         return `<div class="preferred-indicator"><span class="badge badge-success">PREFERRED</span></div>`;
@@ -469,7 +534,7 @@ function renderInvoiceRow(inv) {
         <td><strong>${inv.invoiceNumber}</strong></td>
         <td>${DateUtils.format(inv.generatedDate, 'short')}</td>
         <td>${sanitizeHTML(inv.locumName)}</td>
-        <td>${DateUtils.format(inv.shiftDate, 'medium')}</td>
+        <td>${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}</td>
         <td>${inv.sessionType}</td>
         <td><strong>${formatCurrency(inv.total)}</strong></td>
         <td><span class="badge ${getStatusBadge(inv.status)}">${inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}</span></td>

@@ -156,6 +156,11 @@ img { max-width: 100%; }
     font-size: 0.85rem;
 }
 
+button:focus-visible, a:focus-visible, .btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
 /* ===== NAVBAR ===== */
 .navbar {
     position: fixed;
@@ -1932,6 +1937,8 @@ img { max-width: 100%; }
 .calendar-day-cell:hover { background: var(--gray-50); }
 .calendar-day-cell.other-month { opacity: 0.3; }
 .calendar-day-cell.today { background: rgba(79,70,229,0.05); }
+.calendar-day-cell.past { opacity: 0.45; }
+.calendar-day-cell.selected { background: rgba(79,70,229,0.08); }
 
 .cal-date { font-size: 0.85rem; font-weight: 600; color: var(--dark-700); margin-bottom: 4px; }
 .today .cal-date { color: var(--primary); }

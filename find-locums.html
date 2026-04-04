@@ -11,6 +11,71 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <style>
+        .fl-filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
+        .fl-filters .form-group { margin-bottom: 0; flex: 1; min-width: 140px; }
+        .fl-filters .form-group.fl-name { flex: 2; min-width: 180px; }
+        .fl-filters .form-label { font-size: 0.78rem; margin-bottom: 3px; }
+        .fl-filters .form-input, .fl-filters .form-select { font-size: 0.85rem; padding: 8px 10px; }
+
+        .fl-result-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+        .fl-result-count { font-size: 0.88rem; color: var(--dark-600); font-weight: 600; }
+        .fl-toggle-group { display: flex; gap: 6px; align-items: center; }
+        .fl-toggle { font-size: 0.78rem; padding: 4px 12px; border-radius: 100px; border: 1px solid var(--gray-200); background: var(--white); color: var(--dark-600); cursor: pointer; transition: all 0.15s; }
+        .fl-toggle:hover { border-color: var(--primary); color: var(--primary); }
+        .fl-toggle.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .fl-card { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border: 1px solid var(--gray-200); border-radius: var(--radius); background: var(--white); transition: box-shadow 0.15s; }
+        .fl-card:hover { box-shadow: var(--shadow); }
+        .fl-card + .fl-card { margin-top: 10px; }
+        .fl-card.is-blocked { opacity: 0.5; }
+
+        .fl-card-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--gradient); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; flex-shrink: 0; }
+        .fl-card-info { flex: 1; min-width: 0; }
+        .fl-card-name { font-size: 0.95rem; font-weight: 700; color: var(--dark); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .fl-card-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 4px; font-size: 0.78rem; color: var(--dark-600); }
+        .fl-card-meta-item { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+
+        .fl-card-stats { display: flex; gap: 16px; align-items: center; flex-shrink: 0; }
+        .fl-stat { text-align: center; min-width: 60px; }
+        .fl-stat-val { font-size: 1rem; font-weight: 700; color: var(--dark); }
+        .fl-stat-label { font-size: 0.68rem; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.03em; }
+        .fl-stat-val.is-green { color: var(--success); }
+        .fl-stat-val.is-yellow { color: var(--warning); }
+        .fl-stat-val.is-red { color: var(--danger); }
+
+        .fl-card-rate { text-align: right; min-width: 80px; flex-shrink: 0; }
+        .fl-card-rate-val { font-size: 1rem; font-weight: 700; color: var(--primary); }
+        .fl-card-rate-label { font-size: 0.68rem; color: var(--gray-400); }
+
+        .fl-card-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+
+        .fl-avail-badge { font-size: 0.72rem; padding: 2px 8px; border-radius: 100px; font-weight: 600; white-space: nowrap; }
+        .fl-avail-badge.available { background: rgba(16,185,129,0.1); color: var(--success); }
+        .fl-avail-badge.sent { background: rgba(14,165,233,0.1); color: var(--secondary); }
+        .fl-avail-badge.booked { background: rgba(245,158,11,0.1); color: var(--warning); }
+        .fl-avail-badge.unknown { background: var(--gray-100); color: var(--gray-400); }
+
+        .fl-pref-star { color: var(--success); font-size: 0.75rem; }
+
+        /* Session need bar */
+        .fl-need-bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: rgba(79,70,229,0.04); border: 1px solid rgba(79,70,229,0.15); border-radius: var(--radius); margin-bottom: 16px; flex-wrap: wrap; }
+        .fl-need-bar label { font-size: 0.82rem; font-weight: 600; color: var(--dark-700); white-space: nowrap; }
+        .fl-need-bar select { font-size: 0.82rem; flex: 1; min-width: 200px; }
+        .fl-need-bar .btn { flex-shrink: 0; }
+
+        /* Mobile: collapse filters */
+        .fl-filter-toggle { display: none; }
+        @media (max-width: 768px) {
+            .fl-card { flex-wrap: wrap; gap: 10px; }
+            .fl-card-stats { width: 100%; justify-content: space-around; padding-top: 8px; border-top: 1px solid var(--gray-100); }
+            .fl-card-rate { text-align: left; }
+            .fl-card-actions { width: 100%; }
+            .fl-card-actions .btn { flex: 1; justify-content: center; }
+            .fl-filter-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: var(--primary); cursor: pointer; margin-bottom: 12px; background: none; border: none; padding: 0; }
+            .fl-filters.collapsed { display: none; }
+        }
+    </style>
 </head>
 <body class="app-layout">
     <script src="mock-data.js"></script>
@@ -25,41 +90,54 @@
 
         let sortBy = 'reliability';
         let openDropdown = null;
+        let showPreferredOnly = false;
+        let filtersCollapsed = true; // mobile default
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let selectedNeedId = urlParams.get('needId') || '';
 
         function getHealthBoards() {
             return [...new Set(data.locums.flatMap(l => l.healthBoards))].sort();
         }
-
         function getComputerSystems() {
             return [...new Set(data.locums.flatMap(l => l.computerSystems))].sort();
+        }
+        function getOpenSessionNeeds() {
+            const d = getMockData();
+            if (!d.sessionNeeds) return [];
+            return d.sessionNeeds.filter(n => n.practiceId === session.id && n.status === 'open')
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+
+        // Practice's own computer system for smart defaults
+        function getPracticeSystem() {
+            const d = getMockData();
+            const p = d.practices ? d.practices.find(pr => pr.id === session.id) : null;
+            return p ? p.computerSystem || '' : '';
         }
 
         function toggleDropdown(locumId, event) {
             event.stopPropagation();
-            if (openDropdown === locumId) {
-                openDropdown = null;
-            } else {
-                openDropdown = locumId;
-            }
+            openDropdown = openDropdown === locumId ? null : locumId;
             renderLocumsGrid();
         }
 
         function barLocum(locumId, locumName) {
             openDropdown = null;
             Modal.show({
-                title: 'Bar Locum',
+                title: 'Block Locum',
                 body: `
                     <p style="font-size: 0.92rem; color: var(--dark-600); margin-bottom: 16px;">
-                        Are you sure you want to bar <strong>${locumName}</strong>? They will no longer appear in your search results by default.
+                        Are you sure you want to block <strong>${locumName}</strong>? They will no longer appear in your search results.
                     </p>
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label">Reason for barring</label>
+                        <label class="form-label">Reason for blocking</label>
                         <textarea id="barReason" class="form-input" rows="3" placeholder="Enter reason..." style="resize: vertical;"></textarea>
                     </div>
                 `,
                 footer: `
                     <button class="btn btn-ghost" data-modal-close>Cancel</button>
-                    <button class="btn btn-coral" onclick="confirmBar('${locumId}')">Bar Locum</button>
+                    <button class="btn btn-coral" onclick="confirmBar('${locumId}')">Block Locum</button>
                 `
             });
         }
@@ -68,14 +146,14 @@
             const reason = document.getElementById('barReason') ? document.getElementById('barReason').value.trim() : '';
             BarredList.bar(session.id, locumId, reason || 'No reason provided');
             Modal.close();
-            Toast.show('Locum has been added to your barred list.', 'warning');
+            Toast.show('Locum has been blocked from future offers.', 'warning');
             render();
         }
 
         function unbarLocum(locumId) {
             openDropdown = null;
             BarredList.unbar(session.id, locumId);
-            Toast.show('Locum has been removed from your barred list.', 'success');
+            Toast.show('Locum has been unblocked.', 'success');
             render();
         }
 
@@ -93,12 +171,8 @@
             render();
         }
 
-        // Close dropdown on outside click
         document.addEventListener('click', function() {
-            if (openDropdown) {
-                openDropdown = null;
-                renderLocumsGrid();
-            }
+            if (openDropdown) { openDropdown = null; renderLocumsGrid(); }
         });
 
         function renderLocumsGrid() {
@@ -106,13 +180,33 @@
             if (grid) grid.innerHTML = renderLocums();
         }
 
+        function togglePreferred() {
+            showPreferredOnly = !showPreferredOnly;
+            render();
+        }
+
+        function toggleFilters() {
+            filtersCollapsed = !filtersCollapsed;
+            render();
+        }
+
         function renderLocums() {
             const nameSearch = document.getElementById('searchName') ? document.getElementById('searchName').value.toLowerCase() : '';
             const hbFilter = document.getElementById('filterHB') ? document.getElementById('filterHB').value : '';
             const csFilter = document.getElementById('filterCS') ? document.getElementById('filterCS').value : '';
             sortBy = document.getElementById('sortBy') ? document.getElementById('sortBy').value : sortBy;
+            selectedNeedId = document.getElementById('filterNeed') ? document.getElementById('filterNeed').value : selectedNeedId;
 
-            let locums = [...data.locums];
+            const currentData = getMockData();
+            let selectedNeed = null;
+            if (selectedNeedId && currentData.sessionNeeds) {
+                selectedNeed = currentData.sessionNeeds.find(n => n.id === selectedNeedId);
+            }
+
+            let locums = [...currentData.locums];
+
+            // Filter out blocked
+            locums = locums.filter(l => !BarredList.isBarred(session.id, l.id));
 
             if (nameSearch) {
                 locums = locums.filter(l =>
@@ -120,180 +214,301 @@
                     `${l.title} ${l.firstName} ${l.lastName}`.toLowerCase().includes(nameSearch)
                 );
             }
-            if (hbFilter) {
-                locums = locums.filter(l => l.healthBoards.includes(hbFilter));
-            }
-            if (csFilter) {
-                locums = locums.filter(l => l.computerSystems.includes(csFilter));
+            if (hbFilter) locums = locums.filter(l => l.healthBoards.includes(hbFilter));
+            if (csFilter) locums = locums.filter(l => l.computerSystems.includes(csFilter));
+            if (showPreferredOnly) locums = locums.filter(l => BarredList.isPreferred(session.id, l.id));
+
+            // Enrich with availability if session need selected
+            if (selectedNeed) {
+                locums.forEach(l => {
+                    l._avail = Availability.isAvailable(l.id, selectedNeed.date, selectedNeed.sessionType);
+                    l._booked = Booking.isDoubleBooked(l.id, selectedNeed.date, null, selectedNeed.sessionType);
+                    l._existingOffer = currentData.offers.find(o =>
+                        o.sessionNeedId === selectedNeedId && o.locumId === l.id &&
+                        !['declined', 'withdrawn', 'expired', 'cancelled'].includes(o.status)
+                    );
+                    l._canInvite = l._avail && !l._booked && !l._existingOffer;
+                });
             }
 
-            switch (sortBy) {
-                case 'reliability':
-                    locums.sort((a, b) => b.bookingReliability - a.bookingReliability);
-                    break;
-                case 'name':
-                    locums.sort((a, b) => a.lastName.localeCompare(b.lastName));
-                    break;
-                case 'experience':
-                    locums.sort((a, b) => b.totalShifts - a.totalShifts);
-                    break;
-                case 'rating':
-                    locums.sort((a, b) => {
-                        const rA = FeedbackManager.getAverageRating(a.id);
-                        const rB = FeedbackManager.getAverageRating(b.id);
-                        return (rB || 0) - (rA || 0);
-                    });
-                    break;
+            // Sort: preferred first, then by user sort, with available locums above unavailable when session need active
+            locums.sort((a, b) => {
+                // 1. Preferred always first
+                const prefA = BarredList.isPreferred(session.id, a.id) ? 1 : 0;
+                const prefB = BarredList.isPreferred(session.id, b.id) ? 1 : 0;
+                if (prefB !== prefA) return prefB - prefA;
+
+                // 2. If session need active, available above unavailable
+                if (selectedNeed) {
+                    const availA = a._canInvite ? 1 : 0;
+                    const availB = b._canInvite ? 1 : 0;
+                    if (availB !== availA) return availB - availA;
+                }
+
+                // 3. User sort within groups
+                switch (sortBy) {
+                    case 'reliability': return b.bookingReliability - a.bookingReliability;
+                    case 'name': return a.lastName.localeCompare(b.lastName);
+                    case 'experience': return b.totalShifts - a.totalShifts;
+                    case 'rating':
+                        return (FeedbackManager.getAverageRating(b.id) || 0) - (FeedbackManager.getAverageRating(a.id) || 0);
+                    case 'rate':
+                        const rateA = a.rates ? (a.rates.fullDay || a.rates.am || 0) : 0;
+                        const rateB = b.rates ? (b.rates.fullDay || b.rates.am || 0) : 0;
+                        return rateA - rateB;
+                    default: return 0;
+                }
+            });
+
+            const totalCount = currentData.locums.length;
+            const shownCount = locums.length;
+
+            // Update result count
+            const countEl = document.getElementById('flResultCount');
+            if (countEl) {
+                countEl.textContent = shownCount === totalCount
+                    ? `${shownCount} locums`
+                    : `${shownCount} of ${totalCount} locums`;
             }
 
             if (locums.length === 0) {
-                return renderEmptyState('search', 'No Locums Found', 'Try adjusting your search filters.');
+                const msg = showPreferredOnly
+                    ? 'No preferred locums found. Mark locums as preferred from their profile or the actions menu.'
+                    : nameSearch || hbFilter || csFilter
+                        ? 'No locums match your current filters. Try broadening your search.'
+                        : 'No locums available.';
+                return `<div style="text-align: center; padding: 48px 20px; color: var(--dark-600);">
+                    <div style="margin-bottom: 8px;">${getIcon('search')}</div>
+                    <p style="font-weight: 600; margin-bottom: 4px;">No locums found</p>
+                    <p style="font-size: 0.85rem;">${msg}</p>
+                </div>`;
             }
 
-            return `
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
-                    ${locums.map(loc => {
-                        const reliabilityColor = loc.bookingReliability >= 95 ? 'var(--success)' : (loc.bookingReliability >= 85 ? 'var(--warning)' : 'var(--danger)');
-                        const isBarred = BarredList.isBarred(session.id, loc.id);
-                        const isPreferred = BarredList.isPreferred(session.id, loc.id);
-                        const avgRating = FeedbackManager.getAverageRating(loc.id);
-                        const reviews = FeedbackManager.getForUser(loc.id);
-                        const locName = `${loc.title} ${loc.firstName} ${loc.lastName}`;
-                        const isOpen = openDropdown === loc.id;
+            return locums.map(loc => {
+                const isPreferred = BarredList.isPreferred(session.id, loc.id);
+                const avgRating = FeedbackManager.getAverageRating(loc.id);
+                const locName = `${loc.title} ${loc.firstName} ${loc.lastName}`;
+                const isOpen = openDropdown === loc.id;
 
-                        return `
-                        <div class="content-card" style="margin-bottom: 0; position: relative; ${isBarred ? 'opacity: 0.65;' : ''}">
-                            <div class="content-card-body" style="padding: 20px;">
-                                ${renderBarredWarning(session.id, loc.id)}
+                const reliabilityColor = loc.bookingReliability >= 95 ? 'is-green' : (loc.bookingReliability >= 85 ? 'is-yellow' : 'is-red');
 
-                                <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
-                                    <div class="header-avatar" style="width: 48px; height: 48px; font-size: 0.9rem; flex-shrink: 0;">${getInitials(loc.firstName + ' ' + loc.lastName)}</div>
-                                    <div style="flex: 1;">
-                                        <h3 style="font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: 2px;">
-                                            ${locName}
-                                            ${isPreferred ? '<span style="color: var(--success); font-size: 0.75rem; margin-left: 4px;">&#9733; Preferred</span>' : ''}
-                                        </h3>
-                                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                            ${loc.computerSystems.map(cs => `<span class="badge badge-primary">${cs}</span>`).join('')}
-                                        </div>
-                                    </div>
-                                    <!-- Actions dropdown -->
-                                    <div style="position: relative;">
-                                        <button onclick="toggleDropdown('${loc.id}', event)" style="background: none; border: 1px solid var(--gray-200); border-radius: 8px; padding: 6px 8px; cursor: pointer; color: var(--dark-600);">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-                                        </button>
-                                        ${isOpen ? `
-                                        <div style="position: absolute; right: 0; top: 100%; margin-top: 4px; background: white; border: 1px solid var(--gray-200); border-radius: 10px; box-shadow: var(--shadow-lg); z-index: 100; min-width: 180px; overflow: hidden;">
-                                            ${isBarred
-                                                ? `<button onclick="unbarLocum('${loc.id}')" style="display: block; width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; cursor: pointer; font-size: 0.85rem; color: var(--success);">Remove from Barred List</button>`
-                                                : `<button onclick="barLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')" style="display: block; width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; cursor: pointer; font-size: 0.85rem; color: var(--danger);">Bar Locum</button>`
-                                            }
-                                            ${isPreferred
-                                                ? `<button onclick="removePreferred('${loc.id}')" style="display: block; width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; cursor: pointer; font-size: 0.85rem; color: var(--dark-600); border-top: 1px solid var(--gray-100);">Remove Preferred</button>`
-                                                : `<button onclick="markPreferred('${loc.id}')" style="display: block; width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; cursor: pointer; font-size: 0.85rem; color: var(--success); border-top: 1px solid var(--gray-100);">Mark as Preferred</button>`
-                                            }
-                                        </div>` : ''}
-                                    </div>
-                                </div>
+                // Rate display
+                let rateHtml = '';
+                const rates = loc.rates || {};
+                if (selectedNeed) {
+                    const rate = selectedNeed.sessionType === 'AM' ? rates.am : selectedNeed.sessionType === 'PM' ? rates.pm : rates.fullDay;
+                    if (rate) rateHtml = `<div class="fl-card-rate"><div class="fl-card-rate-val">${formatCurrency(rate)}</div><div class="fl-card-rate-label">${selectedNeed.sessionType}</div></div>`;
+                } else {
+                    const rate = rates.fullDay || rates.am || null;
+                    const label = rates.fullDay ? 'Full day' : rates.am ? 'AM' : '';
+                    if (rate) rateHtml = `<div class="fl-card-rate"><div class="fl-card-rate-val">${formatCurrency(rate)}</div><div class="fl-card-rate-label">${label} rate</div></div>`;
+                }
 
-                                <!-- Average Rating -->
-                                ${avgRating ? `
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                    ${renderRatingStars(parseFloat(avgRating))}
-                                    <span style="font-weight: 700; font-size: 0.88rem; color: var(--dark);">${avgRating}</span>
-                                    <span style="font-size: 0.78rem; color: var(--gray-400);">(${reviews.length} review${reviews.length !== 1 ? 's' : ''})</span>
-                                </div>` : `
-                                <div style="font-size: 0.82rem; color: var(--gray-400); margin-bottom: 12px;">No ratings yet</div>`}
+                // Availability badge
+                let availHtml = '';
+                if (selectedNeed) {
+                    if (loc._canInvite) {
+                        availHtml = `<span class="fl-avail-badge available">${getIcon('check')} Available</span>`;
+                    } else if (loc._existingOffer) {
+                        availHtml = `<span class="fl-avail-badge sent">Offer sent</span>`;
+                    } else if (loc._booked) {
+                        availHtml = `<span class="fl-avail-badge booked">Booked</span>`;
+                    } else {
+                        availHtml = `<span class="fl-avail-badge unknown" title="This GP has not set their availability for this date">Not indicated</span>`;
+                    }
+                }
 
-                                <div style="margin-bottom: 12px;">
-                                    <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
-                                        <span style="color: var(--dark-600);">Reliability</span>
-                                        <span style="font-weight: 700; color: ${reliabilityColor};">${loc.bookingReliability}%</span>
-                                    </div>
-                                    <div class="coverage-bar">
-                                        <div class="coverage-fill" style="width: ${loc.bookingReliability}%; background: ${reliabilityColor};"></div>
-                                    </div>
-                                </div>
+                // Action button
+                let actionBtn = '';
+                if (selectedNeed && loc._existingOffer) {
+                    actionBtn = `<button class="btn btn-ghost btn-small" style="opacity:0.6;cursor:not-allowed;" disabled>${getIcon('check')} Sent</button>`;
+                } else {
+                    actionBtn = `<button class="btn btn-primary btn-small" onclick="sendOfferToLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')">${getIcon('mail')} Send Offer</button>`;
+                }
 
-                                <div style="display: flex; gap: 16px; margin-bottom: 16px; font-size: 0.82rem; color: var(--dark-600);">
-                                    <div style="display: flex; align-items: center; gap: 4px;">
-                                        ${getIcon('clock')}
-                                        <span>${loc.responseTime}</span>
-                                    </div>
-                                    <div style="display: flex; align-items: center; gap: 4px;">
-                                        ${getIcon('activity')}
-                                        <span>${loc.totalShifts} shifts</span>
-                                    </div>
-                                </div>
-
-                                <div style="display: flex; gap: 8px;">
-                                    <a href="locum-profile-view.html?id=${loc.id}" class="btn btn-primary btn-small" style="flex: 1; justify-content: center;">
-                                        View Profile
-                                    </a>
-                                    <button class="btn btn-ghost btn-small" style="flex: 1; justify-content: center;" onclick="requestLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')">
-                                        Request Locum
-                                    </button>
-                                </div>
-                            </div>
-                        </div>`;
-                    }).join('')}
+                return `
+                <div class="fl-card">
+                    <div class="fl-card-avatar">${getInitials(loc.firstName + ' ' + loc.lastName)}</div>
+                    <div class="fl-card-info">
+                        <div class="fl-card-name">
+                            ${locName}
+                            ${isPreferred ? '<span class="fl-pref-star">&#9733; Preferred</span>' : ''}
+                            ${availHtml}
+                        </div>
+                        <div class="fl-card-meta">
+                            ${loc.computerSystems.map(cs => `<span class="badge badge-primary" style="font-size:0.7rem;padding:1px 6px;">${cs}</span>`).join('')}
+                            <span class="fl-card-meta-item">${getIcon('clock')} ${loc.responseTime}</span>
+                            ${avgRating ? `<span class="fl-card-meta-item">${renderRatingStars(parseFloat(avgRating), 12)} ${avgRating}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="fl-card-stats">
+                        <div class="fl-stat">
+                            <div class="fl-stat-val ${reliabilityColor}">${loc.bookingReliability}%</div>
+                            <div class="fl-stat-label">Reliability</div>
+                        </div>
+                        <div class="fl-stat">
+                            <div class="fl-stat-val">${loc.totalShifts}</div>
+                            <div class="fl-stat-label">Sessions</div>
+                        </div>
+                    </div>
+                    ${rateHtml}
+                    <div class="fl-card-actions">
+                        <a href="locum-profile-view.html?id=${loc.id}" class="btn btn-ghost btn-small">Profile</a>
+                        ${actionBtn}
+                        <div style="position:relative;">
+                            <button onclick="toggleDropdown('${loc.id}', event)" style="background:none;border:1px solid var(--gray-200);border-radius:8px;padding:5px 7px;cursor:pointer;color:var(--dark-600);line-height:1;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                            </button>
+                            ${isOpen ? `
+                            <div style="position:absolute;right:0;top:100%;margin-top:4px;background:white;border:1px solid var(--gray-200);border-radius:10px;box-shadow:var(--shadow-lg);z-index:100;min-width:170px;overflow:hidden;">
+                                ${isPreferred
+                                    ? `<button onclick="removePreferred('${loc.id}')" style="display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:0.83rem;color:var(--dark-600);">Remove Preferred</button>`
+                                    : `<button onclick="markPreferred('${loc.id}')" style="display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:0.83rem;color:var(--success);">Mark as Preferred</button>`
+                                }
+                                <button onclick="barLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')" style="display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:0.83rem;color:var(--danger);border-top:1px solid var(--gray-100);">Block Locum</button>
+                            </div>` : ''}
+                        </div>
+                    </div>
                 </div>`;
+            }).join('');
         }
 
-        function requestLocum(locumId, locumName) {
+        function sendOfferToLocum(locumId, locumName) {
             const currentData = getMockData();
-            const openShifts = currentData.shifts.filter(s => s.practiceId === session.id && s.status === 'open');
-            if (openShifts.length === 0) {
-                Toast.show('You have no open shifts. Post a shift first to request a locum.', 'warning');
+            const openNeeds = getOpenSessionNeeds();
+
+            if (openNeeds.length === 0) {
+                Modal.show({
+                    title: 'No Open Sessions',
+                    body: '<p style="font-size:0.92rem; color:var(--dark-600);">Create a session first before sending offers to locums.</p>',
+                    footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><a href="post-shift.html" class="btn btn-primary">Create Session</a>'
+                });
                 return;
             }
-            const shiftOptions = openShifts.map(s =>
-                '<option value="' + s.id + '">' + DateUtils.format(s.date, 'medium') + ' - ' + s.sessionType + ' (' + s.startTime + '-' + s.endTime + ')</option>'
-            ).join('');
+
+            const locum = currentData.locums.find(l => l.id === locumId);
+            const locumRates = locum ? locum.rates || {} : {};
+            const preSelected = selectedNeedId || openNeeds[0].id;
+
+            const needOptions = openNeeds.map(n => {
+                const rate = n.sessionType === 'AM' ? locumRates.am : n.sessionType === 'PM' ? locumRates.pm : locumRates.fullDay;
+                return `<option value="${n.id}" ${n.id === preSelected ? 'selected' : ''}>${DateUtils.format(n.date, 'medium')} - ${n.sessionType} (${n.startTime}-${n.endTime})${rate ? ' — Locum rate: ' + formatCurrency(rate) : ''}</option>`;
+            }).join('');
+
+            const preNeed = openNeeds.find(n => n.id === preSelected) || openNeeds[0];
+            const defaultRate = preNeed.sessionType === 'AM' ? locumRates.am : preNeed.sessionType === 'PM' ? locumRates.pm : locumRates.fullDay;
+
             Modal.show({
-                title: 'Request ' + locumName,
+                title: 'Send Offer to ' + locumName,
                 size: 'medium',
-                body: '<p style="font-size:0.92rem; color:var(--dark-600); margin-bottom:16px;">Select a shift to invite this locum to apply for:</p>' +
-                    '<div class="form-group"><label class="form-label">Open Shift</label><select class="form-select" id="requestShiftSelect">' + shiftOptions + '</select></div>' +
-                    '<div class="form-group"><label class="form-label">Message (optional)</label><textarea class="form-input" id="requestMessage" rows="3" placeholder="Add a personal message..."></textarea></div>',
-                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="sendRequestBtn">Send Request</button>',
+                body: `
+                    <div class="form-group">
+                        <label class="form-label">Session</label>
+                        <select class="form-select" id="offerNeedSelect" onchange="updateOfferRate()">
+                            ${needOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Proposed Rate (£)</label>
+                        <input type="number" class="form-input" id="offerRate" value="${defaultRate || ''}" min="0" step="10" placeholder="Enter rate...">
+                        <div class="form-hint" id="offerRateHint">${defaultRate ? 'Locum\'s published rate: ' + formatCurrency(defaultRate) : 'No published rate available'}</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message (optional)</label>
+                        <textarea class="form-input" id="offerMessage" rows="3" placeholder="Add a personal message to the locum..."></textarea>
+                    </div>
+                `,
+                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="sendOfferBtn">Send Offer</button>',
                 onOpen: function(overlay) {
-                    overlay.querySelector('#sendRequestBtn').addEventListener('click', function() {
-                        var shiftId = overlay.querySelector('#requestShiftSelect').value;
-                        var message = overlay.querySelector('#requestMessage').value.trim();
-                        var shift = openShifts.find(function(s) { return s.id === shiftId; });
-                        var subject = 'Shift Request from ' + session.name;
-                        var body = 'You have been invited to apply for a shift on ' + DateUtils.format(shift.date, 'medium') + ' (' + shift.sessionType + ', ' + shift.startTime + '-' + shift.endTime + ').' + (message ? '\n\nMessage: ' + message : '');
-                        MessageManager.send(session.id, locumId, subject, body, shiftId);
-                        Modal.close(overlay);
-                        Toast.show('Request sent to ' + locumName + '!', 'success');
+                    overlay.dataset.locumId = locumId;
+                    overlay.dataset.locumRatesAm = locumRates.am || 0;
+                    overlay.dataset.locumRatesPm = locumRates.pm || 0;
+                    overlay.dataset.locumRatesFullDay = locumRates.fullDay || 0;
+
+                    overlay.querySelector('#sendOfferBtn').addEventListener('click', function() {
+                        const needId = overlay.querySelector('#offerNeedSelect').value;
+                        const rate = Number(overlay.querySelector('#offerRate').value);
+                        const message = overlay.querySelector('#offerMessage').value.trim();
+
+                        if (!rate || rate <= 0) {
+                            Toast.show('Please enter a valid rate.', 'error');
+                            return;
+                        }
+
+                        this.disabled = true;
+                        this.textContent = 'Sending...';
+
+                        const result = Booking.sendOffer(needId, locumId, rate, message);
+                        if (result.success) {
+                            Modal.close(overlay);
+                            Toast.show('Offer sent to ' + locumName, 'success');
+                            render();
+                        } else {
+                            this.disabled = false;
+                            this.textContent = 'Send Offer';
+                            Toast.show(result.message || 'Failed to send offer.', 'error');
+                        }
                     });
                 }
             });
         }
+
+        window.updateOfferRate = function() {
+            const overlay = document.querySelector('.modal-overlay');
+            if (!overlay) return;
+            const needId = document.getElementById('offerNeedSelect').value;
+            const needs = getOpenSessionNeeds();
+            const need = needs.find(n => n.id === needId);
+            if (!need) return;
+            const rate = need.sessionType === 'AM' ? Number(overlay.dataset.locumRatesAm) :
+                        need.sessionType === 'PM' ? Number(overlay.dataset.locumRatesPm) :
+                        Number(overlay.dataset.locumRatesFullDay);
+            const rateInput = document.getElementById('offerRate');
+            const rateHint = document.getElementById('offerRateHint');
+            if (rate) {
+                rateInput.value = rate;
+                rateHint.textContent = 'Locum\'s published rate: ' + formatCurrency(rate);
+            } else {
+                rateInput.value = '';
+                rateHint.textContent = 'No published rate available';
+            }
+        };
 
         function render() {
             const nameVal = document.getElementById('searchName') ? document.getElementById('searchName').value : '';
             const hbVal = document.getElementById('filterHB') ? document.getElementById('filterHB').value : '';
             const csVal = document.getElementById('filterCS') ? document.getElementById('filterCS').value : '';
             const sortVal = document.getElementById('sortBy') ? document.getElementById('sortBy').value : sortBy;
+            const openNeeds = getOpenSessionNeeds();
+
+            const preferredCount = data.locums.filter(l => BarredList.isPreferred(session.id, l.id)).length;
 
             pageContent.innerHTML = `
-                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
-                    Find Locums
-                </h1>
+                <!-- Session need selector -->
+                ${openNeeds.length > 0 ? `
+                <div class="fl-need-bar">
+                    <label>${getIcon('calendar')} Session:</label>
+                    <select id="filterNeed" class="form-select" onchange="render()" style="max-width: 400px;">
+                        <option value="">All locums (no date filter)</option>
+                        ${openNeeds.map(n => `<option value="${n.id}" ${selectedNeedId === n.id ? 'selected' : ''}>${DateUtils.format(n.date, 'medium')} — ${n.sessionType} (${n.startTime}–${n.endTime})</option>`).join('')}
+                    </select>
+                    <a href="post-shift.html" class="btn btn-ghost btn-small">${getIcon('plus-circle')} New</a>
+                </div>` : `
+                <div class="fl-need-bar" style="background: var(--gray-50); border-color: var(--gray-200); justify-content: center;">
+                    <span style="font-size: 0.85rem; color: var(--dark-600);">Create a session to filter by availability</span>
+                    <a href="post-shift.html" class="btn btn-primary btn-small">${getIcon('plus-circle')} Create Session</a>
+                </div>`}
 
-                <div class="filter-bar">
-                    <div class="form-group" style="flex: 2;">
-                        <label class="form-label">Search by Name</label>
-                        <input type="text" id="searchName" class="form-input" placeholder="Search locum name..." value="${nameVal}" oninput="render()">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Health Board</label>
-                        <select id="filterHB" class="form-select" onchange="render()">
-                            <option value="">All Health Boards</option>
-                            ${getHealthBoards().map(hb => `<option value="${hb}" ${hbVal === hb ? 'selected' : ''}>${hb}</option>`).join('')}
-                        </select>
+                <!-- Mobile filter toggle -->
+                <button class="fl-filter-toggle" onclick="toggleFilters()">
+                    ${getIcon('search')} ${filtersCollapsed ? 'Show Filters' : 'Hide Filters'}
+                </button>
+
+                <!-- Filters row -->
+                <div class="fl-filters ${filtersCollapsed ? 'collapsed' : ''}">
+                    <div class="form-group fl-name">
+                        <label class="form-label">Name</label>
+                        <input type="text" id="searchName" class="form-input" placeholder="Search locum..." value="${nameVal}" oninput="renderLocumsGrid()">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Computer System</label>
@@ -303,13 +518,29 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Health Board</label>
+                        <select id="filterHB" class="form-select" onchange="render()">
+                            <option value="">All Health Boards</option>
+                            ${getHealthBoards().map(hb => `<option value="${hb}" ${hbVal === hb ? 'selected' : ''}>${hb}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Sort By</label>
                         <select id="sortBy" class="form-select" onchange="render()">
                             <option value="reliability" ${sortVal === 'reliability' ? 'selected' : ''}>Reliability</option>
-                            <option value="name" ${sortVal === 'name' ? 'selected' : ''}>Name</option>
+                            <option value="rate" ${sortVal === 'rate' ? 'selected' : ''}>Rate (low first)</option>
                             <option value="experience" ${sortVal === 'experience' ? 'selected' : ''}>Experience</option>
                             <option value="rating" ${sortVal === 'rating' ? 'selected' : ''}>Rating</option>
+                            <option value="name" ${sortVal === 'name' ? 'selected' : ''}>Name</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Result bar -->
+                <div class="fl-result-bar">
+                    <span class="fl-result-count" id="flResultCount"></span>
+                    <div class="fl-toggle-group">
+                        ${preferredCount > 0 ? `<button class="fl-toggle ${showPreferredOnly ? 'active' : ''}" onclick="togglePreferred()">&#9733; Preferred only (${preferredCount})</button>` : ''}
                     </div>
                 </div>
 

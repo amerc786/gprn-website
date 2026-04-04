@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Report Extra Shifts - GPRN</title>
+    <title>Log External Sessions - GPRN</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -19,15 +19,15 @@
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
-        const pageContent = initAppLayout('locum', 'report', 'Report Extra Shifts');
+        const pageContent = initAppLayout('locum', 'report', 'Log External Sessions');
 
         function getReportedShifts() {
-            const raw = localStorage.getItem('gprn_reported_shifts');
+            const raw = localStorage.getItem('gprn_reported_shifts_' + Auth.getSession().id);
             return raw ? JSON.parse(raw) : [];
         }
 
         function saveReportedShifts(shifts) {
-            localStorage.setItem('gprn_reported_shifts', JSON.stringify(shifts));
+            localStorage.setItem('gprn_reported_shifts_' + Auth.getSession().id, JSON.stringify(shifts));
         }
 
         function renderPage() {
@@ -37,17 +37,17 @@
 
             pageContent.innerHTML = `
                 <p style="font-size: 0.92rem; color: var(--dark-700); line-height: 1.7; margin-bottom: 16px;">
-                    Use this form to report shifts you have worked directly with a practice outside of the GPRN booking system. This helps us keep an accurate record of your activity and ensures your booking reliability and shift history remain up to date.
+                    Use this form to log sessions you have worked directly with a practice outside of the GPRN booking system. This helps us keep an accurate record of your activity and ensures your booking reliability and session history remain up to date.
                 </p>
 
                 <div style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 28px; display: flex; align-items: flex-start; gap: 12px; font-size: 0.88rem; color: var(--dark-700);">
                     <span style="color: var(--warning); flex-shrink: 0; margin-top: 2px;">${getIcon('help-circle')}</span>
-                    <span><strong>Important:</strong> Do not use this page to record shifts if you have previously done ad hoc work that was already booked and confirmed through the GPRN platform. Only report shifts arranged directly with a practice outside this system.</span>
+                    <span><strong>Important:</strong> Do not use this page to record sessions already booked and confirmed through the GPRN platform. Only log sessions arranged directly with a practice outside this system.</span>
                 </div>
 
                 <!-- Report Form -->
                 <div class="content-card">
-                    <div class="content-card-header"><h2>Report a Shift</h2></div>
+                    <div class="content-card-header"><h2>Log a Session</h2></div>
                     <div class="content-card-body">
                         <form id="reportForm" onsubmit="submitReport(event)">
                             <div class="form-group">
@@ -84,7 +84,7 @@
 
                 <!-- History -->
                 <div class="content-card">
-                    <div class="content-card-header"><h2>Previously Reported Shifts</h2></div>
+                    <div class="content-card-header"><h2>Previously Logged Sessions</h2></div>
                     <div class="content-card-body" style="${reported.length === 0 ? '' : 'padding: 0;'}">
                         ${reported.length > 0 ? `
                             <table class="data-table">
@@ -110,8 +110,8 @@
                         ` : `
                             <div class="empty-state" style="padding: 40px 20px;">
                                 <div class="empty-state-icon">${getIcon('file-text')}</div>
-                                <h3>No reported shifts</h3>
-                                <p>Shifts you report outside of the GPRN platform will appear here.</p>
+                                <h3>No logged sessions</h3>
+                                <p>Sessions you log outside of the GPRN platform will appear here.</p>
                             </div>
                         `}
                     </div>
@@ -130,10 +130,22 @@
                 return;
             }
 
+            if (new Date(date) > new Date()) {
+                Toast.show('Cannot log sessions for future dates.', 'error');
+                return;
+            }
+
             const data = getMockData();
             const practice = data.practices.find(p => p.id === practiceId);
 
             const reported = getReportedShifts();
+
+            const duplicate = reported.find(r => r.practiceId === practiceId && r.date === date && r.sessionType === sessionType);
+            if (duplicate) {
+                Toast.show('You have already logged a ' + sessionType + ' session at this practice on this date.', 'warning');
+                return;
+            }
+
             reported.unshift({
                 id: 'rep-' + Date.now(),
                 practiceId: practiceId,
@@ -144,7 +156,7 @@
             });
             saveReportedShifts(reported);
 
-            Toast.show('Shift reported successfully', 'success');
+            Toast.show('Session logged successfully', 'success');
             document.getElementById('reportForm').reset();
             renderPage();
         }

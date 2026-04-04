@@ -75,7 +75,7 @@
                                 </div>
                                 <div></div>
                             </div>
-                            <p class="form-hint" style="margin-bottom: 20px;">These are your default rates that will be pre-filled when you make an offer on a shift. You can adjust rates on a per-offer basis.</p>
+                            <p class="form-hint" style="margin-bottom: 20px;">These are your published rates that practices see when viewing your profile. Practices may suggest different rates when sending you invitations.</p>
                             <button type="submit" class="btn btn-primary">Save Rates</button>
                         </form>
                     </div>
@@ -136,13 +136,22 @@
             const session = Auth.getSession();
             const user = data.locums.find(l => l.id === session.id);
 
-            user.rates = {
-                am: parseInt(document.getElementById('rateAm').value) || 0,
-                pm: parseInt(document.getElementById('ratePm').value) || 0,
-                fullDay: parseInt(document.getElementById('rateFullDay').value) || 0,
-                onCall: parseInt(document.getElementById('rateOnCall').value) || 0,
-                housecall: parseInt(document.getElementById('rateHousecall').value) || 0
-            };
+            const am = parseInt(document.getElementById('rateAm').value) || 0;
+            const pm = parseInt(document.getElementById('ratePm').value) || 0;
+            const fullDay = parseInt(document.getElementById('rateFullDay').value) || 0;
+            const onCall = parseInt(document.getElementById('rateOnCall').value) || 0;
+            const housecall = parseInt(document.getElementById('rateHousecall').value) || 0;
+
+            if (am < 0 || pm < 0 || fullDay < 0 || onCall < 0 || housecall < 0) {
+                Toast.show('Rates cannot be negative.', 'error');
+                return;
+            }
+            if (am === 0 && pm === 0 && fullDay === 0) {
+                Toast.show('Please set at least one rate.', 'warning');
+                return;
+            }
+
+            user.rates = { am, pm, fullDay, onCall, housecall };
 
             saveMockData(data);
             Toast.show('Rates saved successfully', 'success');

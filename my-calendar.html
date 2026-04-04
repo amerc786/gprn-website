@@ -11,6 +11,65 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Calendar-specific overrides */
+        .cal-legend {
+            display: flex; align-items: center; gap: 16px; font-size: 0.78rem; flex-wrap: wrap;
+        }
+        .cal-legend-item {
+            display: flex; align-items: center; gap: 5px;
+        }
+        .cal-legend-dot {
+            width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+        }
+        .cal-avail-bar {
+            display: flex; gap: 2px; margin-top: 4px; width: 100%;
+        }
+        .cal-slot {
+            flex: 1; padding: 3px 0; text-align: center; font-size: 0.65rem; font-weight: 700;
+            border-radius: 4px; cursor: pointer; transition: all 0.15s; user-select: none;
+            min-height: 22px; display: flex; align-items: center; justify-content: center;
+        }
+        .cal-slot:hover { transform: scale(1.05); }
+        .cal-slot.available { background: rgba(16,185,129,0.2); color: var(--success); border: 1.5px solid rgba(16,185,129,0.5); }
+        .cal-slot.unavailable { background: rgba(239,68,68,0.12); color: var(--danger); border: 1.5px solid rgba(239,68,68,0.35); }
+        .cal-slot.none { background: var(--gray-50); color: var(--gray-400); border: 1.5px solid transparent; }
+        .cal-slot.none:hover { border-color: var(--gray-200); }
+
+        /* Inline availability indicators (non-edit mode) */
+        .cal-avail-inline {
+            display: flex; gap: 2px; margin-top: 3px; width: 100%;
+        }
+        .cal-avail-pip {
+            flex: 1; height: 5px; border-radius: 3px;
+        }
+        .cal-avail-pip.available { background: var(--success); }
+        .cal-avail-pip.unavailable { background: var(--danger); }
+        .cal-avail-pip.none { background: var(--gray-100); }
+
+        /* Bulk set bar */
+        .cal-bulk-bar {
+            background: rgba(79,70,229,0.06); border: 1px solid rgba(79,70,229,0.15); border-radius: var(--radius);
+            padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }
+        .cal-bulk-bar label { font-size: 0.85rem; font-weight: 600; color: var(--dark); white-space: nowrap; }
+        .cal-bulk-btn {
+            padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+            border: 1.5px solid var(--gray-200); background: white; cursor: pointer; transition: all 0.15s;
+        }
+        .cal-bulk-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .cal-bulk-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Mobile calendar cells */
+        @media (max-width: 768px) {
+            .cal-slot { min-height: 28px; font-size: 0.6rem; }
+            .calendar-day-cell { min-height: 70px; padding: 4px; }
+            .cal-date { font-size: 0.75rem; }
+            .cal-event { font-size: 0.6rem; padding: 1px 4px; }
+            .cal-bulk-bar { padding: 10px 12px; gap: 8px; }
+            .cal-bulk-bar label { font-size: 0.8rem; }
+        }
+    </style>
 </head>
 <body class="app-layout">
     <script src="mock-data.js"></script>
@@ -20,62 +79,78 @@
         if (!initPage('locum')) throw new Error('Auth required');
 
         const session = Auth.getSession();
-        const data = getMockData();
         const pageContent = initAppLayout('locum', 'calendar', 'My Calendar');
 
         const today = new Date();
+        const todayStr = DateUtils.toISO(today);
         let viewYear = today.getFullYear();
         let viewMonth = today.getMonth();
         let selectedDate = null;
-        let availabilityMode = false;
+        let editMode = false;
 
-        const myOffers = data.offers.filter(o => o.locumId === session.id);
         const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-        // Availability cycle: none -> available -> unavailable -> preferred -> none
-        const availCycle = ['none', 'available', 'unavailable', 'preferred'];
-
-        function toggleAvailabilityMode() {
-            availabilityMode = !availabilityMode;
-            if (availabilityMode) {
-                selectedDate = null;
-                Toast.show('Availability mode enabled. Click days to set your availability.', 'info');
+        function toggleEditMode() {
+            editMode = !editMode;
+            if (!editMode) {
+                Toast.show('Availability saved.', 'success');
             }
             renderCalendar();
         }
 
-        function cycleAvailability(dateStr) {
-            const current = Availability.get(session.id, dateStr);
-            const currentIdx = availCycle.indexOf(current);
-            const nextIdx = (currentIdx + 1) % availCycle.length;
-            const nextStatus = availCycle[nextIdx];
-            Availability.set(session.id, dateStr, nextStatus);
+        function toggleAvailability(dateStr, slot) {
+            // Simple 2-state toggle: none → available → unavailable → none
+            const current = Availability.get(session.id, dateStr, slot);
+            let next;
+            if (current === 'none' || !current) next = 'available';
+            else if (current === 'available' || current === 'preferred') next = 'unavailable';
+            else next = 'none';
+            Availability.set(session.id, dateStr, slot, next);
+            renderCalendar();
+        }
+
+        function bulkSetWeek(status) {
+            // Set all weekdays (Mon-Fri) of current view month
+            const daysInMonth = DateUtils.getDaysInMonth(viewYear, viewMonth);
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const dayOfWeek = new Date(viewYear, viewMonth, d).getDay();
+                // Skip weekends (0 = Sunday, 6 = Saturday)
+                if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+                // Don't overwrite past dates
+                if (dateStr < todayStr) continue;
+                Availability.set(session.id, dateStr, 'both', status);
+            }
+            Toast.show(status === 'none' ? 'Weekday availability cleared for ' + monthNames[viewMonth] + '.' : 'All weekdays in ' + monthNames[viewMonth] + ' set to ' + status + '.', 'info');
             renderCalendar();
         }
 
         function getEventsForDate(dateStr) {
+            const data = getMockData();
+            const myOffers = data.offers.filter(o => o.locumId === session.id);
             const events = [];
-            myOffers.filter(o => o.shiftDate === dateStr && (o.status === 'accepted' || o.status === 'confirmed')).forEach(o => {
+
+            myOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['accepted', 'confirmed'].includes(o.status)).forEach(o => {
                 events.push({ type: 'booked', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
             });
-            myOffers.filter(o => o.shiftDate === dateStr && o.status === 'pending').forEach(o => {
+
+            myOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['sent', 'viewed', 'negotiating'].includes(o.status)).forEach(o => {
                 events.push({ type: 'pending', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
             });
-            const offeredShiftDates = myOffers.map(o => o.shiftDate + '|' + o.practiceName);
-            data.shifts.filter(s => s.date === dateStr && s.status === 'open').forEach(s => {
-                const key = s.date + '|' + s.practiceName;
-                if (!offeredShiftDates.includes(key)) {
-                    events.push({ type: 'available', label: s.practiceName, sessionType: s.sessionType, time: s.startTime + ' - ' + s.endTime, data: s });
-                }
-            });
+
             return events;
+        }
+
+        function getSlotLabel(status) {
+            if (status === 'available' || status === 'preferred') return 'Avail';
+            if (status === 'unavailable') return 'Away';
+            return '';
         }
 
         function renderCalendar() {
             const daysInMonth = DateUtils.getDaysInMonth(viewYear, viewMonth);
             const firstDay = DateUtils.getFirstDayOfMonth(viewYear, viewMonth);
-            const todayStr = DateUtils.toISO(today);
 
             const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
             const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
@@ -83,37 +158,67 @@
 
             let cells = '';
 
+            function renderDayCell(day, dateStr, isOtherMonth) {
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDate;
+                const isPast = dateStr < todayStr;
+                const events = getEventsForDate(dateStr);
+
+                const amSlot = Availability.get(session.id, dateStr, 'am') || 'none';
+                const pmSlot = Availability.get(session.id, dateStr, 'pm') || 'none';
+                // Treat 'preferred' as 'available' for display
+                const amNorm = (amSlot === 'preferred') ? 'available' : amSlot;
+                const pmNorm = (pmSlot === 'preferred') ? 'available' : pmSlot;
+
+                let cellContent = `<div class="cal-date">${day}</div>`;
+
+                // Always show events (bookings)
+                cellContent += events.slice(0, 2).map(e =>
+                    `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`
+                ).join('');
+                if (events.length > 2) {
+                    cellContent += `<div style="font-size: 0.6rem; color: var(--dark-600);">+${events.length - 2} more</div>`;
+                }
+
+                if (editMode && !isPast && !isOtherMonth) {
+                    // Editable AM/PM toggle slots
+                    cellContent += `
+                        <div class="cal-avail-bar">
+                            <div class="cal-slot ${amNorm}" onclick="event.stopPropagation(); toggleAvailability('${dateStr}', 'am')" title="AM: ${amNorm}">
+                                AM
+                            </div>
+                            <div class="cal-slot ${pmNorm}" onclick="event.stopPropagation(); toggleAvailability('${dateStr}', 'pm')" title="PM: ${pmNorm}">
+                                PM
+                            </div>
+                        </div>`;
+                } else {
+                    // Compact availability bar (always visible)
+                    if (amNorm !== 'none' || pmNorm !== 'none') {
+                        cellContent += `
+                            <div class="cal-avail-inline">
+                                <div class="cal-avail-pip ${amNorm}" title="AM: ${amNorm === 'none' ? 'Not set' : amNorm}"></div>
+                                <div class="cal-avail-pip ${pmNorm}" title="PM: ${pmNorm === 'none' ? 'Not set' : pmNorm}"></div>
+                            </div>`;
+                    }
+                }
+
+                return `
+                    <div class="calendar-day-cell ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${isPast && !isOtherMonth ? 'past' : ''}" data-date="${dateStr}" style="${isSelected ? 'background: rgba(79,70,229,0.08); outline: 2px solid var(--primary); outline-offset: -2px;' : ''}">
+                        ${cellContent}
+                    </div>`;
+            }
+
             // Previous month trailing days
             for (let i = firstDay - 1; i >= 0; i--) {
                 const day = daysInPrevMonth - i;
                 const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const events = getEventsForDate(dateStr);
-                const avail = Availability.get(session.id, dateStr);
-                const availClass = avail !== 'none' ? `avail-${avail}` : '';
-                cells += `
-                    <div class="calendar-day-cell other-month ${availabilityMode ? 'cal-day-avail' : ''} ${availClass}" data-date="${dateStr}">
-                        <div class="cal-date">${day}</div>
-                        ${!availabilityMode ? events.slice(0, 2).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('') : ''}
-                        ${availabilityMode && avail !== 'none' ? `<div style="font-size: 0.65rem; font-weight: 600; text-transform: capitalize;">${avail}</div>` : ''}
-                    </div>`;
+                cells += renderDayCell(day, dateStr, true);
             }
 
             // Current month days
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                const isToday = dateStr === todayStr;
-                const isSelected = dateStr === selectedDate && !availabilityMode;
-                const events = getEventsForDate(dateStr);
-                const avail = Availability.get(session.id, dateStr);
-                const availClass = avail !== 'none' ? `avail-${avail}` : '';
-
-                cells += `
-                    <div class="calendar-day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${availabilityMode ? 'cal-day-avail' : ''} ${availClass}" data-date="${dateStr}" style="${isSelected ? 'background: rgba(79,70,229,0.1); outline: 2px solid var(--primary); outline-offset: -2px;' : ''}">
-                        <div class="cal-date">${d}</div>
-                        ${!availabilityMode ? events.slice(0, 3).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('') : ''}
-                        ${!availabilityMode && events.length > 3 ? `<div style="font-size: 0.65rem; color: var(--dark-600);">+${events.length - 3} more</div>` : ''}
-                        ${availabilityMode && avail !== 'none' ? `<div style="font-size: 0.65rem; font-weight: 600; text-transform: capitalize;">${avail}</div>` : ''}
-                    </div>`;
+                cells += renderDayCell(d, dateStr, false);
             }
 
             // Next month fill
@@ -124,40 +229,46 @@
                 const nextYear = viewMonth === 11 ? viewYear + 1 : viewYear;
                 for (let d = 1; d <= (7 - remainder); d++) {
                     const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                    const events = getEventsForDate(dateStr);
-                    const avail = Availability.get(session.id, dateStr);
-                    const availClass = avail !== 'none' ? `avail-${avail}` : '';
-                    cells += `
-                        <div class="calendar-day-cell other-month ${availabilityMode ? 'cal-day-avail' : ''} ${availClass}" data-date="${dateStr}">
-                            <div class="cal-date">${d}</div>
-                            ${!availabilityMode ? events.slice(0, 2).map(e => `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`).join('') : ''}
-                            ${availabilityMode && avail !== 'none' ? `<div style="font-size: 0.65rem; font-weight: 600; text-transform: capitalize;">${avail}</div>` : ''}
-                        </div>`;
+                    cells += renderDayCell(d, dateStr, true);
                 }
             }
 
-            // Day detail section (only in normal mode)
+            // Day detail section
             let dayDetail = '';
-            if (selectedDate && !availabilityMode) {
+            if (selectedDate) {
                 const selEvents = getEventsForDate(selectedDate);
+                const amSlot = Availability.get(session.id, selectedDate, 'am') || 'none';
+                const pmSlot = Availability.get(session.id, selectedDate, 'pm') || 'none';
+                const amNorm = (amSlot === 'preferred') ? 'available' : amSlot;
+                const pmNorm = (pmSlot === 'preferred') ? 'available' : pmSlot;
+
                 dayDetail = `
                     <div class="content-card" style="margin-top: 24px;">
                         <div class="content-card-header">
-                            <h2>Shifts for ${DateUtils.format(selectedDate, 'full')}</h2>
+                            <h2>${DateUtils.format(selectedDate, 'full')}</h2>
                         </div>
                         <div class="content-card-body">
+                            <div style="display: flex; gap: 16px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--gray-100); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; color: var(--dark-600); font-weight: 600;">Your Availability:</span>
+                                <span style="font-size: 0.82rem; font-weight: 600; color: ${amNorm === 'available' ? 'var(--success)' : amNorm === 'unavailable' ? 'var(--danger)' : 'var(--gray-400)'};">
+                                    AM: ${amNorm === 'available' ? 'Available' : amNorm === 'unavailable' ? 'Unavailable' : 'Not set'}
+                                </span>
+                                <span style="font-size: 0.82rem; font-weight: 600; color: ${pmNorm === 'available' ? 'var(--success)' : pmNorm === 'unavailable' ? 'var(--danger)' : 'var(--gray-400)'};">
+                                    PM: ${pmNorm === 'available' ? 'Available' : pmNorm === 'unavailable' ? 'Unavailable' : 'Not set'}
+                                </span>
+                            </div>
                             ${selEvents.length === 0
-                                ? '<p style="font-size: 0.88rem; color: var(--dark-600);">No shifts on this day.</p>'
+                                ? '<p style="font-size: 0.88rem; color: var(--dark-600);">No sessions scheduled for this day.</p>'
                                 : selEvents.map(e => `
                                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
                                         <div style="display: flex; align-items: center; gap: 12px;">
-                                            <div class="cal-event cal-event-${e.type}" style="display: inline-block; margin: 0; padding: 4px 10px; font-size: 0.75rem;">${e.type === 'booked' ? 'Booked' : e.type === 'pending' ? 'Pending' : 'Available'}</div>
+                                            <div class="cal-event cal-event-${e.type}" style="display: inline-block; margin: 0; padding: 4px 10px; font-size: 0.75rem;">${e.type === 'booked' ? 'Booked' : 'Invitation'}</div>
                                             <div>
                                                 <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${e.label}</div>
                                                 <div style="font-size: 0.82rem; color: var(--dark-600);">${e.sessionType} &bull; ${e.time}</div>
                                             </div>
                                         </div>
-                                        ${e.type === 'available' && e.data.id ? `<a href="shift-detail.html?id=${e.data.id}" class="btn btn-primary btn-small">View</a>` : ''}
+                                        ${e.type === 'pending' && e.data.id ? `<a href="shift-detail.html?id=${e.data.id}" class="btn btn-primary btn-small">Review</a>` : ''}
                                     </div>
                                 `).join('')
                             }
@@ -174,39 +285,37 @@
                             <button id="calNext">${getIcon('chevron-right')}</button>
                         </div>
                         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                            <button class="btn ${availabilityMode ? 'btn-coral' : 'btn-secondary'} btn-small" id="availToggle">
-                                ${availabilityMode ? 'Exit Availability Mode' : 'Set Availability'}
+                            <button class="btn ${editMode ? 'btn-coral' : 'btn-primary'} btn-small" id="editToggle">
+                                ${editMode ? 'Done Editing' : 'Edit Availability'}
                             </button>
                             <button class="btn btn-secondary btn-small" id="calToday">Today</button>
-                            <div style="display: flex; align-items: center; gap: 16px; font-size: 0.78rem; flex-wrap: wrap;">
-                                ${availabilityMode ? `
-                                    <span style="display: flex; align-items: center; gap: 4px;">
-                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(16,185,129,0.5); border: 2px solid var(--success);"></span> Available
-                                    </span>
-                                    <span style="display: flex; align-items: center; gap: 4px;">
-                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(239,68,68,0.3); border: 2px solid var(--danger);"></span> Unavailable
-                                    </span>
-                                    <span style="display: flex; align-items: center; gap: 4px;">
-                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(79,70,229,0.3); border: 2px solid var(--primary);"></span> Preferred
-                                    </span>
-                                ` : `
-                                    <span style="display: flex; align-items: center; gap: 4px;">
-                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: var(--primary);"></span> Booked
-                                    </span>
-                                    <span style="display: flex; align-items: center; gap: 4px;">
-                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(16,185,129,0.5);"></span> Available
-                                    </span>
-                                    <span style="display: flex; align-items: center; gap: 4px;">
-                                        <span style="width: 10px; height: 10px; border-radius: 3px; background: rgba(245,158,11,0.5);"></span> Pending
-                                    </span>
-                                `}
+                        </div>
+                    </div>
+
+                    <!-- Always-visible legend -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <div class="cal-legend">
+                            <div class="cal-legend-item">
+                                <span class="cal-legend-dot" style="background: var(--primary);"></span> Booked
+                            </div>
+                            <div class="cal-legend-item">
+                                <span class="cal-legend-dot" style="background: rgba(245,158,11,0.5);"></span> Invitation
+                            </div>
+                            <div class="cal-legend-item">
+                                <span class="cal-legend-dot" style="background: var(--success);"></span> Available
+                            </div>
+                            <div class="cal-legend-item">
+                                <span class="cal-legend-dot" style="background: var(--danger);"></span> Unavailable
                             </div>
                         </div>
                     </div>
 
-                    ${availabilityMode ? `
-                    <div style="background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.2); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; font-size: 0.85rem; color: var(--coral-dark);">
-                        Click on any day to cycle through availability: None &rarr; Available &rarr; Unavailable &rarr; Preferred &rarr; None
+                    ${editMode ? `
+                    <div class="cal-bulk-bar">
+                        <label>Bulk set weekdays:</label>
+                        <button class="cal-bulk-btn" onclick="bulkSetWeek('available')">All Available</button>
+                        <button class="cal-bulk-btn" onclick="bulkSetWeek('unavailable')">All Unavailable</button>
+                        <button class="cal-bulk-btn" onclick="bulkSetWeek('none')">Clear All</button>
                     </div>` : ''}
 
                     <div class="calendar-grid-full">
@@ -231,21 +340,16 @@
             document.getElementById('calToday').addEventListener('click', function() {
                 viewYear = today.getFullYear();
                 viewMonth = today.getMonth();
-                if (!availabilityMode) selectedDate = todayStr;
+                selectedDate = todayStr;
                 renderCalendar();
             });
-            document.getElementById('availToggle').addEventListener('click', toggleAvailabilityMode);
+            document.getElementById('editToggle').addEventListener('click', toggleEditMode);
 
-            // Bind day click
+            // Day click (select day)
             document.querySelectorAll('.calendar-day-cell').forEach(cell => {
                 cell.addEventListener('click', function() {
-                    const dateStr = this.dataset.date;
-                    if (availabilityMode) {
-                        cycleAvailability(dateStr);
-                    } else {
-                        selectedDate = dateStr;
-                        renderCalendar();
-                    }
+                    selectedDate = this.dataset.date;
+                    renderCalendar();
                 });
             });
         }

@@ -40,7 +40,7 @@
 
             let html = `
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
-                <h2 style="font-size: 1.25rem;">Permanent & Salaried Positions</h2>
+                <h2 style="font-size: 1.25rem;">Permanent & Salaried Opportunities</h2>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     ${getIcon('filter')}
                     <select id="boardFilter" class="form-input" style="width: auto; min-width: 200px; padding: 8px 12px; font-size: 0.88rem;">
@@ -107,7 +107,7 @@
                                 </div>
                                 <button class="btn btn-primary btn-small" id="job-interest-${job.id}" ${isClosed ? 'disabled style="opacity: 0.5; pointer-events: none;"' : ''} onclick="expressInterest('${job.id}')">
                                     ${getIcon('mail')}
-                                    Express Interest
+                                    Enquire About Role
                                 </button>
                             </div>
                         </div>`;
@@ -137,14 +137,14 @@
             }
 
             Modal.show({
-                title: 'Express Interest - ' + job.practiceName,
+                title: 'Enquire About Role - ' + job.practiceName,
                 size: 'medium',
                 body: '<div style="margin-bottom:16px;">'
                     + '<p style="font-size:0.9rem;color:var(--dark-600);margin-bottom:12px;"><strong>' + job.title + '</strong> at ' + job.practiceName + '</p>'
                     + '<p style="font-size:0.85rem;color:var(--dark-600);margin-bottom:4px;">' + job.sessions + ' &bull; ' + job.salary + '</p>'
                     + '</div>'
                     + '<div class="form-group">'
-                    + '<label class="form-label">Cover Message</label>'
+                    + '<label class="form-label">Your Message</label>'
                     + '<textarea class="form-input" id="jobCoverMsg" rows="5" placeholder="Introduce yourself and explain your interest in this position..."></textarea>'
                     + '</div>',
                 footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button>'
@@ -152,7 +152,7 @@
                 onOpen: function(overlay) {
                     overlay.querySelector('#submitInterestBtn').addEventListener('click', function() {
                         var coverMsg = overlay.querySelector('#jobCoverMsg').value.trim();
-                        if (!coverMsg) { Toast.show('Please write a cover message.', 'warning'); return; }
+                        if (!coverMsg) { Toast.show('Please include a message introducing yourself.', 'warning'); return; }
 
                         var freshData = getMockData();
                         if (!freshData.jobApplications) freshData.jobApplications = [];
