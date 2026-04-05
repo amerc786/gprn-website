@@ -704,6 +704,118 @@
                 allProfiles = AdminApproval.listProfiles('all');
                 updateCounts();
                 renderList();
+
+                // Self-diagnostic: if the list is empty, figure out WHY and
+                // surface it on-screen so the admin isn't staring at a blank page.
+                if (!allProfiles || allProfiles.length === 0) {
+                    runEmptyListDiagnostic();
+                }
+            }
+
+            function runEmptyListDiagnostic() {
+                var SUPABASE_URL = 'https://fysilmypgpewbzyxkymx.supabase.co';
+                var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5c2lsbXlwZ3Bld2J6eXhreW14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzODQwNjYsImV4cCI6MjA5MDk2MDA2Nn0.BEgSiUO_RWvk0ixZSORuKFqwMG6nYNGsCqWCftukBnE';
+                var raw = localStorage.getItem('gprn_session');
+                var session = null;
+                try { session = JSON.parse(raw); } catch (e) {}
+
+                // Remove any previous banner
+                var existing = document.getElementById('adminDiagBanner');
+                if (existing) existing.remove();
+
+                var msg = '';
+                var cta = '';
+
+                if (!session) {
+                    msg = 'You are not signed in. Please log in again.';
+                    cta = '<a href="login.html" class="btn-primary" style="display:inline-block; margin-top:10px; padding:8px 16px; background:#5B4DFF; color:#fff; border-radius:8px; text-decoration:none; font-weight:600;">Log in</a>';
+                    showDiagBanner('error', msg, cta);
+                    return;
+                }
+                if (!session.is_admin) {
+                    msg = 'Your session does not have admin privileges. This can happen if you were bootstrapped as admin after your last login. Log out and back in to refresh.';
+                    cta = '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#5B4DFF; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>';
+                    showDiagBanner('error', msg, cta);
+                    return;
+                }
+                if (!session.access_token) {
+                    msg = 'Session has no access token. Please log out and log back in.';
+                    cta = '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#5B4DFF; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>';
+                    showDiagBanner('error', msg, cta);
+                    return;
+                }
+
+                // Hit the profiles REST endpoint directly to read the real status
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', SUPABASE_URL + '/rest/v1/profiles?select=id,email,approval_status,is_admin', true);
+                xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+                xhr.setRequestHeader('Authorization', 'Bearer ' + session.access_token);
+                xhr.onload = function() {
+                    var status = xhr.status;
+                    var body = xhr.responseText;
+                    var parsed = null;
+                    try { parsed = JSON.parse(body); } catch (e) {}
+
+                    if (status === 401) {
+                        showDiagBanner('error',
+                            'Your login session has expired (HTTP 401). Please log out and log back in to continue.',
+                            '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#5B4DFF; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>'
+                        );
+                    } else if (status === 403) {
+                        showDiagBanner('error',
+                            'Access denied by Supabase (HTTP 403). Your admin row may be missing or RLS is blocking it. Try logging out and back in first.',
+                            '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#5B4DFF; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>'
+                        );
+                    } else if (status === 200 && Array.isArray(parsed) && parsed.length === 0) {
+                        showDiagBanner('warn',
+                            'Supabase returned no profiles at all. The profiles table is empty or RLS is filtering everything. If you recently ran SQL that affected this table, you may need to restore it.',
+                            ''
+                        );
+                    } else if (status === 200 && Array.isArray(parsed) && parsed.length > 0) {
+                        // Data IS there — the client-side list call must have failed.
+                        // Force-set allProfiles from this fetch and re-render.
+                        showDiagBanner('warn',
+                            'Profiles exist but the admin client returned empty. Auto-recovering from direct fetch (' + parsed.length + ' rows).',
+                            ''
+                        );
+                        // Refetch full rows for a proper render
+                        var xhr2 = new XMLHttpRequest();
+                        xhr2.open('GET', SUPABASE_URL + '/rest/v1/profiles?select=id,email,role,approval_status,is_admin,profile_data,created_at,approved_at,rejected_at,rejection_reason&order=created_at.desc', true);
+                        xhr2.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+                        xhr2.setRequestHeader('Authorization', 'Bearer ' + session.access_token);
+                        xhr2.onload = function() {
+                            if (xhr2.status === 200) {
+                                try {
+                                    allProfiles = JSON.parse(xhr2.responseText) || [];
+                                    updateCounts();
+                                    renderList();
+                                } catch (e) {}
+                            }
+                        };
+                        xhr2.send();
+                    } else {
+                        showDiagBanner('error',
+                            'Unexpected response from Supabase (HTTP ' + status + '). Response: ' + (body || '(empty)').substring(0, 300),
+                            ''
+                        );
+                    }
+                };
+                xhr.onerror = function() {
+                    showDiagBanner('error', 'Network error reaching Supabase. Check your internet connection.', '');
+                };
+                xhr.send();
+            }
+
+            function showDiagBanner(kind, msg, cta) {
+                var bg = kind === 'error' ? '#FEF2F2' : '#FFFBEB';
+                var border = kind === 'error' ? '#FECACA' : '#FDE68A';
+                var color = kind === 'error' ? '#991B1B' : '#92400E';
+                var banner = document.createElement('div');
+                banner.id = 'adminDiagBanner';
+                banner.style.cssText = 'background:' + bg + ';border:1px solid ' + border + ';color:' + color + ';padding:16px 20px;border-radius:12px;margin:16px 0;font-size:0.9rem;line-height:1.5;';
+                banner.innerHTML = '<strong>Why the list is empty:</strong><br>' + msg + (cta ? '<div>' + cta + '</div>' : '');
+                var main = document.querySelector('.admin-main') || document.querySelector('main') || document.body;
+                main.insertBefore(banner, main.firstChild);
             }
 
             // ---- Modal machinery ----
