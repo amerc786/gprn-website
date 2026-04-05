@@ -203,6 +203,102 @@
             display: flex;
             gap: 0.5rem;
             margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .admin-flag {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            background: linear-gradient(135deg, #F59E0B, #EF4444);
+            color: #fff;
+            margin-left: 0.35rem;
+        }
+        .menu-wrap {
+            position: relative;
+            flex: 1;
+        }
+        .menu-wrap .btn-admin {
+            width: 100%;
+        }
+        .menu-pop {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #10233D;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            padding: 0.35rem;
+            z-index: 100;
+            display: none;
+        }
+        .menu-pop.open { display: block; }
+        .menu-pop button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            border: none;
+            color: #CBD5E1;
+            padding: 0.55rem 0.7rem;
+            border-radius: 7px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .menu-pop button:hover { background: rgba(255,255,255,0.06); color: #F8FAFC; }
+        .menu-pop button.danger { color: #FCA5A5; }
+        .menu-pop button.danger:hover { background: rgba(239,68,68,0.1); }
+        .menu-pop hr { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 0.25rem 0; }
+        .admin-modal label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #CBD5E1;
+            margin-bottom: 0.35rem;
+        }
+        .admin-modal input[type="text"],
+        .admin-modal input[type="email"],
+        .admin-modal input[type="tel"],
+        .admin-modal input[type="number"] {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            color: #F8FAFC;
+            font-family: inherit;
+            font-size: 0.9rem;
+            margin-bottom: 0.85rem;
+            box-sizing: border-box;
+        }
+        .admin-modal input:focus,
+        .admin-modal textarea:focus {
+            outline: none;
+            border-color: #5B4DFF;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        @media (max-width: 520px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+        .danger-banner {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            color: #FCA5A5;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            line-height: 1.5;
         }
         .btn-admin {
             flex: 1;
@@ -509,17 +605,42 @@
                             +   '<button class="btn-admin primary" data-action="approve" data-id="' + esc(p.id) + '">Approve</button>'
                             + '</div>';
                     } else {
+                        // Build dropdown menu for approved/rejected accounts
+                        var menuItems = '';
+                        menuItems += '<button data-action="view" data-id="' + esc(p.id) + '">View details</button>';
+                        menuItems += '<button data-action="edit" data-id="' + esc(p.id) + '">Edit profile</button>';
+                        menuItems += '<button data-action="reset-password" data-id="' + esc(p.id) + '">Send password reset email</button>';
+                        if (p.approval_status === 'approved') {
+                            menuItems += '<button data-action="resend-approval" data-id="' + esc(p.id) + '">Resend approval email</button>';
+                            menuItems += '<hr>';
+                            if (p.is_admin) {
+                                menuItems += '<button data-action="demote" data-id="' + esc(p.id) + '">Revoke admin</button>';
+                            } else {
+                                menuItems += '<button data-action="promote" data-id="' + esc(p.id) + '">Promote to admin</button>';
+                            }
+                            menuItems += '<button class="danger" data-action="suspend" data-id="' + esc(p.id) + '">Suspend account</button>';
+                        } else if (p.approval_status === 'rejected') {
+                            menuItems += '<hr>';
+                            menuItems += '<button data-action="unsuspend" data-id="' + esc(p.id) + '">Re-approve / unsuspend</button>';
+                        }
+                        menuItems += '<hr>';
+                        menuItems += '<button class="danger" data-action="delete" data-id="' + esc(p.id) + '">Delete permanently</button>';
+
                         actions = ''
                             + '<div class="profile-actions">'
-                            +   '<button class="btn-admin ghost" data-action="view" data-id="' + esc(p.id) + '">View details</button>'
+                            +   '<div class="menu-wrap">'
+                            +     '<button class="btn-admin ghost" data-menu-toggle="' + esc(p.id) + '">Manage ▾</button>'
+                            +     '<div class="menu-pop" data-menu-for="' + esc(p.id) + '">' + menuItems + '</div>'
+                            +   '</div>'
                             + '</div>';
                     }
 
+                    var adminBadge = p.is_admin ? '<span class="admin-flag">Admin</span>' : '';
                     html += ''
                         + '<div class="profile-card">'
                         +   '<div class="profile-card-head">'
                         +     '<div>'
-                        +       '<div class="profile-name">' + esc(name) + '</div>'
+                        +       '<div class="profile-name">' + esc(name) + adminBadge + '</div>'
                         +       '<div class="profile-email">' + esc(p.email) + '</div>'
                         +     '</div>'
                         +     '<span class="role-badge ' + esc(p.role) + '">' + esc(p.role) + '</span>'
@@ -532,19 +653,52 @@
                 html += '</div>';
                 container.innerHTML = html;
 
+                // Wire up menu toggles
+                container.querySelectorAll('button[data-menu-toggle]').forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var id = btn.getAttribute('data-menu-toggle');
+                        var pop = container.querySelector('.menu-pop[data-menu-for="' + id + '"]');
+                        // Close all other menus
+                        container.querySelectorAll('.menu-pop.open').forEach(function(m) {
+                            if (m !== pop) m.classList.remove('open');
+                        });
+                        if (pop) pop.classList.toggle('open');
+                    });
+                });
+
                 // Wire up action buttons
                 container.querySelectorAll('button[data-action]').forEach(function(btn) {
-                    btn.addEventListener('click', function() {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
                         var action = btn.getAttribute('data-action');
                         var id = btn.getAttribute('data-id');
                         var profile = allProfiles.find(function(p) { return p.id === id; });
                         if (!profile) return;
-                        if (action === 'view') showDetails(profile);
-                        else if (action === 'approve') confirmApprove(profile);
-                        else if (action === 'reject') openRejectModal(profile);
+                        // Close open menu
+                        container.querySelectorAll('.menu-pop.open').forEach(function(m) { m.classList.remove('open'); });
+
+                        switch (action) {
+                            case 'view': showDetails(profile); break;
+                            case 'approve': confirmApprove(profile); break;
+                            case 'reject': openRejectModal(profile); break;
+                            case 'edit': openEditModal(profile); break;
+                            case 'reset-password': confirmResetPassword(profile); break;
+                            case 'resend-approval': confirmResendApproval(profile); break;
+                            case 'promote': confirmPromote(profile); break;
+                            case 'demote': confirmDemote(profile); break;
+                            case 'suspend': openSuspendModal(profile); break;
+                            case 'unsuspend': confirmUnsuspend(profile); break;
+                            case 'delete': openDeleteModal(profile); break;
+                        }
                     });
                 });
             }
+
+            // Close menus on outside click
+            document.addEventListener('click', function() {
+                document.querySelectorAll('.menu-pop.open').forEach(function(m) { m.classList.remove('open'); });
+            });
 
             function loadProfiles() {
                 allProfiles = AdminApproval.listProfiles('all');
@@ -652,6 +806,325 @@
                             showToast('Rejection failed: ' + (res && res.error || 'unknown'), 'error');
                             btn.disabled = false;
                             btn.textContent = 'Reject account';
+                        }
+                    });
+                });
+            }
+
+            // ---- Edit profile ----
+            function openEditModal(profile) {
+                var pd = profile.profile_data || {};
+                var fieldRows = '';
+                if (profile.role === 'locum') {
+                    fieldRows = ''
+                        + '<div class="form-row">'
+                        +   '<div><label>First name</label><input type="text" id="f_firstName" value="' + esc(pd.firstName || '') + '"></div>'
+                        +   '<div><label>Last name</label><input type="text" id="f_lastName" value="' + esc(pd.lastName || '') + '"></div>'
+                        + '</div>'
+                        + '<label>Title</label><input type="text" id="f_title" value="' + esc(pd.title || '') + '">'
+                        + '<label>Phone</label><input type="tel" id="f_phone" value="' + esc(pd.phone || '') + '">'
+                        + '<label>GMC number</label><input type="text" id="f_gmcNumber" value="' + esc(pd.gmcNumber || '') + '">'
+                        + '<div class="form-row">'
+                        +   '<div><label>Years experience</label><input type="number" id="f_yearsExperience" value="' + esc(pd.yearsExperience || '') + '"></div>'
+                        +   '<div><label>Health board</label><input type="text" id="f_healthBoard" value="' + esc(pd.healthBoard || '') + '"></div>'
+                        + '</div>';
+                } else {
+                    fieldRows = ''
+                        + '<label>Practice name</label><input type="text" id="f_practiceName" value="' + esc(pd.practiceName || '') + '">'
+                        + '<label>Contact name</label><input type="text" id="f_contactName" value="' + esc(pd.contactName || '') + '">'
+                        + '<label>Phone</label><input type="tel" id="f_phone" value="' + esc(pd.phone || '') + '">'
+                        + '<div class="form-row">'
+                        +   '<div><label>City</label><input type="text" id="f_city" value="' + esc(pd.city || '') + '"></div>'
+                        +   '<div><label>Health board</label><input type="text" id="f_healthBoard" value="' + esc(pd.healthBoard || '') + '"></div>'
+                        + '</div>'
+                        + '<label>ODS code</label><input type="text" id="f_odsCode" value="' + esc(pd.odsCode || '') + '">';
+                }
+
+                openModal(''
+                    + '<h3>Edit profile</h3>'
+                    + '<p style="color:#94A3B8; font-size:0.85rem; margin-bottom:1rem;">' + esc(profile.email) + '</p>'
+                    + fieldRows
+                    + '<div class="modal-actions">'
+                    +   '<button class="btn-admin ghost" id="cancelEdit">Cancel</button>'
+                    +   '<button class="btn-admin primary" id="saveEdit">Save changes</button>'
+                    + '</div>'
+                , function(overlay) {
+                    overlay.querySelector('#cancelEdit').addEventListener('click', function() {
+                        document.body.removeChild(overlay);
+                    });
+                    overlay.querySelector('#saveEdit').addEventListener('click', function() {
+                        var btn = overlay.querySelector('#saveEdit');
+                        btn.disabled = true;
+                        btn.textContent = 'Saving…';
+                        var updates = {};
+                        overlay.querySelectorAll('input[id^="f_"]').forEach(function(inp) {
+                            var key = inp.id.replace('f_', '');
+                            var val = inp.value.trim();
+                            if (inp.type === 'number') {
+                                updates[key] = val === '' ? null : Number(val);
+                            } else {
+                                updates[key] = val;
+                            }
+                        });
+                        var res = AdminApproval.updateProfileData(profile.id, updates);
+                        if (res && res.success) {
+                            showToast('Profile updated', 'success');
+                            document.body.removeChild(overlay);
+                            loadProfiles();
+                        } else {
+                            showToast('Update failed: ' + (res && res.error || 'unknown'), 'error');
+                            btn.disabled = false;
+                            btn.textContent = 'Save changes';
+                        }
+                    });
+                });
+            }
+
+            // ---- Reset password ----
+            function confirmResetPassword(profile) {
+                openModal(''
+                    + '<h3>Send password reset email?</h3>'
+                    + '<p style="color:#CBD5E1; font-size:0.9rem; margin-bottom:1rem;">'
+                    +   'A password reset link will be emailed to <strong>' + esc(profile.email) + '</strong>. The user will be able to set a new password by clicking the link.'
+                    + '</p>'
+                    + '<div class="modal-actions">'
+                    +   '<button class="btn-admin ghost" id="cancelReset">Cancel</button>'
+                    +   '<button class="btn-admin primary" id="doReset">Send reset link</button>'
+                    + '</div>'
+                , function(overlay) {
+                    overlay.querySelector('#cancelReset').addEventListener('click', function() {
+                        document.body.removeChild(overlay);
+                    });
+                    overlay.querySelector('#doReset').addEventListener('click', function() {
+                        var btn = overlay.querySelector('#doReset');
+                        btn.disabled = true;
+                        btn.textContent = 'Sending…';
+                        var res = AdminApproval.callAdminAction('reset_password', profile.id);
+                        if (res && res.success) {
+                            showToast('Password reset email sent to ' + profile.email, 'success');
+                            document.body.removeChild(overlay);
+                        } else {
+                            showToast('Reset failed: ' + (res && res.error || 'unknown'), 'error');
+                            btn.disabled = false;
+                            btn.textContent = 'Send reset link';
+                        }
+                    });
+                });
+            }
+
+            // ---- Resend approval email ----
+            function confirmResendApproval(profile) {
+                openModal(''
+                    + '<h3>Resend approval email?</h3>'
+                    + '<p style="color:#CBD5E1; font-size:0.9rem; margin-bottom:1rem;">'
+                    +   'The branded approval email will be sent again to <strong>' + esc(profile.email) + '</strong> via Resend.'
+                    + '</p>'
+                    + '<div class="modal-actions">'
+                    +   '<button class="btn-admin ghost" id="cancelResend">Cancel</button>'
+                    +   '<button class="btn-admin primary" id="doResend">Resend email</button>'
+                    + '</div>'
+                , function(overlay) {
+                    overlay.querySelector('#cancelResend').addEventListener('click', function() {
+                        document.body.removeChild(overlay);
+                    });
+                    overlay.querySelector('#doResend').addEventListener('click', function() {
+                        var btn = overlay.querySelector('#doResend');
+                        btn.disabled = true;
+                        btn.textContent = 'Sending…';
+                        var res = AdminApproval.callAdminAction('resend_approval_email', profile.id);
+                        if (res && res.success) {
+                            showToast('Approval email resent', 'success');
+                            document.body.removeChild(overlay);
+                        } else {
+                            showToast('Resend failed: ' + (res && res.error || 'unknown'), 'error');
+                            btn.disabled = false;
+                            btn.textContent = 'Resend email';
+                        }
+                    });
+                });
+            }
+
+            // ---- Promote / demote admin ----
+            function confirmPromote(profile) {
+                openModal(''
+                    + '<h3>Promote to admin?</h3>'
+                    + '<p style="color:#CBD5E1; font-size:0.9rem; margin-bottom:1rem;">'
+                    +   '<strong>' + esc(displayNameFor(profile)) + '</strong> will gain full admin access — they will be able to approve, suspend, delete and edit any user. Only do this for people you trust.'
+                    + '</p>'
+                    + '<div class="modal-actions">'
+                    +   '<button class="btn-admin ghost" id="cancelPromote">Cancel</button>'
+                    +   '<button class="btn-admin primary" id="doPromote">Promote</button>'
+                    + '</div>'
+                , function(overlay) {
+                    overlay.querySelector('#cancelPromote').addEventListener('click', function() {
+                        document.body.removeChild(overlay);
+                    });
+                    overlay.querySelector('#doPromote').addEventListener('click', function() {
+                        var btn = overlay.querySelector('#doPromote');
+                        btn.disabled = true;
+                        btn.textContent = 'Promoting…';
+                        var res = AdminApproval.setAdminFlag(profile.id, true);
+                        if (res && res.success) {
+                            showToast('Promoted to admin', 'success');
+                            document.body.removeChild(overlay);
+                            loadProfiles();
+                        } else {
+                            showToast('Promotion failed: ' + (res && res.error || 'unknown'), 'error');
+                            btn.disabled = false;
+                            btn.textContent = 'Promote';
+                        }
+                    });
+                });
+            }
+
+            function confirmDemote(profile) {
+                if (profile.id === session.supabase_user_id) {
+                    showToast('You cannot revoke your own admin access from here. Use the SQL editor.', 'error');
+                    return;
+                }
+                openModal(''
+                    + '<h3>Revoke admin access?</h3>'
+                    + '<p style="color:#CBD5E1; font-size:0.9rem; margin-bottom:1rem;">'
+                    +   '<strong>' + esc(displayNameFor(profile)) + '</strong> will lose admin privileges. They will still be able to log in as a normal user.'
+                    + '</p>'
+                    + '<div class="modal-actions">'
+                    +   '<button class="btn-admin ghost" id="cancelDemote">Cancel</button>'
+                    +   '<button class="btn-admin danger" id="doDemote">Revoke admin</button>'
+                    + '</div>'
+                , function(overlay) {
+                    overlay.querySelector('#cancelDemote').addEventListener('click', function() {
+                        document.body.removeChild(overlay);
+                    });
+                    overlay.querySelector('#doDemote').addEventListener('click', function() {
+                        var btn = overlay.querySelector('#doDemote');
+                        btn.disabled = true;
+                        btn.textContent = 'Revoking…';
+                        var res = AdminApproval.setAdminFlag(profile.id, false);
+                        if (res && res.success) {
+                            showToast('Admin access revoked', 'success');
+                            document.body.removeChild(overlay);
+                            loadProfiles();
+                        } else {
+                            showToast('Revoke failed: ' + (res && res.error || 'unknown'), 'error');
+                            btn.disabled = false;
+                            btn.textContent = 'Revoke admin';
+                        }
+                    });
+                });
+            }
+
+            // ---- Suspend / unsuspend ----
+            function openSuspendModal(profile) {
+                if (profile.id === session.supabase_user_id) {
+                    showToast('You cannot suspend your own account.', 'error');
+                    return;
+                }
+                openModal(''
+                    + '<h3>Suspend this account?</h3>'
+                    + '<p style="color:#CBD5E1; font-size:0.9rem; margin-bottom:1rem;">'
+                    +   '<strong>' + esc(displayNameFor(profile)) + '</strong> will be signed out within 60 seconds and will no longer be able to log in or access any data. You can re-approve them later from the Rejected tab.'
+                    + '</p>'
+                    + '<label>Reason (optional, shown to the user)</label>'
+                    + '<textarea id="suspendReason" placeholder="e.g. Violation of platform terms"></textarea>'
+                    + '<div class="modal-actions">'
+                    +   '<button class="btn-admin ghost" id="cancelSuspend">Cancel</button>'
+                    +   '<button class="btn-admin danger" id="doSuspend">Suspend account</button>'
+                    + '</div>'
+                , function(overlay) {
+                    overlay.querySelector('#cancelSuspend').addEventListener('click', function() {
+                        document.body.removeChild(overlay);
+                    });
+                    overlay.querySelector('#doSuspend').addEventListener('click', function() {
+                        var btn = overlay.querySelector('#doSuspend');
+                        var reason = overlay.querySelector('#suspendReason').value.trim();
+                        btn.disabled = true;
+                        btn.textContent = 'Suspending…';
+                        var res = AdminApproval.suspendProfile(profile.id, reason || null);
+                        if (res && res.success) {
+                            showToast('Account suspended', 'success');
+                            document.body.removeChild(overlay);
+                            loadProfiles();
+                        } else {
+                            showToast('Suspend failed: ' + (res && res.error || 'unknown'), 'error');
+                            btn.disabled = false;
+                            btn.textContent = 'Suspend account';
+                        }
+                    });
+                });
+            }
+
+            function confirmUnsuspend(profile) {
+                openModal(''
+                    + '<h3>Re-approve this account?</h3>'
+                    + '<p style="color:#CBD5E1; font-size:0.9rem; margin-bottom:1rem;">'
+                    +   '<strong>' + esc(displayNameFor(profile)) + '</strong> will regain full access to the platform. They will need to log in again.'
+                    + '</p>'
+                    + '<div class="modal-actions">'
+                    +   '<button class="btn-admin ghost" id="cancelUnsuspend">Cancel</button>'
+                    +   '<button class="btn-admin primary" id="doUnsuspend">Re-approve</button>'
+                    + '</div>'
+                , function(overlay) {
+                    overlay.querySelector('#cancelUnsuspend').addEventListener('click', function() {
+                        document.body.removeChild(overlay);
+                    });
+                    overlay.querySelector('#doUnsuspend').addEventListener('click', function() {
+                        var btn = overlay.querySelector('#doUnsuspend');
+                        btn.disabled = true;
+                        btn.textContent = 'Processing…';
+                        var res = AdminApproval.unsuspendProfile(profile.id);
+                        if (res && res.success) {
+                            showToast('Account re-approved', 'success');
+                            document.body.removeChild(overlay);
+                            loadProfiles();
+                        } else {
+                            showToast('Action failed: ' + (res && res.error || 'unknown'), 'error');
+                            btn.disabled = false;
+                            btn.textContent = 'Re-approve';
+                        }
+                    });
+                });
+            }
+
+            // ---- Delete permanently ----
+            function openDeleteModal(profile) {
+                if (profile.id === session.supabase_user_id) {
+                    showToast('You cannot delete your own admin account from here.', 'error');
+                    return;
+                }
+                openModal(''
+                    + '<h3>Permanently delete this account?</h3>'
+                    + '<div class="danger-banner">'
+                    +   '<strong>This action cannot be undone.</strong> The user record, profile, and all associated auth data will be permanently removed. Any historical shifts, bookings, and messages they created will remain in the database but will no longer be linked to an active account.'
+                    + '</div>'
+                    + '<p style="color:#CBD5E1; font-size:0.9rem; margin-bottom:0.35rem;">'
+                    +   'To confirm, type the email address <code style="color:#FCA5A5">' + esc(profile.email) + '</code> below:'
+                    + '</p>'
+                    + '<input type="text" id="deleteConfirm" placeholder="' + esc(profile.email) + '">'
+                    + '<div class="modal-actions">'
+                    +   '<button class="btn-admin ghost" id="cancelDelete">Cancel</button>'
+                    +   '<button class="btn-admin danger" id="doDelete" disabled>Delete forever</button>'
+                    + '</div>'
+                , function(overlay) {
+                    var input = overlay.querySelector('#deleteConfirm');
+                    var delBtn = overlay.querySelector('#doDelete');
+                    input.addEventListener('input', function() {
+                        delBtn.disabled = input.value.trim().toLowerCase() !== profile.email.toLowerCase();
+                    });
+                    overlay.querySelector('#cancelDelete').addEventListener('click', function() {
+                        document.body.removeChild(overlay);
+                    });
+                    delBtn.addEventListener('click', function() {
+                        delBtn.disabled = true;
+                        delBtn.textContent = 'Deleting…';
+                        var res = AdminApproval.callAdminAction('delete_user', profile.id);
+                        if (res && res.success) {
+                            showToast('Account deleted', 'success');
+                            document.body.removeChild(overlay);
+                            loadProfiles();
+                        } else {
+                            showToast('Delete failed: ' + (res && res.error || 'unknown'), 'error');
+                            delBtn.disabled = false;
+                            delBtn.textContent = 'Delete forever';
                         }
                     });
                 });

@@ -433,6 +433,143 @@
                 return { error: 'Failed to reject profile (HTTP ' + patchRes.status + ')' };
             }
             return { success: true };
+        },
+
+        // Suspend an already-approved user (flips approval_status to rejected)
+        suspendProfile: function(profileId, reason) {
+            var patchRes = _syncRequest('PATCH', '/rest/v1/profiles?id=eq.' + encodeURIComponent(profileId), {
+                approval_status: 'rejected',
+                rejected_at: new Date().toISOString(),
+                rejected_by: _getUserId(),
+                rejection_reason: reason || 'Account suspended by admin'
+            });
+            if (patchRes.status >= 400) {
+                return { error: 'Failed to suspend profile (HTTP ' + patchRes.status + ')' };
+            }
+            return { success: true };
+        },
+
+        // Re-approve a previously rejected/suspended user
+        unsuspendProfile: function(profileId) {
+            // Load profile so we can push profile_data into the blob if missing
+            var res = _syncRequest('GET', '/rest/v1/profiles?id=eq.' + encodeURIComponent(profileId) + '&select=*');
+            if (res.status !== 200 || !Array.isArray(res.body) || !res.body.length) {
+                return { error: 'Profile not found' };
+            }
+            var p = res.body[0];
+
+            // Ensure the user exists in the app_state blob
+            var data = _fetchBlobSync();
+            if (!data) {
+                data = { locums: [], practices: [], shifts: [], offers: [], availability: {}, messages: [], invoices: [], notifications: [], cpdEvents: [], feedback: [] };
+            }
+            data.locums = data.locums || [];
+            data.practices = data.practices || [];
+            var pd = JSON.parse(JSON.stringify(p.profile_data || {}));
+            if (p.role === 'locum') {
+                if (!data.locums.some(function(l) { return l.email === p.email; })) {
+                    pd.id = pd.id || ('loc-' + String(data.locums.length + 1).padStart(3, '0'));
+                    pd.role = 'locum';
+                    data.locums.push(pd);
+                }
+            } else {
+                if (!data.practices.some(function(pr) { return pr.email === p.email; })) {
+                    pd.id = pd.id || ('prac-' + String(data.practices.length + 1).padStart(3, '0'));
+                    pd.role = 'practice';
+                    data.practices.push(pd);
+                }
+            }
+            var blobRes = _writeBlobSync(data);
+            if (blobRes.status >= 400) {
+                return { error: 'Failed to update app_state (HTTP ' + blobRes.status + ')' };
+            }
+
+            var patchRes = _syncRequest('PATCH', '/rest/v1/profiles?id=eq.' + encodeURIComponent(profileId), {
+                approval_status: 'approved',
+                approved_at: new Date().toISOString(),
+                approved_by: _getUserId(),
+                rejected_at: null,
+                rejected_by: null,
+                rejection_reason: null
+            });
+            if (patchRes.status >= 400) {
+                return { error: 'Failed to unsuspend profile (HTTP ' + patchRes.status + ')' };
+            }
+            _cache = data;
+            _lastFetchAt = Date.now();
+            try { localStorage.setItem('gprn_data', JSON.stringify(data)); } catch(e) {}
+            return { success: true };
+        },
+
+        // Update the profile_data JSONB column (name, phone, GMC etc.)
+        // Also mirror the changes into app_state.locums/practices.
+        updateProfileData: function(profileId, newProfileData) {
+            var getRes = _syncRequest('GET', '/rest/v1/profiles?id=eq.' + encodeURIComponent(profileId) + '&select=*');
+            if (getRes.status !== 200 || !Array.isArray(getRes.body) || !getRes.body.length) {
+                return { error: 'Profile not found' };
+            }
+            var p = getRes.body[0];
+
+            var merged = Object.assign({}, p.profile_data || {}, newProfileData || {});
+            var patchRes = _syncRequest('PATCH', '/rest/v1/profiles?id=eq.' + encodeURIComponent(profileId), {
+                profile_data: merged
+            });
+            if (patchRes.status >= 400) {
+                return { error: 'Failed to update profile (HTTP ' + patchRes.status + ')' };
+            }
+
+            // Mirror into blob if the user is already approved and present
+            if (p.approval_status === 'approved') {
+                var data = _fetchBlobSync();
+                if (data) {
+                    var arr = p.role === 'locum' ? (data.locums || []) : (data.practices || []);
+                    var idx = arr.findIndex(function(u) { return u.email === p.email; });
+                    if (idx !== -1) {
+                        Object.keys(newProfileData || {}).forEach(function(k) {
+                            arr[idx][k] = newProfileData[k];
+                        });
+                        _writeBlobSync(data);
+                        _cache = data;
+                        _lastFetchAt = Date.now();
+                        try { localStorage.setItem('gprn_data', JSON.stringify(data)); } catch(e) {}
+                    }
+                }
+            }
+            return { success: true };
+        },
+
+        // Promote / demote admin (trigger allows this only when caller is already admin)
+        setAdminFlag: function(profileId, isAdmin) {
+            var patchRes = _syncRequest('PATCH', '/rest/v1/profiles?id=eq.' + encodeURIComponent(profileId), {
+                is_admin: !!isAdmin
+            });
+            if (patchRes.status >= 400) {
+                return { error: 'Failed to change admin flag (HTTP ' + patchRes.status + ')' };
+            }
+            return { success: true };
+        },
+
+        // Invoke the admin-actions Edge Function (service-role operations)
+        //   action: 'reset_password' | 'delete_user' | 'resend_approval_email'
+        callAdminAction: function(action, profileId) {
+            var token = _getAccessToken();
+            if (!token) return { error: 'Not signed in' };
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', SUPABASE_URL + '/functions/v1/admin-actions', false);
+            xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            try {
+                xhr.send(JSON.stringify({ action: action, profile_id: profileId }));
+            } catch (e) {
+                return { error: 'Network error: ' + (e && e.message || e) };
+            }
+            var body = null;
+            try { body = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch(e) { body = xhr.responseText; }
+            if (xhr.status >= 400 || (body && body.error)) {
+                return { error: (body && body.error) || ('Admin action failed (HTTP ' + xhr.status + ')') };
+            }
+            return body || { success: true };
         }
     };
 

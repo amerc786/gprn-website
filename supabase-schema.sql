@@ -69,6 +69,12 @@ set search_path = public
 as $$
 declare caller_is_admin boolean;
 begin
+    -- When auth.uid() is NULL the update is coming from a backend context
+    -- (SQL Editor, service role, superuser, SECURITY DEFINER helpers like
+    -- bootstrap_admin). Those are trusted — only guard REST-originated updates.
+    if auth.uid() is null then
+        return new;
+    end if;
     caller_is_admin := public.is_admin();
     if not caller_is_admin then
         if new.approval_status is distinct from old.approval_status then
