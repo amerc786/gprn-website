@@ -302,7 +302,7 @@ function renderShiftCard(shift, showActions) {
 function renderStatCard(icon, label, value, trend, color, helpText) {
     return `
     <div class="dash-stat-card">
-        <div class="dash-stat-icon" style="background: ${color || 'rgba(79,70,229,0.1)'}; color: ${color ? '#fff' : 'var(--primary)'}">
+        <div class="dash-stat-icon" style="background: ${color || 'rgba(91,77,255,0.1)'}; color: ${color ? '#fff' : 'var(--primary)'}">
             ${getIcon(icon)}
         </div>
         <div class="dash-stat-info">
@@ -498,7 +498,7 @@ function getPageHead(title) {
 function renderRatingStars(rating, size = 16) {
     let stars = '';
     for (let i = 1; i <= 5; i++) {
-        const fill = i <= Math.round(rating) ? '#F97316' : '#E2E8F0';
+        const fill = i <= Math.round(rating) ? '#F59E0B' : '#E2E8F0';
         stars += `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${fill}" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
     }
     return `<span class="rating-stars">${stars}</span>`;

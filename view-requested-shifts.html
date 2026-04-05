@@ -123,9 +123,9 @@
                 var n = needs[i];
                 var color = getNeedStatusColor(n);
                 var bgColor, textColor;
-                if (color === 'open') { bgColor = 'rgba(79,70,229,0.15)'; textColor = 'var(--primary)'; }
-                else if (color === 'filled') { bgColor = 'rgba(16,185,129,0.15)'; textColor = 'var(--success)'; }
-                else { bgColor = 'rgba(14,165,233,0.15)'; textColor = 'var(--secondary)'; }
+                if (color === 'open') { bgColor = 'rgba(91, 77, 255,0.15)'; textColor = 'var(--primary)'; }
+                else if (color === 'filled') { bgColor = 'rgba(34, 197, 94,0.15)'; textColor = 'var(--success)'; }
+                else { bgColor = 'rgba(59, 130, 246,0.15)'; textColor = 'var(--secondary)'; }
 
                 html += '<div data-need-id="' + n.id + '" style="font-size: 0.65rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-bottom: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: ' + bgColor + '; color: ' + textColor + ';">'
                     + n.sessionType + ' ' + n.startTime
@@ -170,7 +170,7 @@
                 var loc = locums.find(function(l) { return l.id === acceptedOffer.locumId; });
                 if (loc) {
                     var rate = acceptedOffer.agreedRate || acceptedOffer.proposedRate;
-                    info += '<div style="padding: 12px; background: rgba(16,185,129,0.06); border-radius: 8px; border: 1px solid rgba(16,185,129,0.15); margin-bottom: 16px;">'
+                    info += '<div style="padding: 12px; background: rgba(34, 197, 94,0.06); border-radius: 8px; border: 1px solid rgba(34, 197, 94,0.15); margin-bottom: 16px;">'
                         + '<div style="display: flex; align-items: center; gap: 10px;">'
                         + '<div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.7rem;">' + getInitials(loc.firstName + ' ' + loc.lastName) + '</div>'
                         + '<div><strong style="color: var(--dark);">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</strong>'
@@ -205,7 +205,7 @@
 
                     // Negotiations
                     if (offer.negotiations && offer.negotiations.length > 0) {
-                        info += '<div style="width:100%;padding:8px 12px;background:rgba(14,165,233,0.06);border-radius:6px;margin-top:4px;">'
+                        info += '<div style="width:100%;padding:8px 12px;background:rgba(59, 130, 246,0.06);border-radius:6px;margin-top:4px;">'
                             + '<div style="font-size:0.75rem;font-weight:600;color:var(--secondary);margin-bottom:4px;">Rate Negotiation</div>';
                         offer.negotiations.forEach(function(n) {
                             info += '<div style="font-size:0.78rem;color:var(--dark-600);margin-bottom:2px;"><strong>' + (n.from === 'practice' ? 'You' : 'Locum') + ':</strong> ' + formatCurrency(n.rate) + (n.accepted ? ' ✓ Agreed' : '') + (n.message ? ' — ' + sanitizeHTML(n.message) : '') + '</div>';
@@ -333,7 +333,7 @@
                     var loc = currentData.locums.find(function(l) { return l.id === acceptedOffer.locumId; });
                     if (loc) {
                         var rate = acceptedOffer.agreedRate || acceptedOffer.proposedRate;
-                        html += '<div style="padding:12px;background:rgba(16,185,129,0.06);border-radius:8px;margin-top:8px;border:1px solid rgba(16,185,129,0.15);">'
+                        html += '<div style="padding:12px;background:rgba(34, 197, 94,0.06);border-radius:8px;margin-top:8px;border:1px solid rgba(34, 197, 94,0.15);">'
                             + '<div style="display:flex;align-items:center;gap:10px;">'
                             + '<div class="header-avatar" style="width:32px;height:32px;font-size:0.65rem;">' + getInitials(loc.firstName + ' ' + loc.lastName) + '</div>'
                             + '<div><strong style="font-size:0.85rem;color:var(--dark);">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</strong>'

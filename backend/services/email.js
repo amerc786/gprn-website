@@ -56,7 +56,7 @@ async function sendEmail(toEmail, subject, body, type, userId) {
                 text: body,
                 html: '<div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;padding:24px;">' +
                     '<div style="text-align:center;margin-bottom:24px;">' +
-                    '<span style="font-size:24px;font-weight:700;"><span style="color:#4F46E5;">GP</span>RN</span>' +
+                    '<span style="font-size:24px;font-weight:700;"><span style="color:#5B4DFF;">GP</span>RN</span>' +
                     '</div>' +
                     '<div style="background:#f9f9f9;border-radius:8px;padding:24px;">' +
                     '<h2 style="color:#1a1a2e;margin-top:0;">' + subject + '</h2>' +

@@ -151,7 +151,7 @@
             </div>
 
             ${sessionNeeds.length === 0 ? `
-            <div class="content-card" style="margin-bottom: 24px; border-left: 4px solid var(--primary); background: rgba(79,70,229,0.03);">
+            <div class="content-card" style="margin-bottom: 24px; border-left: 4px solid var(--primary); background: rgba(91, 77, 255,0.03);">
                 <div class="content-card-body" style="padding: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">
                         <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--dark); margin-bottom: 6px;">Welcome to GPRN</h3>
@@ -164,7 +164,7 @@
 
             <div class="dash-stats-row">
                 <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('openSessions')" role="button" aria-label="View open sessions details" tabindex="0">
-                    <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
+                    <div class="dash-stat-icon" style="background: rgba(91, 77, 255,0.1); color: var(--primary)">
                         ${getIcon('search')}
                     </div>
                     <div class="dash-stat-info">
@@ -173,7 +173,7 @@
                     </div>
                 </div>
                 <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('activeOffers')" role="button" aria-label="View active offers details" tabindex="0">
-                    <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
+                    <div class="dash-stat-icon" style="background: rgba(91, 77, 255,0.1); color: var(--primary)">
                         ${getIcon('mail')}
                     </div>
                     <div class="dash-stat-info">
@@ -182,7 +182,7 @@
                     </div>
                 </div>
                 <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('fillRate')" role="button" aria-label="View fill rate details" tabindex="0">
-                    <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
+                    <div class="dash-stat-icon" style="background: rgba(91, 77, 255,0.1); color: var(--primary)">
                         ${getIcon('check')}
                     </div>
                     <div class="dash-stat-info">
@@ -191,7 +191,7 @@
                     </div>
                 </div>
                 <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('monthlySpend')" role="button" aria-label="View monthly spend details" tabindex="0">
-                    <div class="dash-stat-icon" style="background: rgba(79,70,229,0.1); color: var(--primary)">
+                    <div class="dash-stat-icon" style="background: rgba(91, 77, 255,0.1); color: var(--primary)">
                         ${getIcon('pound')}
                     </div>
                     <div class="dash-stat-info">
@@ -481,7 +481,7 @@
                             const locName = loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown';
                             const rate = offer.sessionType === 'Full Day' ? (offer.rateFullDay || 820) : (offer.sessionType === 'PM' ? (offer.ratePM || 430) : (offer.rateAM || 430));
                             details = `
-                                <div style="margin-top: 8px; padding: 10px; background: rgba(16,185,129,0.08); border-radius: var(--radius); font-size: 0.85rem;">
+                                <div style="margin-top: 8px; padding: 10px; background: rgba(34, 197, 94,0.08); border-radius: var(--radius); font-size: 0.85rem;">
                                     ${getIcon('user')} <strong>${locName}</strong> &bull; ${formatCurrency(rate)}/session
                                 </div>`;
                         }
@@ -731,8 +731,8 @@
                         star.addEventListener('click', () => {
                             selectedRating = parseInt(star.dataset.star);
                             stars.forEach((s, idx) => {
-                                s.setAttribute('fill', idx < selectedRating ? '#F97316' : '#E2E8F0');
-                                s.setAttribute('stroke', idx < selectedRating ? '#F97316' : '#E2E8F0');
+                                s.setAttribute('fill', idx < selectedRating ? '#14B8A6' : '#E2E8F0');
+                                s.setAttribute('stroke', idx < selectedRating ? '#14B8A6' : '#E2E8F0');
                             });
                         });
                     });

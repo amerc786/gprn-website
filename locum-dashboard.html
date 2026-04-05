@@ -115,7 +115,7 @@
             ` : ''}
 
             ${upcomingAccepted.length === 0 && pendingInvitations.length === 0 ? `
-            <div class="content-card" style="margin-bottom: 24px; border-left: 4px solid var(--primary); background: rgba(79,70,229,0.03);">
+            <div class="content-card" style="margin-bottom: 24px; border-left: 4px solid var(--primary); background: rgba(91, 77, 255,0.03);">
                 <div class="content-card-body" style="padding: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">
                         <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--dark); margin-bottom: 6px;">Get started with GPRN</h3>
@@ -127,11 +127,11 @@
             ` : ''}
 
             <div class="dash-stats-row">
-                ${renderStatCard('calendar', 'Upcoming Sessions', upcomingAccepted.length, null, 'rgba(79,70,229,0.15)')}
+                ${renderStatCard('calendar', 'Upcoming Sessions', upcomingAccepted.length, null, 'rgba(91, 77, 255,0.15)')}
                 ${renderStatCard('mail', 'Pending Invitations', pendingInvitations.length, null, 'rgba(245,158,11,0.15)')}
-                ${renderStatCard('pound', "This Month's Earnings", formatCurrency(monthEarnings), null, 'rgba(16,185,129,0.15)')}
+                ${renderStatCard('pound', "This Month's Earnings", formatCurrency(monthEarnings), null, 'rgba(34, 197, 94,0.15)')}
                 <div onclick="showReliabilityBreakdown()" style="cursor:pointer;" role="button" tabindex="0" aria-label="View reliability score breakdown">
-                ${renderStatCard('activity', 'Booking Reliability', reliability + '%', null, 'rgba(14,165,233,0.15)', 'Click for details')}
+                ${renderStatCard('activity', 'Booking Reliability', reliability + '%', null, 'rgba(59, 130, 246,0.15)', 'Click for details')}
                 </div>
             </div>
 
@@ -393,8 +393,8 @@
                         star.addEventListener('click', () => {
                             selectedRating = parseInt(star.dataset.star);
                             stars.forEach((s, idx) => {
-                                s.setAttribute('fill', idx < selectedRating ? '#F97316' : '#E2E8F0');
-                                s.setAttribute('stroke', idx < selectedRating ? '#F97316' : '#E2E8F0');
+                                s.setAttribute('fill', idx < selectedRating ? '#14B8A6' : '#E2E8F0');
+                                s.setAttribute('stroke', idx < selectedRating ? '#14B8A6' : '#E2E8F0');
                             });
                         });
                     });
