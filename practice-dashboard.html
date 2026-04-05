@@ -302,7 +302,7 @@
                         <span class="w-1.5 h-1.5 bg-brand-green rounded-full"></span>
                         Practice Manager Portal
                     </div>
-                    <h2 class="font-display text-[44px] font-bold text-navy tracking-tight leading-[1.15] pb-1 mb-2">${greeting}, ${escapeHtml(session.firstName || practiceName)}.</h2>
+                    <h2 class="font-display text-[44px] font-bold text-navy tracking-tight leading-[1.25] pb-2 mb-1">${greeting}, ${escapeHtml(session.firstName || practiceName)}.</h2>
                     <p class="text-slate-500 text-[15px] font-medium">${subTitle}</p>
                 </div>
                 <a href="post-shift.html" class="bg-navy text-white px-6 py-3 rounded-full text-[14px] font-bold flex items-center gap-2 hover:bg-slate-800 transition-all shadow-md hover:shadow-lg active:scale-95 group focus:outline-none focus:ring-4 focus:ring-slate-200 self-start sm:self-auto">
@@ -322,7 +322,7 @@
                         ${openSessions.length > 0 ? `<span class="text-rose-600 text-[12px] font-bold bg-rose-50 px-2.5 py-1 rounded-md border border-rose-100 flex items-center gap-1">Action Needed</span>` : ''}
                     </div>
                     <div>
-                        <div class="font-display text-[32px] font-bold text-navy leading-none mb-1 ${openSessions.length > 0 ? 'group-hover:text-rose-600' : ''} transition-colors">${openSessions.length}</div>
+                        <div class="text-[36px] font-extrabold text-navy leading-tight mb-1 tracking-tight ${openSessions.length > 0 ? 'group-hover:text-rose-600' : ''} transition-colors">${openSessions.length}</div>
                         <div class="text-[13px] text-slate-500 font-semibold uppercase tracking-wider">Open Sessions</div>
                     </div>
                 </button>
@@ -335,7 +335,7 @@
                         ${activeOffers.length > 0 ? `<span class="w-2.5 h-2.5 bg-brand-green rounded-full status-pulse"></span>` : ''}
                     </div>
                     <div>
-                        <div class="font-display text-[32px] font-bold text-navy leading-none mb-1">${activeOffers.length}</div>
+                        <div class="text-[36px] font-extrabold text-navy leading-tight mb-1 tracking-tight">${activeOffers.length}</div>
                         <div class="text-[13px] text-slate-500 font-semibold uppercase tracking-wider">Pending Offers</div>
                     </div>
                 </button>
@@ -347,7 +347,7 @@
                         </div>
                     </div>
                     <div>
-                        <div class="font-display text-[32px] font-bold text-navy leading-none mb-1">${totalNeedCount > 0 ? fillRateDisplay + '%' : '—'}</div>
+                        <div class="text-[36px] font-extrabold text-navy leading-tight mb-1 tracking-tight">${totalNeedCount > 0 ? fillRateDisplay + '%' : '—'}</div>
                         <div class="text-[13px] text-slate-500 font-semibold uppercase tracking-wider">Fill Rate (30d)</div>
                     </div>
                 </button>
@@ -359,7 +359,7 @@
                         </div>
                     </div>
                     <div>
-                        <div class="font-display text-[32px] font-bold text-navy leading-none mb-1 tracking-tight">${formatCurrency(monthlySpend)}</div>
+                        <div class="text-[36px] font-extrabold text-navy leading-tight mb-1 tracking-tight tracking-tight">${formatCurrency(monthlySpend)}</div>
                         <div class="text-[13px] text-slate-500 font-semibold uppercase tracking-wider">Spend (This Mo)</div>
                     </div>
                 </button>
@@ -420,7 +420,7 @@
                     ${accent}
                     <div class="w-20 shrink-0 text-center border-r border-slate-100 mr-6">
                         <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">${dayLabel}</div>
-                        <div class="text-2xl font-display font-bold ${dayNumColor}">${dayNum}</div>
+                        <div class="text-2xl font-extrabold ${dayNumColor}">${dayNum}</div>
                     </div>
                     ${content}
                 </div>`;
@@ -524,7 +524,7 @@
                         <div class="text-[12px] font-medium text-slate-500">${escapeHtml(app.startTime || '')} - ${escapeHtml(app.endTime || '')} (${escapeHtml(app.sessionType || '')})</div>
                     </div>
                     <div class="col-span-2">
-                        <div class="text-[15px] font-display font-bold text-navy">${formatCurrency(app.rate)}</div>
+                        <div class="text-[15px] font-bold text-navy">${formatCurrency(app.rate)}</div>
                         <div class="text-[11px] font-semibold text-slate-400">Per Session</div>
                     </div>
                     <div class="col-span-3 flex justify-end items-center gap-2 pr-2">${actionCell}</div>
