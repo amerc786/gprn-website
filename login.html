@@ -1,88 +1,309 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Login - GPRN</title>
+    <title>Log In - GPRN</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Clash Display', 'sans-serif'],
+                        sans: ['Manrope', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            50: '#F8FAFC',
+                            100: '#F1F5F9',
+                            800: '#1E293B',
+                            900: '#0F172A',
+                            950: '#020617',
+                        },
+                        emerald: {
+                            500: '#10B981',
+                            700: '#047857',
+                            900: '#064E3B',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Fonts -->
+    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@800;900&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body { font-family: 'Manrope', sans-serif; background: #F8FAFC; color: #0F172A; }
+        .font-display { font-family: 'Clash Display', sans-serif; }
+        .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        /* GPRN logo */
+        .gprn-logo { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+        .gprn-logo-mark {
+            width: 38px; height: 38px; border-radius: 12px; background: #101524;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 1px 2px rgba(16,21,36,0.08);
+        }
+        .gprn-logo-mark span {
+            color: #ffffff; font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 900; font-size: 24px; line-height: 1;
+            letter-spacing: -0.025em; padding-top: 2px;
+        }
+        .gprn-logo-word {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #101524; font-weight: 900; font-size: 32px;
+            line-height: 0.8; letter-spacing: -0.05em;
+            display: inline-flex; align-items: baseline; padding-top: 4px;
+        }
+        .gprn-logo-word::after {
+            content: ''; display: inline-block; width: 9px; height: 9px;
+            background: #0F8B5A; margin-left: 4px; margin-bottom: 3px; align-self: flex-end;
+        }
+        .gprn-logo-word--light { color: #ffffff; }
+
+        /* Brand panel dot pattern */
+        .dot-pattern {
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.08) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+
+        /* Inputs */
+        .field-input {
+            width: 100%; padding: 14px 16px; border-radius: 12px;
+            border: 1px solid #E2E8F0; background: #ffffff;
+            font-size: 0.95rem; color: #0F172A;
+            transition: border-color .15s, box-shadow .15s, background .15s;
+        }
+        .field-input::placeholder { color: #94A3B8; }
+        .field-input:focus {
+            outline: none; border-color: #0F8B5A;
+            box-shadow: 0 0 0 4px rgba(15, 139, 90, 0.12);
+        }
+        .field-input.invalid { border-color: #DC2626; box-shadow: 0 0 0 4px rgba(220,38,38,0.1); }
+
+        /* Primary button */
+        .btn-primary {
+            width: 100%; display: inline-flex; align-items: center; justify-content: center;
+            gap: 8px; padding: 14px 20px; border-radius: 9999px;
+            background: #101524; color: #ffffff; font-weight: 600; font-size: 0.95rem;
+            border: none; cursor: pointer; transition: transform .15s, background .15s;
+        }
+        .btn-primary:hover { background: #1E293B; transform: translateY(-1px); }
+        .btn-primary:active { transform: translateY(0); }
+
+        .btn-ghost {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 10px 16px; border-radius: 9999px; background: transparent;
+            color: #475569; font-weight: 600; font-size: 0.85rem;
+            border: 1px solid #E2E8F0; cursor: pointer; transition: background .15s;
+        }
+        .btn-ghost:hover { background: #F1F5F9; }
+
+        /* Tabs */
+        .role-tabs {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+            padding: 4px; background: #F1F5F9; border-radius: 12px;
+        }
+        .role-tab {
+            padding: 10px 12px; border-radius: 9px; border: none; background: transparent;
+            font-weight: 600; font-size: 0.85rem; color: #64748B; cursor: pointer;
+            transition: background .15s, color .15s, box-shadow .15s;
+        }
+        .role-tab.active {
+            background: #ffffff; color: #0F172A;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+        }
+
+        .form-error-msg { color: #DC2626; font-size: 0.8rem; margin-top: 6px; min-height: 1em; }
+
+        /* Password toggle */
+        .pw-wrap { position: relative; }
+        .pw-wrap .field-input { padding-right: 48px; }
+        .pw-toggle {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: transparent; border: none; padding: 6px; cursor: pointer; color: #94A3B8;
+            display: flex; align-items: center;
+        }
+        .pw-toggle:hover { color: #475569; }
+
+        /* Animations */
+        @keyframes rise {
+            0% { opacity: 0; transform: translateY(12px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .rise { animation: rise .6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .rise-delay-1 { animation-delay: .08s; }
+        .rise-delay-2 { animation-delay: .16s; }
+        .rise-delay-3 { animation-delay: .24s; }
+    </style>
 </head>
-<body>
-    <div class="auth-page">
-        <div class="hero-bg-shapes">
-            <div class="shape shape-1"></div>
-            <div class="shape shape-2"></div>
-            <div class="shape shape-3"></div>
-        </div>
+<body class="min-h-screen">
 
-        <div class="auth-card">
-            <div class="auth-logo">
-                <a href="index.html" class="logo">
-                    <span class="logo-icon">GP</span><span class="logo-text">RN</span>
+    <div class="min-h-screen grid lg:grid-cols-[1.1fr_1fr] bg-slate-50">
+
+        <!-- LEFT: BRAND PANEL -->
+        <aside class="relative hidden lg:flex flex-col justify-between bg-[#0F172A] text-white p-12 overflow-hidden">
+            <div class="absolute inset-0 dot-pattern opacity-80"></div>
+            <div class="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl"></div>
+            <div class="absolute -bottom-32 -left-16 w-[32rem] h-[32rem] rounded-full bg-sky-500/5 blur-3xl"></div>
+
+            <!-- Brand -->
+            <div class="relative z-10">
+                <a href="index.html" class="gprn-logo">
+                    <span class="gprn-logo-mark"><span>G</span></span>
+                    <span class="gprn-logo-word gprn-logo-word--light">PRN</span>
                 </a>
-                <p>The Right GP, Right Now</p>
             </div>
 
-            <div class="auth-tabs">
-                <button class="auth-tab active" data-tab="locum" id="tabLocum">Locum GP</button>
-                <button class="auth-tab" data-tab="practice" id="tabPractice">Practice Manager</button>
+            <!-- Pitch -->
+            <div class="relative z-10 max-w-md">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 backdrop-blur-sm mb-6">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span class="text-xs font-semibold tracking-wide uppercase text-white/80">Built in Wales, for Welsh GPs</span>
+                </div>
+                <h1 class="font-display text-4xl xl:text-5xl font-semibold leading-[1.05] mb-5">Your Welsh locum network, in one place.</h1>
+                <p class="text-slate-300 text-base leading-relaxed">Publish your availability, receive direct offers from surgeries, and message them inside the platform. No agency markups. No email threads.</p>
+
+                <!-- Feature tiles -->
+                <div class="mt-10 grid grid-cols-2 gap-3">
+                    <div class="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                        <i class="ph ph-calendar-check text-emerald-400 text-xl"></i>
+                        <p class="mt-2 text-sm font-semibold text-white">Availability-first booking</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Practices come to you</p>
+                    </div>
+                    <div class="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                        <i class="ph ph-chats-circle text-emerald-400 text-xl"></i>
+                        <p class="mt-2 text-sm font-semibold text-white">In-app messaging</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Zero email chasing</p>
+                    </div>
+                    <div class="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                        <i class="ph ph-shield-check text-emerald-400 text-xl"></i>
+                        <p class="mt-2 text-sm font-semibold text-white">Digital passport</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Compliance, sorted</p>
+                    </div>
+                    <div class="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                        <i class="ph ph-wallet text-emerald-400 text-xl"></i>
+                        <p class="mt-2 text-sm font-semibold text-white">Transparent rates</p>
+                        <p class="text-xs text-slate-400 mt-0.5">No hidden markups</p>
+                    </div>
+                </div>
             </div>
 
-            <form id="loginForm" novalidate>
-                <div class="form-group">
-                    <label class="form-label" for="email">Email Address</label>
-                    <input type="email" id="email" class="form-input" placeholder="you@example.com" required data-validate="email">
-                    <div class="form-error"></div>
+            <!-- Footer -->
+            <div class="relative z-10 flex items-center justify-between text-xs text-slate-400">
+                <span>&copy; 2026 GPRN</span>
+                <div class="flex items-center gap-4">
+                    <a href="index.html" class="hover:text-white transition-colors">Home</a>
+                    <a href="index.html#platform" class="hover:text-white transition-colors">Platform</a>
+                    <a href="index.html#how-it-works" class="hover:text-white transition-colors">Features</a>
                 </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="password">Password</label>
-                    <div class="password-wrapper">
-                        <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
-                        <button type="button" class="password-toggle" id="pwToggle" aria-label="Show password">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        </button>
-                    </div>
-                    <div class="form-error"></div>
-                </div>
-
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
-                    <label class="form-checkbox">
-                        <input type="checkbox" id="remember"> Remember me
-                    </label>
-                    <a href="#" id="forgotPasswordLink" style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">Forgot Password?</a>
-                </div>
-
-                <!-- Forgot Password Inline Form (hidden by default) -->
-                <div id="forgotPasswordForm" style="display:none; margin-bottom: 24px; padding: 16px; background: var(--gray-50, #f8f9fa); border-radius: 12px; border: 1px solid var(--gray-200, #e5e7eb);">
-                    <p style="font-size: 0.85rem; color: var(--dark-600, #555); margin-bottom: 12px;">Enter your email address and we will send you a reset link.</p>
-                    <div class="form-group" style="margin-bottom: 12px;">
-                        <input type="email" id="resetEmail" class="form-input" placeholder="you@example.com">
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button type="button" id="sendResetBtn" class="btn btn-primary btn-small" style="flex:1;">Send Reset Link</button>
-                        <button type="button" id="cancelResetBtn" class="btn btn-ghost btn-small">Cancel</button>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">Log In</button>
-            </form>
-
-            <div class="auth-footer">
-                Don't have an account? <a href="register-locum.html" id="registerLink">Register</a>
             </div>
+        </aside>
 
-        </div>
+        <!-- RIGHT: AUTH FORM -->
+        <main class="flex items-center justify-center p-6 sm:p-10 lg:p-12">
+            <div class="w-full max-w-md">
+
+                <!-- Mobile brand -->
+                <div class="lg:hidden mb-8 flex items-center justify-between">
+                    <a href="index.html" class="gprn-logo">
+                        <span class="gprn-logo-mark"><span>G</span></span>
+                        <span class="gprn-logo-word">PRN</span>
+                    </a>
+                    <a href="index.html" class="text-xs font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1">
+                        <i class="ph ph-arrow-left"></i> Back home
+                    </a>
+                </div>
+
+                <div class="rise">
+                    <h2 class="font-display text-3xl lg:text-4xl font-semibold text-slate-900 mb-2">Welcome back.</h2>
+                    <p class="text-slate-600 mb-8">Sign in to manage your shifts, offers and messages.</p>
+                </div>
+
+                <!-- Role tabs -->
+                <div class="role-tabs rise rise-delay-1 mb-6">
+                    <button type="button" class="role-tab active" data-tab="locum" id="tabLocum">
+                        <i class="ph ph-stethoscope mr-1"></i>Locum GP
+                    </button>
+                    <button type="button" class="role-tab" data-tab="practice" id="tabPractice">
+                        <i class="ph ph-buildings mr-1"></i>Practice Manager
+                    </button>
+                </div>
+
+                <form id="loginForm" novalidate class="rise rise-delay-2">
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-slate-800 mb-2" for="email">Email address</label>
+                        <input type="email" id="email" class="field-input form-input" placeholder="you@example.com" required data-validate="email" autocomplete="email">
+                        <div class="form-error form-error-msg"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="block text-sm font-semibold text-slate-800 mb-2" for="password">Password</label>
+                        <div class="pw-wrap">
+                            <input type="password" id="password" class="field-input form-input" placeholder="Enter your password" required autocomplete="current-password">
+                            <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password">
+                                <i class="ph ph-eye text-lg"></i>
+                            </button>
+                        </div>
+                        <div class="form-error form-error-msg"></div>
+                    </div>
+
+                    <div class="flex items-center justify-between mb-6">
+                        <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+                            <input type="checkbox" id="remember" class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                            Remember me
+                        </label>
+                        <a href="#" id="forgotPasswordLink" class="text-sm font-semibold text-emerald-700 hover:text-emerald-900">Forgot password?</a>
+                    </div>
+
+                    <!-- Forgot password inline -->
+                    <div id="forgotPasswordForm" style="display:none;" class="mb-6 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                        <p class="text-sm text-slate-600 mb-3">Enter your email address and we'll send you a reset link.</p>
+                        <input type="email" id="resetEmail" class="field-input mb-3" placeholder="you@example.com">
+                        <div class="flex gap-2">
+                            <button type="button" id="sendResetBtn" class="btn-primary" style="flex:1;">Send reset link</button>
+                            <button type="button" id="cancelResetBtn" class="btn-ghost">Cancel</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        Log in
+                        <i class="ph ph-arrow-right"></i>
+                    </button>
+                </form>
+
+                <div class="rise rise-delay-3 mt-6 text-center text-sm text-slate-600">
+                    Don't have an account?
+                    <a href="register-locum.html" id="registerLink" class="font-semibold text-emerald-700 hover:text-emerald-900">Register</a>
+                </div>
+
+                <div class="mt-10 pt-6 border-t border-slate-200 flex items-center justify-between text-xs text-slate-400">
+                    <span>Secure sign-in</span>
+                    <span class="flex items-center gap-1"><i class="ph ph-lock-key text-emerald-600"></i> TLS encrypted</span>
+                </div>
+
+            </div>
+        </main>
+
     </div>
 
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
-<script src="supabase-client.js"></script>
+    <script src="supabase-client.js"></script>
     <script src="components.js"></script>
     <script>
         (function() {
@@ -120,8 +341,8 @@
                 const isPassword = passwordInput.type === 'password';
                 passwordInput.type = isPassword ? 'text' : 'password';
                 this.innerHTML = isPassword
-                    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
-                    : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+                    ? '<i class="ph ph-eye-slash text-lg"></i>'
+                    : '<i class="ph ph-eye text-lg"></i>';
             });
 
             // Forgot password flow
@@ -150,7 +371,6 @@
                     Toast.show('Please enter a valid email address.', 'warning');
                     return;
                 }
-                // Try API forgot-password first
                 fetch('/api/auth/forgot-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -158,7 +378,6 @@
                 }).then(function(r) { return r.json(); }).then(function(result) {
                     if (result.success) {
                         Toast.show('Password reset link sent to ' + resetEmail + '. Check your email.', 'success');
-                        // Show the token for demo purposes
                         if (result.token) {
                             Toast.show('Demo: Reset token is ' + result.token, 'info', 8000);
                         }
@@ -168,7 +387,6 @@
                         Toast.show(result.error || 'Failed to send reset email', 'error');
                     }
                 }).catch(function() {
-                    // Fallback to mock
                     if (typeof PasswordReset !== 'undefined') {
                         var r = PasswordReset.request(resetEmail);
                         if (r.success) {
