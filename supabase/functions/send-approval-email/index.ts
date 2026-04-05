@@ -56,8 +56,23 @@ function displayName(record: ProfileRecord): string {
   return record.email;
 }
 
+function firstNameOnly(record: ProfileRecord): string {
+  const pd = (record.profile_data ?? {}) as Record<string, string>;
+  if (record.role === "locum") {
+    if (pd.firstName) return pd.firstName;
+  } else {
+    // For practices, use the contact's first name if we have it
+    if (pd.contactName) {
+      const bits = pd.contactName.trim().split(/\s+/);
+      if (bits.length) return bits[0];
+    }
+    if (pd.practiceName) return pd.practiceName;
+  }
+  return "";
+}
+
 function approvalEmailHtml(record: ProfileRecord): { subject: string; html: string; text: string } {
-  const name = displayName(record);
+  const firstName = firstNameOnly(record);
   const loginUrl = `${APP_URL}/login.html`;
   const subject = "Your GPRN account has been approved";
 
@@ -79,10 +94,10 @@ function approvalEmailHtml(record: ProfileRecord): { subject: string; html: stri
         <tr>
           <td style="padding:40px;">
             <h1 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:26px;font-weight:800;color:#081425;margin:0 0 16px;letter-spacing:-0.01em;">
-              You're approved ${escapeHtml(name.split(" ")[0] || "")}
+              ${firstName ? "You're approved, " + escapeHtml(firstName) : "You're approved"}
             </h1>
             <p style="font-size:16px;line-height:1.6;color:#334155;margin:0 0 20px;">
-              Good news — your GPRN account has been reviewed and approved. You now have full access to the platform.
+              Good news — your GPRN account has been reviewed and approved. You now have access to the platform.
             </p>
             <p style="font-size:16px;line-height:1.6;color:#334155;margin:0 0 28px;">
               ${record.role === "locum"
@@ -118,7 +133,7 @@ function approvalEmailHtml(record: ProfileRecord): { subject: string; html: stri
 }
 
 function rejectionEmailHtml(record: ProfileRecord): { subject: string; html: string; text: string } {
-  const name = displayName(record);
+  const firstName = firstNameOnly(record);
   const reason = record.rejection_reason;
   const subject = "Update on your GPRN application";
 
@@ -150,7 +165,7 @@ function rejectionEmailHtml(record: ProfileRecord): { subject: string; html: str
               Thank you for your application
             </h1>
             <p style="font-size:16px;line-height:1.6;color:#334155;margin:0 0 20px;">
-              Hi ${escapeHtml(name.split(" ")[0] || "there")}, thank you for your interest in joining GPRN. After careful review, we are not able to approve your application at this time.
+              Hi ${escapeHtml(firstName || "there")}, thank you for your interest in joining GPRN. After careful review, we are not able to approve your application at this time.
             </p>
             ${reasonBlock}
             <p style="font-size:15px;line-height:1.6;color:#334155;margin:0 0 16px;">

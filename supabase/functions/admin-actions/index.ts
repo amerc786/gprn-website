@@ -152,22 +152,22 @@ async function actionDeleteUser(profileId: string): Promise<Response> {
 }
 
 // ---- Action: resend_approval_email ----
-function displayName(profile: ProfileRow): string {
+function firstNameOnly(profile: ProfileRow): string {
   const pd = (profile.profile_data ?? {}) as Record<string, string>;
   if (profile.role === "locum") {
-    const bits = [pd.title, pd.firstName, pd.lastName].filter(Boolean);
-    if (bits.length) return bits.join(" ");
-  } else if (pd.practiceName) {
-    return pd.practiceName;
-  } else if (pd.contactName) {
-    return pd.contactName;
+    if (pd.firstName) return pd.firstName;
+  } else {
+    if (pd.contactName) {
+      const bits = pd.contactName.trim().split(/\s+/);
+      if (bits.length) return bits[0];
+    }
+    if (pd.practiceName) return pd.practiceName;
   }
-  return profile.email;
+  return "";
 }
 
 function buildApprovalEmail(profile: ProfileRow): { subject: string; html: string; text: string } {
-  const name = displayName(profile);
-  const firstName = (name.split(" ")[0] || "").trim();
+  const firstName = firstNameOnly(profile);
   const loginUrl = `${APP_URL}/login.html`;
   const subject = "Your GPRN account has been approved";
 
@@ -189,10 +189,10 @@ function buildApprovalEmail(profile: ProfileRow): { subject: string; html: strin
         </td></tr>
         <tr><td style="padding:40px;">
           <h1 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:26px;font-weight:800;color:#081425;margin:0 0 16px;letter-spacing:-0.01em;">
-            You're approved ${escapeHtml(firstName)}
+            ${firstName ? "You're approved, " + escapeHtml(firstName) : "You're approved"}
           </h1>
           <p style="font-size:16px;line-height:1.6;color:#334155;margin:0 0 20px;">
-            Good news — your GPRN account has been reviewed and approved. You now have full access to the platform.
+            Good news — your GPRN account has been reviewed and approved. You now have access to the platform.
           </p>
           <p style="font-size:16px;line-height:1.6;color:#334155;margin:0 0 28px;">${roleCopy}</p>
           <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
