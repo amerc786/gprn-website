@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,196 +7,388 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Register Practice - GPRN</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { display: ['Clash Display', 'sans-serif'], sans: ['Manrope', 'sans-serif'] },
+                    colors: {
+                        slate: { 50:'#F8FAFC',100:'#F1F5F9',800:'#1E293B',900:'#0F172A',950:'#020617' },
+                        emerald: { 500:'#10B981',700:'#047857',900:'#064E3B' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
     <link rel="stylesheet" href="styles.css">
+
+    <style>
+        /* Scoped overrides so the embedded form classes from styles.css blend with the new layout */
+        body { font-family: 'Manrope', sans-serif; background: #F8FAFC; color: #0F172A; margin: 0; }
+        .font-display { font-family: 'Clash Display', sans-serif; }
+
+        /* GPRN logo (same as login) */
+        .gprn-logo { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+        .gprn-logo-mark {
+            width: 38px; height: 38px; border-radius: 12px; background: #101524;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 1px 2px rgba(16,21,36,0.08);
+        }
+        .gprn-logo-mark span {
+            color: #ffffff; font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 900; font-size: 24px; line-height: 1;
+            letter-spacing: -0.025em; padding-top: 2px;
+        }
+        .gprn-logo-word {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #101524; font-weight: 900; font-size: 32px;
+            line-height: 0.8; letter-spacing: -0.05em;
+            display: inline-flex; align-items: baseline; padding-top: 4px;
+        }
+        .gprn-logo-word::after {
+            content: ''; display: inline-block; width: 9px; height: 9px;
+            background: #0F8B5A; margin-left: 4px; margin-bottom: 3px; align-self: flex-end;
+        }
+        .gprn-logo-word--light { color: #ffffff; }
+
+        .dot-pattern {
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.08) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+
+        /* Make the old form classes fit the new card */
+        .register-shell .form-input,
+        .register-shell .form-select,
+        .register-shell .form-textarea {
+            background: #ffffff !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 12px !important;
+            padding: 14px 16px !important;
+            font-size: 0.95rem !important;
+            color: #0F172A !important;
+            transition: border-color .15s, box-shadow .15s !important;
+        }
+        .register-shell .form-input:focus,
+        .register-shell .form-select:focus,
+        .register-shell .form-textarea:focus {
+            outline: none !important;
+            border-color: #0F8B5A !important;
+            box-shadow: 0 0 0 4px rgba(15, 139, 90, 0.12) !important;
+        }
+        .register-shell .form-label {
+            font-size: 0.85rem; font-weight: 600; color: #1E293B; margin-bottom: 6px; display: block;
+        }
+        .register-shell .form-hint { font-size: 0.78rem; color: #64748B; margin-top: 6px; }
+        .register-shell .form-error { color: #DC2626; font-size: 0.78rem; margin-top: 6px; min-height: 1em; }
+
+        .register-shell .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 14px 22px; border-radius: 9999px; font-weight: 600; font-size: 0.95rem;
+            border: none; cursor: pointer; transition: transform .15s, background .15s;
+        }
+        .register-shell .btn-primary { background: #101524; color: #ffffff; }
+        .register-shell .btn-primary:hover { background: #1E293B; transform: translateY(-1px); }
+        .register-shell .btn-ghost { background: transparent; color: #475569; border: 1px solid #E2E8F0; }
+        .register-shell .btn-ghost:hover { background: #F1F5F9; }
+
+        /* Stepper restyle */
+        .register-shell .stepper {
+            display: flex; align-items: center; justify-content: flex-start; gap: 0; margin-bottom: 32px;
+        }
+        .register-shell .step { display: flex; align-items: center; gap: 10px; color: #94A3B8; }
+        .register-shell .step-circle {
+            width: 32px; height: 32px; border-radius: 9999px; background: #F1F5F9; color: #64748B;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;
+            border: 1px solid #E2E8F0;
+        }
+        .register-shell .step.active .step-circle { background: #101524; color: #ffffff; border-color: #101524; }
+        .register-shell .step.completed .step-circle { background: #0F8B5A; color: #ffffff; border-color: #0F8B5A; }
+        .register-shell .step-label { font-size: 0.8rem; font-weight: 600; color: #64748B; }
+        .register-shell .step.active .step-label { color: #0F172A; }
+        .register-shell .step-line { flex: 1; height: 2px; background: #E2E8F0; margin: 0 12px; border-radius: 2px; }
+        .register-shell .step-line.completed { background: #0F8B5A; }
+
+        .register-shell .form-row {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+        }
+        @media (max-width: 640px) { .register-shell .form-row { grid-template-columns: 1fr; } }
+        .register-shell .form-group { margin-bottom: 16px; }
+
+        .register-shell .password-wrapper { position: relative; }
+        .register-shell .password-toggle {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: transparent; border: none; padding: 6px; cursor: pointer; color: #94A3B8;
+        }
+        .register-shell .password-toggle:hover { color: #475569; }
+        .register-shell .password-wrapper .form-input { padding-right: 48px !important; }
+
+        @keyframes rise { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
+        .rise { animation: rise .6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    </style>
 </head>
-<body>
-    <div class="auth-page">
-        <div class="hero-bg-shapes">
-            <div class="shape shape-1"></div>
-            <div class="shape shape-2"></div>
-            <div class="shape shape-3"></div>
-        </div>
+<body class="min-h-screen">
 
-        <div class="auth-card wide">
-            <div class="auth-logo">
-                <a href="index.html" class="logo">
-                    <span class="logo-icon">GP</span><span class="logo-text">RN</span>
+    <div class="min-h-screen grid lg:grid-cols-[1fr_1.3fr] bg-slate-50">
+
+        <!-- LEFT: BRAND PANEL -->
+        <aside class="relative hidden lg:flex flex-col justify-between bg-[#0F172A] text-white p-12 overflow-hidden">
+            <div class="absolute inset-0 dot-pattern opacity-80"></div>
+            <div class="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl"></div>
+            <div class="absolute -bottom-32 -left-16 w-[32rem] h-[32rem] rounded-full bg-sky-500/5 blur-3xl"></div>
+
+            <div class="relative z-10">
+                <a href="index.html" class="gprn-logo">
+                    <span class="gprn-logo-mark"><span>G</span></span>
+                    <span class="gprn-logo-word gprn-logo-word--light">PRN</span>
                 </a>
-                <p>Register Your Practice</p>
             </div>
 
-            <!-- Stepper -->
-            <div class="stepper" id="stepper">
-                <div class="step active" data-step="1">
-                    <div class="step-circle">1</div>
-                    <span class="step-label">Practice Details</span>
+            <div class="relative z-10 max-w-md">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 backdrop-blur-sm mb-6">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span class="text-xs font-semibold tracking-wide uppercase text-white/80">For Welsh Surgeries</span>
                 </div>
-                <div class="step-line"></div>
-                <div class="step" data-step="2">
-                    <div class="step-circle">2</div>
-                    <span class="step-label">Contact Person</span>
+                <h1 class="font-display text-4xl xl:text-5xl font-semibold leading-[1.05] mb-5">Fill sessions without the agency markup.</h1>
+                <p class="text-slate-300 text-base leading-relaxed">Browse locum availability, send direct offers, and handle compliance, invoices and messaging from one dashboard.</p>
+
+                <div class="mt-10 space-y-3">
+                    <div class="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                        <i class="ph ph-calendar-check text-emerald-400 text-xl mt-0.5"></i>
+                        <div>
+                            <p class="text-sm font-semibold text-white">Availability-first booking</p>
+                            <p class="text-xs text-slate-400">Match to locums already available on your dates.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                        <i class="ph ph-chats-circle text-emerald-400 text-xl mt-0.5"></i>
+                        <div>
+                            <p class="text-sm font-semibold text-white">Message locums directly</p>
+                            <p class="text-xs text-slate-400">Confirm timings and handover notes inside GPRN.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                        <i class="ph ph-shield-check text-emerald-400 text-xl mt-0.5"></i>
+                        <div>
+                            <p class="text-sm font-semibold text-white">Compliance auto-verified</p>
+                            <p class="text-xs text-slate-400">Every locum's documents checked before booking.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <form id="registerForm" novalidate>
-                <!-- Step 1: Practice Details -->
-                <div class="form-step" id="step1">
-                    <div class="form-group">
-                        <label class="form-label" for="practiceName">Practice Name</label>
-                        <input type="text" id="practiceName" class="form-input" placeholder="e.g. Ringland Medical Practice" required>
-                        <div class="form-error"></div>
+            <div class="relative z-10 flex items-center justify-between text-xs text-slate-400">
+                <span>&copy; 2026 GPRN</span>
+                <div class="flex items-center gap-4">
+                    <a href="index.html" class="hover:text-white transition-colors">Home</a>
+                    <a href="login.html" class="hover:text-white transition-colors">Log in</a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- RIGHT: FORM -->
+        <main class="flex items-start justify-center p-6 sm:p-10 lg:p-12 register-shell">
+            <div class="w-full max-w-2xl">
+
+                <div class="lg:hidden mb-8 flex items-center justify-between">
+                    <a href="index.html" class="gprn-logo">
+                        <span class="gprn-logo-mark"><span>G</span></span>
+                        <span class="gprn-logo-word">PRN</span>
+                    </a>
+                    <a href="register.html" class="text-xs font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1">
+                        <i class="ph ph-arrow-left"></i> Pick role
+                    </a>
+                </div>
+
+                <div class="rise mb-8">
+                    <div class="hidden lg:flex items-center gap-2 mb-4">
+                        <a href="register.html" class="text-xs font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1">
+                            <i class="ph ph-arrow-left"></i> Change role
+                        </a>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="odsCode">ODS Code (optional)</label>
-                        <input type="text" id="odsCode" class="form-input" placeholder="e.g. W00001">
-                        <p class="form-hint">Your Organisation Data Service code, e.g. W00001. Leave blank if you don't have it.</p>
+                    <h2 class="font-display text-3xl lg:text-4xl font-semibold text-slate-900 mb-2">Register your practice.</h2>
+                    <p class="text-slate-600">Takes about 2 minutes. Your account will be reviewed before going live.</p>
+                </div>
+
+                <!-- Stepper -->
+                <div class="stepper" id="stepper">
+                    <div class="step active" data-step="1">
+                        <div class="step-circle">1</div>
+                        <span class="step-label">Practice Details</span>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="healthBoard">Health Board</label>
-                            <select id="healthBoard" class="form-select" required>
-                                <option value="">Select health board...</option>
-                                <option value="Aneurin Bevan">Aneurin Bevan</option>
-                                <option value="Betsi Cadwaladr">Betsi Cadwaladr</option>
-                                <option value="Cardiff and Vale">Cardiff and Vale</option>
-                                <option value="Cwm Taf Morgannwg">Cwm Taf Morgannwg</option>
-                                <option value="Hywel Dda">Hywel Dda</option>
-                                <option value="Powys">Powys</option>
-                                <option value="Swansea Bay">Swansea Bay</option>
-                            </select>
-                            <div class="form-error"></div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="computerSystem">Computer System</label>
-                            <select id="computerSystem" class="form-select" required>
-                                <option value="">Select system...</option>
-                                <option value="EMIS">EMIS</option>
-                                <option value="Vision">Vision</option>
-                                <option value="TPP">TPP</option>
-                            </select>
-                            <div class="form-error"></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="address">Address</label>
-                        <input type="text" id="address" class="form-input" placeholder="Street address" required>
-                        <div class="form-error"></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="city">City / Town</label>
-                            <input type="text" id="city" class="form-input" placeholder="City" required>
-                            <div class="form-error"></div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="postcode">Postcode</label>
-                            <input type="text" id="postcode" class="form-input" placeholder="e.g. NP9 9PS" required>
-                            <div class="form-error"></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="practicePhone">Phone Number</label>
-                        <input type="tel" id="practicePhone" class="form-input" placeholder="01633 274000" required data-validate="tel">
-                        <div class="form-error"></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="partners">Number of Partners</label>
-                            <input type="number" id="partners" class="form-input" placeholder="e.g. 4" min="1" max="20" required>
-                            <div class="form-error"></div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="patientListSize">Patient List Size</label>
-                            <input type="number" id="patientListSize" class="form-input" placeholder="e.g. 8500" min="100" required>
-                            <div class="form-error"></div>
-                        </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="2">
+                        <div class="step-circle">2</div>
+                        <span class="step-label">Contact Person</span>
                     </div>
                 </div>
 
-                <!-- Step 2: Contact Person -->
-                <div class="form-step" id="step2" style="display:none;">
-                    <div class="form-row">
+                <form id="registerForm" novalidate>
+                    <!-- Step 1: Practice Details -->
+                    <div class="form-step" id="step1">
                         <div class="form-group">
-                            <label class="form-label" for="contactName">Contact Name</label>
-                            <input type="text" id="contactName" class="form-input" placeholder="Full name" required>
+                            <label class="form-label" for="practiceName">Practice Name</label>
+                            <input type="text" id="practiceName" class="form-input" placeholder="e.g. Ringland Medical Practice" required>
                             <div class="form-error"></div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="contactRole">Role</label>
-                            <input type="text" id="contactRole" class="form-input" placeholder="e.g. Practice Manager" required>
-                            <div class="form-error"></div>
+                            <label class="form-label" for="odsCode">ODS Code (optional)</label>
+                            <input type="text" id="odsCode" class="form-input" placeholder="e.g. W00001">
+                            <p class="form-hint">Your Organisation Data Service code, e.g. W00001. Leave blank if you don't have it.</p>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="contactEmail">Email Address</label>
-                            <input type="email" id="contactEmail" class="form-input" placeholder="manager@practice.wales" required data-validate="email">
-                            <div class="form-error"></div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="contactPhone">Phone Number</label>
-                            <input type="tel" id="contactPhone" class="form-input" placeholder="01633 274001" required data-validate="tel">
-                            <div class="form-error"></div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="password">Password</label>
-                            <div class="password-wrapper">
-                                <input type="password" id="password" class="form-input" placeholder="Min 6 characters" required data-validate="password">
-                                <button type="button" class="password-toggle" onclick="togglePw('password', this)" aria-label="Show password">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                </button>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="healthBoard">Health Board</label>
+                                <select id="healthBoard" class="form-select" required>
+                                    <option value="">Select health board...</option>
+                                    <option value="Aneurin Bevan">Aneurin Bevan</option>
+                                    <option value="Betsi Cadwaladr">Betsi Cadwaladr</option>
+                                    <option value="Cardiff and Vale">Cardiff and Vale</option>
+                                    <option value="Cwm Taf Morgannwg">Cwm Taf Morgannwg</option>
+                                    <option value="Hywel Dda">Hywel Dda</option>
+                                    <option value="Powys">Powys</option>
+                                    <option value="Swansea Bay">Swansea Bay</option>
+                                </select>
+                                <div class="form-error"></div>
                             </div>
-                            <div class="form-error"></div>
-                            <p class="form-hint">Minimum 6 characters</p>
-                            <div id="passwordStrength" style="margin-top:6px; font-size:0.8rem; font-weight:600;"></div>
+                            <div class="form-group">
+                                <label class="form-label" for="computerSystem">Computer System</label>
+                                <select id="computerSystem" class="form-select" required>
+                                    <option value="">Select system...</option>
+                                    <option value="EMIS">EMIS</option>
+                                    <option value="Vision">Vision</option>
+                                    <option value="TPP">TPP</option>
+                                </select>
+                                <div class="form-error"></div>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="confirmPassword">Confirm Password</label>
-                            <div class="password-wrapper">
-                                <input type="password" id="confirmPassword" class="form-input" placeholder="Confirm password" required data-validate="password-confirm">
-                                <button type="button" class="password-toggle" onclick="togglePw('confirmPassword', this)" aria-label="Show password">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                </button>
-                            </div>
+                            <label class="form-label" for="address">Address</label>
+                            <input type="text" id="address" class="form-input" placeholder="Street address" required>
                             <div class="form-error"></div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="city">City / Town</label>
+                                <input type="text" id="city" class="form-input" placeholder="City" required>
+                                <div class="form-error"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="postcode">Postcode</label>
+                                <input type="text" id="postcode" class="form-input" placeholder="e.g. NP9 9PS" required>
+                                <div class="form-error"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="practicePhone">Phone Number</label>
+                            <input type="tel" id="practicePhone" class="form-input" placeholder="01633 274000" required data-validate="tel">
+                            <div class="form-error"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="partners">Number of Partners</label>
+                                <input type="number" id="partners" class="form-input" placeholder="e.g. 4" min="1" max="20" required>
+                                <div class="form-error"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="patientListSize">Patient List Size</label>
+                                <input type="number" id="patientListSize" class="form-input" placeholder="e.g. 8500" min="100" required>
+                                <div class="form-error"></div>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Step 2: Contact Person -->
+                    <div class="form-step" id="step2" style="display:none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="contactName">Contact Name</label>
+                                <input type="text" id="contactName" class="form-input" placeholder="Full name" required>
+                                <div class="form-error"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="contactRole">Role</label>
+                                <input type="text" id="contactRole" class="form-input" placeholder="e.g. Practice Manager" required>
+                                <div class="form-error"></div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="contactEmail">Email Address</label>
+                                <input type="email" id="contactEmail" class="form-input" placeholder="manager@practice.wales" required data-validate="email">
+                                <div class="form-error"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="contactPhone">Phone Number</label>
+                                <input type="tel" id="contactPhone" class="form-input" placeholder="01633 274001" required data-validate="tel">
+                                <div class="form-error"></div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="password">Password</label>
+                                <div class="password-wrapper">
+                                    <input type="password" id="password" class="form-input" placeholder="Min 6 characters" required data-validate="password">
+                                    <button type="button" class="password-toggle" onclick="togglePw('password', this)" aria-label="Show password">
+                                        <i class="ph ph-eye text-lg"></i>
+                                    </button>
+                                </div>
+                                <div class="form-error"></div>
+                                <p class="form-hint">Minimum 6 characters</p>
+                                <div id="passwordStrength" style="margin-top:6px; font-size:0.8rem; font-weight:600;"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="confirmPassword">Confirm Password</label>
+                                <div class="password-wrapper">
+                                    <input type="password" id="confirmPassword" class="form-input" placeholder="Confirm password" required data-validate="password-confirm">
+                                    <button type="button" class="password-toggle" onclick="togglePw('confirmPassword', this)" aria-label="Show password">
+                                        <i class="ph ph-eye text-lg"></i>
+                                    </button>
+                                </div>
+                                <div class="form-error"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Terms Checkbox -->
+                    <div class="form-group" id="termsGroup" style="margin-bottom: 16px; display: none;">
+                        <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.85rem; color: #475569; cursor: pointer;">
+                            <input type="checkbox" id="agreeTerms" required style="margin-top: 3px;">
+                            I agree to the <a href="terms-conditions.html" target="_blank" style="color: #047857; font-weight: 600;">Terms &amp; Conditions</a> and <a href="privacy-policy.html" target="_blank" style="color: #047857; font-weight: 600;">Privacy Policy</a>
+                        </label>
+                        <div class="form-error" id="termsError"></div>
+                    </div>
+
+                    <!-- Navigation Buttons -->
+                    <div style="display:flex; justify-content:space-between; margin-top:32px; gap: 12px;">
+                        <button type="button" class="btn btn-ghost" id="btnBack" style="display:none;">
+                            <i class="ph ph-arrow-left"></i> Back
+                        </button>
+                        <div style="flex:1;"></div>
+                        <button type="button" class="btn btn-primary" id="btnNext">Next Step <i class="ph ph-arrow-right"></i></button>
+                    </div>
+                </form>
+
+                <div class="mt-6 text-center text-sm text-slate-600">
+                    Already have an account? <a href="login.html" class="font-semibold text-emerald-700 hover:text-emerald-900">Log In</a>
                 </div>
 
-                <!-- Terms Checkbox -->
-                <div class="form-group" id="termsGroup" style="margin-bottom: 16px; display: none;">
-                    <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.85rem; color: var(--dark-600); cursor: pointer;">
-                        <input type="checkbox" id="agreeTerms" required style="margin-top: 3px;">
-                        I agree to the <a href="terms-conditions.html" target="_blank" style="color: var(--primary);">Terms &amp; Conditions</a> and <a href="privacy-policy.html" target="_blank" style="color: var(--primary);">Privacy Policy</a>
-                    </label>
-                    <div class="form-error" id="termsError"></div>
-                </div>
-
-                <!-- Navigation Buttons -->
-                <div style="display:flex; justify-content:space-between; margin-top:32px;">
-                    <button type="button" class="btn btn-ghost" id="btnBack" style="display:none;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-                        Back
-                    </button>
-                    <div style="flex:1;"></div>
-                    <button type="button" class="btn btn-primary" id="btnNext">Next Step</button>
-                </div>
-            </form>
-
-            <div class="auth-footer">
-                Already have an account? <a href="login.html">Log In</a>
             </div>
-        </div>
+        </main>
+
     </div>
 
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
-<script src="supabase-client.js"></script>
+    <script src="supabase-client.js"></script>
     <script src="components.js"></script>
     <script>
         (function() {
@@ -227,7 +419,7 @@
                 });
 
                 btnBack.style.display = step > 1 ? 'inline-flex' : 'none';
-                btnNext.textContent = step === totalSteps ? 'Create Account' : 'Next Step';
+                btnNext.innerHTML = step === totalSteps ? 'Create Account <i class="ph ph-check"></i>' : 'Next Step <i class="ph ph-arrow-right"></i>';
                 document.getElementById('termsGroup').style.display = step === totalSteps ? 'block' : 'none';
             }
 
@@ -258,7 +450,7 @@
                     var termsError = document.getElementById('termsError');
                     if (!termsCheckbox.checked) {
                         termsError.textContent = 'You must agree to the Terms & Conditions and Privacy Policy';
-                        termsError.style.color = 'var(--danger)';
+                        termsError.style.color = '#DC2626';
                         return;
                     } else {
                         termsError.textContent = '';
@@ -296,8 +488,6 @@
                         contactPhone: document.getElementById('contactPhone').value.trim()
                     };
 
-                    // Create auth user + pending profile row, then sign out.
-                    // Pending users must NOT hold an active session.
                     var regResult = window.SupaRegister
                         ? window.SupaRegister(newPractice.email, newPractice.password, 'practice', newPractice)
                         : null;
@@ -309,7 +499,6 @@
                         return;
                     }
 
-                    // Redirect to the pending-approval page.
                     window.location.href = 'pending-approval.html?email=' + encodeURIComponent(newPractice.email);
                 }
             });
@@ -329,8 +518,8 @@
             var isPassword = input.type === 'password';
             input.type = isPassword ? 'text' : 'password';
             btn.innerHTML = isPassword
-                ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
-                : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+                ? '<i class="ph ph-eye-slash text-lg"></i>'
+                : '<i class="ph ph-eye text-lg"></i>';
         }
 
         // Password strength indicator
