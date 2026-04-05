@@ -7,129 +7,231 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Messages - GPRN</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Syne + Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Existing app styles (modals, toasts, forms, badges) -->
     <link rel="stylesheet" href="styles.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Syne"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: {
+                            DEFAULT: '#0B0F19',
+                            50: '#141C2F',
+                        },
+                        brand: {
+                            green: '#059669',
+                            mint: '#ECFDF5',
+                            dark: '#022C22',
+                        },
+                        surface: '#F8F9FA'
+                    },
+                    boxShadow: {
+                        'card': '0 4px 20px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
+                        'subtle': '0 1px 2px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body.pm-dashboard { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+        .custom-scroll:hover::-webkit-scrollbar-thumb { background: #CBD5E1; }
+
+        @keyframes fade-in-up {
+            0% { opacity: 0; transform: translateY(15px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-item {
+            animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+
+        .sidebar-active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10%;
+            height: 80%;
+            width: 4px;
+            background-color: #0B0F19;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .thread-item.active {
+            background-color: #F1F5F9;
+        }
+    </style>
 </head>
-<body class="app-layout">
+<body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
+
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
-<script src="supabase-client.js"></script>
+    <script src="supabase-client.js"></script>
     <script src="components.js"></script>
     <script>
         if (!initPage()) throw new Error('Auth required');
+    </script>
 
+    <!-- SIDEBAR -->
+    <aside class="w-[260px] bg-white border-r border-slate-200 flex flex-col shrink-0 relative z-20">
+        <div class="h-20 px-6 flex items-center">
+            <a href="index.html" class="flex items-center gap-2.5">
+                <div class="bg-navy text-white w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-xl">G</div>
+                <span class="font-extrabold text-[26px] tracking-tight text-navy leading-none">
+                    PRN<span class="text-brand-green">.</span>
+                </span>
+            </a>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scroll py-6 px-4 flex flex-col gap-8">
+            <nav class="flex flex-col gap-1.5" id="sidebarNav">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] px-4 mb-2">Platform</p>
+                <!-- Populated by JS based on role -->
+            </nav>
+
+            <nav class="flex flex-col gap-1.5 mt-auto" id="sidebarNavBottom">
+                <!-- Populated by JS -->
+                <button onclick="Auth.logout()" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl text-[14px] font-semibold transition-colors group cursor-pointer text-left">
+                    <i class="ph ph-sign-out text-lg"></i> Log Out
+                </button>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col relative w-full h-full">
+        <header class="h-20 px-10 flex items-center justify-between shrink-0 z-10 sticky top-0 bg-surface/80 backdrop-blur-md">
+            <div class="relative w-96 group">
+                <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-navy transition-colors"></i>
+                <input type="text" placeholder="Search messages..." class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
+            </div>
+
+            <div class="flex items-center gap-5">
+                <button onclick="window.location.href='practice-settings.html'" class="bg-navy rounded-full p-1 pl-1.5 pr-4 flex items-center gap-2.5 hover:bg-slate-800 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-navy group">
+                    <div class="bg-brand-green text-white w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold tracking-wider" id="headerAvatar">--</div>
+                    <span class="text-white text-[13px] font-semibold pr-1" id="headerName">User</span>
+                    <i class="ph-bold ph-caret-down text-slate-400 text-[10px] group-hover:text-white transition-colors"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto custom-scroll px-10 pb-10 pt-4">
+            <div class="max-w-[1400px] mx-auto w-full relative flex flex-col gap-6">
+                <!-- Heading -->
+                <div class="animate-item">
+                    <span class="inline-block bg-brand-mint text-brand-green text-[11px] font-bold uppercase tracking-[0.15em] px-3 py-1.5 rounded-full mb-3" id="rolePill">Practice Manager Portal</span>
+                    <div class="flex items-center justify-between">
+                        <h1 class="text-[44px] font-extrabold text-navy tracking-tight" style="font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1.2;">Messages</h1>
+                        <button id="newMsgBtn" class="bg-navy text-white text-[13px] font-bold px-5 py-3 rounded-full hover:bg-slate-800 transition-colors shadow-md flex items-center gap-2">
+                            <i class="ph-bold ph-pencil-simple"></i> New Message
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chat Container -->
+                <div id="messagesRoot" class="animate-item">
+                    <!-- populated by render() -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
         const session = Auth.getSession();
         const role = Auth.getRole();
-        const pageContent = initAppLayout(role, 'messages', 'Messages');
 
-        function addDays(date, days) {
-            const d = new Date(date);
-            d.setDate(d.getDate() + days);
-            return d;
+        // ===== Header profile pill =====
+        document.getElementById('headerAvatar').textContent = getInitials((session.firstName || '') + ' ' + (session.lastName || session.name || ''));
+        document.getElementById('headerName').textContent = session.firstName || (session.name || 'User').split(' ')[0];
+
+        // ===== Role pill =====
+        document.getElementById('rolePill').textContent = role === 'locum' ? 'Locum Portal' : (role === 'admin' ? 'Admin Portal' : 'Practice Manager Portal');
+
+        // ===== Sidebar nav (role-aware) =====
+        (function buildSidebar() {
+            const nav = document.getElementById('sidebarNav');
+            const bottom = document.getElementById('sidebarNavBottom');
+
+            const itemHTML = (href, icon, label, active, extras = '') => `
+                <a href="${href}" class="${active ? 'sidebar-active bg-slate-50 text-navy' : 'text-slate-500 hover:text-navy hover:bg-slate-50'} relative flex items-center justify-between px-4 py-2.5 rounded-xl text-[14px] ${active ? 'font-bold' : 'font-semibold'} transition-all group">
+                    <div class="flex items-center gap-3">
+                        <i class="${icon} text-lg"></i> ${label}
+                    </div>
+                    ${extras}
+                </a>
+            `;
+
+            let links = '';
+            if (role === 'practice') {
+                links += itemHTML('practice-dashboard.html', 'ph-fill ph-squares-four', 'Dashboard', false);
+                links += itemHTML('post-shift.html', 'ph ph-calendar-plus', 'Post Vacancy', false);
+                links += itemHTML('view-requested-shifts.html', 'ph ph-clipboard-text', 'Manage Shifts', false);
+                links += itemHTML('find-locums.html', 'ph ph-users', 'Locum Network', false);
+                links += itemHTML('billing.html', 'ph ph-receipt', 'Compliance & Billing', false);
+                links += itemHTML('messages.html', 'ph-fill ph-chat-circle-dots', 'Messages', true, '<span id="sidebarUnreadBadge" class="hidden text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full"></span>');
+            } else if (role === 'locum') {
+                links += itemHTML('locum-dashboard.html', 'ph-fill ph-squares-four', 'Dashboard', false);
+                links += itemHTML('find-shifts.html', 'ph ph-magnifying-glass', 'Find Shifts', false);
+                links += itemHTML('my-shifts.html', 'ph ph-calendar-check', 'My Shifts', false);
+                links += itemHTML('earnings.html', 'ph ph-currency-gbp', 'Earnings', false);
+                links += itemHTML('messages.html', 'ph-fill ph-chat-circle-dots', 'Messages', true, '<span id="sidebarUnreadBadge" class="hidden text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full"></span>');
+            } else {
+                links += itemHTML('admin-dashboard.html', 'ph-fill ph-squares-four', 'Dashboard', false);
+                links += itemHTML('messages.html', 'ph-fill ph-chat-circle-dots', 'Messages', true, '<span id="sidebarUnreadBadge" class="hidden text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full"></span>');
+            }
+
+            nav.insertAdjacentHTML('beforeend', links);
+
+            const settingsHref = role === 'practice' ? 'practice-settings.html' : (role === 'locum' ? 'locum-settings.html' : 'admin-dashboard.html');
+            bottom.insertAdjacentHTML('afterbegin', `
+                <a href="${settingsHref}" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-gear text-lg"></i> Settings
+                </a>
+            `);
+        })();
+
+        // Unread badge
+        const unreadMsgCount = MessageManager.getUnreadCount(session.id);
+        if (unreadMsgCount > 0) {
+            const badge = document.getElementById('sidebarUnreadBadge');
+            if (badge) {
+                badge.textContent = unreadMsgCount;
+                badge.classList.remove('hidden');
+            }
         }
 
-        // Initialize messages array if needed
+        // ===== Messages initialization =====
         (function() {
             const data = getMockData();
             if (!data.messages) { data.messages = []; saveMockData(data); }
         })();
 
-        // ---- State ----
         let activeThreadId = null;
 
-        // ---- Render ----
-        function render() {
-            const threads = MessageManager.getThreads(session.id);
-
-            pageContent.innerHTML = `
-                <div class="messages-layout">
-                    <div class="thread-list">
-                        <div class="thread-list-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>Conversations</span>
-                            <button class="btn btn-primary btn-small" id="newMsgBtn">${getIcon('mail')} New Message</button>
-                        </div>
-                        <div id="threadListBody">
-                            ${threads.length === 0 ? '<div style="padding: 32px 16px; text-align: center; color: var(--gray-400); font-size: 0.88rem;">No messages yet.</div>' : ''}
-                            ${threads.map(t => {
-                                const name = MessageManager.getUserName(t.otherId);
-                                const initials = getInitials(name);
-                                const preview = sanitizeHTML(t.lastMessage.body.length > 50 ? t.lastMessage.body.substring(0, 50) + '...' : t.lastMessage.body);
-                                const time = formatMessageTime(t.lastMessage.timestamp);
-                                return `
-                                <div class="thread-item ${activeThreadId === t.threadId ? 'active' : ''}" data-thread-id="${t.threadId}">
-                                    <div class="thread-avatar">${initials}</div>
-                                    <div class="thread-info">
-                                        <div class="thread-name">${name}</div>
-                                        <div class="thread-preview">${preview}</div>
-                                    </div>
-                                    <div class="thread-meta">
-                                        <div class="thread-time">${time}</div>
-                                        ${t.unread > 0 ? `<div class="thread-unread">${t.unread}</div>` : ''}
-                                        <div style="font-size:0.7rem;color:var(--gray-400);margin-top:2px;">Last active: ${time}</div>
-                                    </div>
-                                </div>`;
-                            }).join('')}
-                        </div>
-                    </div>
-                    <div class="chat-area" id="chatArea">
-                        ${activeThreadId ? renderChat(activeThreadId) : renderChatEmpty()}
-                    </div>
-                </div>
-            `;
-
-            bindEvents();
-        }
-
-        function renderChatEmpty() {
-            return `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--gray-400);">
-                    <div style="margin-bottom: 12px;">${getIcon('mail')}</div>
-                    <p style="font-size: 0.95rem; font-weight: 600;">Select a conversation</p>
-                    <p style="font-size: 0.82rem;">Choose a thread from the left or start a new message.</p>
-                </div>
-            `;
-        }
-
-        function renderChat(threadId) {
-            const messages = MessageManager.getThread(threadId);
-            if (messages.length === 0) return renderChatEmpty();
-
-            const firstMsg = messages[0];
-            const otherId = firstMsg.fromId === session.id ? firstMsg.toId : firstMsg.fromId;
-            const otherName = MessageManager.getUserName(otherId);
-
-            // Find session need info if linked
-            let shiftInfo = '';
-            if (firstMsg.shiftId) {
-                const data = getMockData();
-                const need = (data.sessionNeeds || []).find(s => s.id === firstMsg.shiftId) || (data.shifts || []).find(s => s.id === firstMsg.shiftId);
-                if (need) {
-                    shiftInfo = `<div class="chat-header-sub">Re: Session at ${need.practiceName} on ${DateUtils.format(need.date, 'medium')}</div>`;
-                }
-            }
-
-            const subjectInfo = firstMsg.subject ? `<div class="chat-header-sub">${sanitizeHTML(firstMsg.subject)}</div>` : '';
-
-            return `
-                <div class="chat-header">
-                    <div class="thread-avatar" style="width: 36px; height: 36px; font-size: 0.7rem;">${getInitials(otherName)}</div>
-                    <div>
-                        <div class="chat-header-name">${otherName}</div>
-                        ${shiftInfo || subjectInfo}
-                    </div>
-                </div>
-                <div class="chat-messages" id="chatMessages">
-                    ${messages.map(m => renderMessageBubble(m, session.id)).join('')}
-                </div>
-                <div class="chat-compose">
-                    <input type="text" class="form-input" id="msgInput" placeholder="Type your message..." autocomplete="off">
-                    <button class="btn btn-primary" id="sendMsgBtn">Send</button>
-                </div>
-            `;
-        }
-
+        // ===== Helpers =====
         function formatMessageTime(timestamp) {
             const d = new Date(timestamp);
             const now = new Date();
@@ -148,24 +250,166 @@
             }
         }
 
+        function avatarColor(name) {
+            const colors = ['bg-navy', 'bg-brand-green', 'bg-indigo-500', 'bg-amber-500', 'bg-rose-500', 'bg-sky-500'];
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            return colors[Math.abs(hash) % colors.length];
+        }
+
+        // ===== Render =====
+        function render() {
+            const threads = MessageManager.getThreads(session.id);
+            const root = document.getElementById('messagesRoot');
+
+            if (threads.length === 0) {
+                root.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-subtle overflow-hidden p-16 flex flex-col items-center justify-center text-center">
+                        <div class="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-5">
+                            <i class="ph ph-chat-circle-dots text-slate-400 text-3xl"></i>
+                        </div>
+                        <h3 class="text-[22px] font-extrabold text-navy tracking-tight mb-2">No messages yet</h3>
+                        <p class="text-[14px] text-slate-500 max-w-md mb-6">Start a conversation with ${role === 'locum' ? 'a practice' : 'a locum'} to see your messages here.</p>
+                        <a href="${role === 'locum' ? 'find-shifts.html' : 'find-locums.html'}" class="bg-navy text-white text-[13px] font-bold px-5 py-3 rounded-full hover:bg-slate-800 transition-colors shadow-md inline-flex items-center gap-2">
+                            <i class="ph-bold ph-magnifying-glass"></i> ${role === 'locum' ? 'Find Shifts' : 'Find Locums'}
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+
+            root.innerHTML = `
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-subtle overflow-hidden flex" style="height: calc(100vh - 280px); min-height: 560px;">
+                    <!-- LEFT PANE: Conversation list -->
+                    <div class="w-[340px] border-r border-slate-200 flex flex-col shrink-0">
+                        <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between shrink-0">
+                            <h2 class="text-[15px] font-extrabold text-navy tracking-tight">Conversations</h2>
+                            <span class="text-[11px] font-bold text-slate-400">${threads.length}</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto custom-scroll p-2" id="threadListBody">
+                            ${threads.map(t => {
+                                const name = MessageManager.getUserName(t.otherId);
+                                const initials = getInitials(name);
+                                const preview = sanitizeHTML(t.lastMessage.body.length > 48 ? t.lastMessage.body.substring(0, 48) + '…' : t.lastMessage.body);
+                                const time = formatMessageTime(t.lastMessage.timestamp);
+                                const isActive = activeThreadId === t.threadId;
+                                return `
+                                <div class="thread-item ${isActive ? 'active' : ''} p-4 rounded-xl hover:bg-slate-50 cursor-pointer flex items-start gap-3 transition-colors" data-thread-id="${t.threadId}">
+                                    <div class="${avatarColor(name)} text-white w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 shadow-subtle">${initials}</div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center justify-between gap-2 mb-0.5">
+                                            <div class="font-bold text-navy text-[14px] truncate">${sanitizeHTML(name)}</div>
+                                            <div class="text-[11px] text-slate-400 shrink-0">${time}</div>
+                                        </div>
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div class="text-[13px] text-slate-500 truncate">${preview}</div>
+                                            ${t.unread > 0 ? '<div class="bg-brand-green rounded-full w-2 h-2 shrink-0"></div>' : ''}
+                                        </div>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- RIGHT PANE: Message thread -->
+                    <div class="flex-1 flex flex-col min-w-0" id="chatArea">
+                        ${activeThreadId ? renderChat(activeThreadId) : renderChatEmpty()}
+                    </div>
+                </div>
+            `;
+
+            bindEvents();
+            if (activeThreadId) scrollChatToBottom();
+        }
+
+        function renderChatEmpty() {
+            return `
+                <div class="flex-1 flex flex-col items-center justify-center text-center px-8">
+                    <div class="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+                        <i class="ph ph-chat-circle text-slate-400 text-3xl"></i>
+                    </div>
+                    <p class="text-[16px] font-bold text-navy mb-1">Select a conversation</p>
+                    <p class="text-[13px] text-slate-500">Choose a thread from the left to view messages.</p>
+                </div>
+            `;
+        }
+
+        function renderChat(threadId) {
+            const messages = MessageManager.getThread(threadId);
+            if (messages.length === 0) return renderChatEmpty();
+
+            const firstMsg = messages[0];
+            const otherId = firstMsg.fromId === session.id ? firstMsg.toId : firstMsg.fromId;
+            const otherName = MessageManager.getUserName(otherId);
+            const initials = getInitials(otherName);
+
+            let subtitle = '';
+            if (firstMsg.shiftId) {
+                const data = getMockData();
+                const need = (data.sessionNeeds || []).find(s => s.id === firstMsg.shiftId) || (data.shifts || []).find(s => s.id === firstMsg.shiftId);
+                if (need) {
+                    subtitle = `Re: Session at ${sanitizeHTML(need.practiceName)} on ${DateUtils.format(need.date, 'medium')}`;
+                }
+            }
+            if (!subtitle && firstMsg.subject) subtitle = sanitizeHTML(firstMsg.subject);
+
+            return `
+                <!-- Chat header -->
+                <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-3 shrink-0">
+                    <div class="${avatarColor(otherName)} text-white w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-bold shadow-subtle">${initials}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold text-navy text-[15px]">${sanitizeHTML(otherName)}</div>
+                        ${subtitle ? `<div class="text-[12px] text-slate-500 truncate">${subtitle}</div>` : ''}
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div class="flex-1 overflow-y-auto custom-scroll px-6 py-5 flex flex-col gap-2" id="chatMessages">
+                    ${messages.map(m => renderBubble(m)).join('')}
+                </div>
+
+                <!-- Compose -->
+                <div class="px-5 py-4 border-t border-slate-200 shrink-0 bg-white">
+                    <div class="flex items-center gap-3">
+                        <input type="text" id="msgInput" placeholder="Type a message..." autocomplete="off" class="flex-1 bg-slate-50 border border-slate-200 rounded-full py-3 px-5 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all">
+                        <button id="sendMsgBtn" class="bg-navy text-white w-11 h-11 rounded-full flex items-center justify-center hover:bg-slate-800 transition-colors shadow-md shrink-0" aria-label="Send">
+                            <i class="ph-fill ph-paper-plane-right text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderBubble(m) {
+            const isMine = m.fromId === session.id;
+            const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const body = sanitizeHTML(m.body).replace(/\n/g, '<br>');
+            if (isMine) {
+                return `
+                    <div class="flex flex-col items-end max-w-[75%] self-end">
+                        <div class="bg-navy text-white rounded-2xl rounded-br-md px-4 py-2.5 text-[14px] leading-relaxed shadow-subtle">${body}</div>
+                        <div class="text-[10px] text-slate-400 mt-1 mr-1">${time}</div>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="flex flex-col items-start max-w-[75%] self-start">
+                        <div class="bg-slate-100 text-navy rounded-2xl rounded-bl-md px-4 py-2.5 text-[14px] leading-relaxed">${body}</div>
+                        <div class="text-[10px] text-slate-400 mt-1 ml-1">${time}</div>
+                    </div>
+                `;
+            }
+        }
+
         function bindEvents() {
-            // Thread click
             document.querySelectorAll('.thread-item').forEach(el => {
                 el.addEventListener('click', () => {
                     activeThreadId = el.dataset.threadId;
                     MessageManager.markThreadRead(activeThreadId, session.id);
                     render();
-                    scrollChatToBottom();
                 });
             });
 
-            // New message button
-            const newMsgBtn = document.getElementById('newMsgBtn');
-            if (newMsgBtn) {
-                newMsgBtn.addEventListener('click', openNewMessageModal);
-            }
-
-            // Send message
             const sendBtn = document.getElementById('sendMsgBtn');
             const msgInput = document.getElementById('msgInput');
             if (sendBtn && msgInput) {
@@ -176,7 +420,6 @@
                         sendReply(msgInput);
                     }
                 });
-                // Auto-focus input
                 msgInput.focus();
             }
         }
@@ -185,7 +428,6 @@
             const body = inputEl.value.trim();
             if (!body) return;
 
-            // Get the other user from the active thread
             const messages = MessageManager.getThread(activeThreadId);
             if (messages.length === 0) return;
             const firstMsg = messages[0];
@@ -195,7 +437,6 @@
             MessageManager.send(session.id, otherId, subject, body, firstMsg.shiftId);
             Toast.show('Message sent', 'success');
             render();
-            scrollChatToBottom();
         }
 
         function scrollChatToBottom() {
@@ -205,18 +446,16 @@
             }, 50);
         }
 
-        // ---- New Message Modal ----
+        // ===== New Message Modal =====
         function openNewMessageModal(preRecipient, preSubject, preBody, preShiftId) {
             const data = getMockData();
             let recipientOptions = '';
 
             if (role === 'locum') {
-                // Show all practices
                 recipientOptions = data.practices.map(p =>
                     `<option value="${p.id}" ${preRecipient === p.id ? 'selected' : ''}>${p.practiceName}</option>`
                 ).join('');
             } else {
-                // Show all locums
                 recipientOptions = data.locums.map(l =>
                     `<option value="${l.id}" ${preRecipient === l.id ? 'selected' : ''}>${l.title} ${l.firstName} ${l.lastName}</option>`
                 ).join('');
@@ -265,22 +504,21 @@
                         Modal.close(overlay);
                         activeThreadId = threadId;
                         render();
-                        scrollChatToBottom();
                     });
                 }
             });
         }
 
-        // Expose for external linking (e.g., from shift-detail.html via URL params)
         window.openNewMessageModal = openNewMessageModal;
 
-        // Check for URL params (compose from another page)
+        document.getElementById('newMsgBtn').addEventListener('click', () => openNewMessageModal());
+
+        // Check URL params (compose from another page)
         const urlParams = new URLSearchParams(window.location.search);
         const composeFor = urlParams.get('compose');
         const composeSubject = urlParams.get('subject');
         const composeShift = urlParams.get('shiftId');
         if (composeFor) {
-            // Render first, then open modal
             render();
             setTimeout(() => {
                 openNewMessageModal(composeFor, composeSubject || '', '', composeShift || null);

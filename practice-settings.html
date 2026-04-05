@@ -6,25 +6,217 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Settings - GPRN</title>
+    <title>Practice Settings - GPRN</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Syne + Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Existing app styles (modals, toasts, forms, badges) -->
     <link rel="stylesheet" href="styles.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Syne"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: {
+                            DEFAULT: '#0B0F19',
+                            50: '#141C2F',
+                        },
+                        brand: {
+                            green: '#059669',
+                            mint: '#ECFDF5',
+                            dark: '#022C22',
+                        },
+                        surface: '#F8F9FA'
+                    },
+                    boxShadow: {
+                        'card': '0 4px 20px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
+                        'subtle': '0 1px 2px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body.pm-dashboard { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+        .custom-scroll:hover::-webkit-scrollbar-thumb { background: #CBD5E1; }
+
+        @keyframes fade-in-up {
+            0% { opacity: 0; transform: translateY(15px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-item {
+            animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+        .delay-500 { animation-delay: 500ms; }
+
+        .sidebar-active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10%;
+            height: 80%;
+            width: 4px;
+            background-color: #0B0F19;
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* Toggle switch styling */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #E2E8F0;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            flex-shrink: 0;
+        }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 999px;
+            transition: transform 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .toggle-switch.active {
+            background: #0B0F19;
+        }
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+    </style>
 </head>
-<body class="app-layout">
+<body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
+
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
-<script src="supabase-client.js"></script>
+    <script src="supabase-client.js"></script>
     <script src="components.js"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
+    </script>
 
+    <!-- SIDEBAR -->
+    <aside class="w-[260px] bg-white border-r border-slate-200 flex flex-col shrink-0 relative z-20">
+        <div class="h-20 px-6 flex items-center">
+            <a href="index.html" class="flex items-center gap-2.5">
+                <div class="bg-navy text-white w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-xl">G</div>
+                <span class="font-extrabold text-[26px] tracking-tight text-navy leading-none">
+                    PRN<span class="text-brand-green">.</span>
+                </span>
+            </a>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scroll py-6 px-4 flex flex-col gap-8">
+            <nav class="flex flex-col gap-1.5">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] px-4 mb-2">Platform</p>
+
+                <a href="practice-dashboard.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-squares-four text-lg group-hover:text-navy transition-colors"></i> Dashboard
+                </a>
+                <a href="post-shift.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-calendar-plus text-lg group-hover:text-navy transition-colors"></i> Post Vacancy
+                </a>
+                <a href="view-requested-shifts.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-clipboard-text text-lg group-hover:text-navy transition-colors"></i> Manage Shifts
+                </a>
+                <a href="find-locums.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-users text-lg group-hover:text-navy transition-colors"></i> Locum Network
+                </a>
+                <a href="billing.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-receipt text-lg group-hover:text-navy transition-colors"></i> Compliance & Billing
+                </a>
+                <a href="messages.html" id="sidebarMessagesLink" class="flex items-center justify-between px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-chat-circle-dots text-lg group-hover:text-navy transition-colors"></i> Messages
+                    </div>
+                    <span id="sidebarUnreadBadge" class="hidden text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full"></span>
+                </a>
+            </nav>
+
+            <nav class="flex flex-col gap-1.5 mt-auto">
+                <a href="practice-settings.html" class="sidebar-active relative flex items-center gap-3 px-4 py-2.5 bg-slate-50 text-navy rounded-xl text-[14px] font-bold transition-all">
+                    <i class="ph-fill ph-gear text-lg"></i> Practice Settings
+                </a>
+                <button onclick="Auth.logout()" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl text-[14px] font-semibold transition-colors group cursor-pointer text-left">
+                    <i class="ph ph-sign-out text-lg"></i> Log Out
+                </button>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col relative w-full h-full">
+        <header class="h-20 px-10 flex items-center justify-between shrink-0 z-10 sticky top-0 bg-surface/80 backdrop-blur-md">
+            <div class="relative w-96 group">
+                <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-navy transition-colors"></i>
+                <input type="text" id="dashSearch" placeholder="Search settings..." class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
+            </div>
+
+            <div class="flex items-center gap-5">
+                <button onclick="window.location.href='practice-settings.html'" class="bg-navy rounded-full p-1 pl-1.5 pr-4 flex items-center gap-2.5 hover:bg-slate-800 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-navy group">
+                    <div class="bg-brand-green text-white w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold tracking-wider" id="headerAvatar">--</div>
+                    <span class="text-white text-[13px] font-semibold pr-1" id="headerName">User</span>
+                    <i class="ph-bold ph-caret-down text-slate-400 text-[10px] group-hover:text-white transition-colors"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto custom-scroll px-10 pb-20 pt-4">
+            <div class="max-w-[1100px] mx-auto w-full relative flex flex-col gap-8" id="settingsRoot">
+                <!-- Populated by script below -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ===== DATA =====
         const session = Auth.getSession();
-        const practice = Auth.getCurrentUser();
-        const pageContent = initAppLayout('practice', 'settings', 'Settings');
+        const practice = Auth.getCurrentUser() || { id: session.id, practiceName: session.name, name: session.name };
 
-        let activeTab = 'practice-info';
+        // Header profile pill
+        document.getElementById('headerAvatar').textContent = getInitials((session.firstName || '') + ' ' + (session.lastName || session.name || ''));
+        document.getElementById('headerName').textContent = session.firstName || (session.name || 'User').split(' ')[0];
+
+        // Unread messages badge
+        const unreadMsgCount = MessageManager.getUnreadCount(session.id);
+        if (unreadMsgCount > 0) {
+            const badge = document.getElementById('sidebarUnreadBadge');
+            badge.textContent = unreadMsgCount;
+            badge.classList.remove('hidden');
+        }
+
+        const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
         const healthBoards = [
             'Aneurin Bevan', 'Betsi Cadwaladr', 'Cardiff and Vale',
@@ -45,201 +237,251 @@
         const savedPrefs = localStorage.getItem('gprn_notif_prefs_' + session.id);
         const notifPrefs = savedPrefs ? JSON.parse(savedPrefs) : { ...defaultNotifPrefs };
 
+        // Shared Tailwind classes
+        const inputCls = 'rounded-xl border border-slate-200 focus:ring-4 focus:ring-slate-100 focus:border-slate-300 focus:outline-none px-4 py-3 text-[14px] w-full bg-white transition-all';
+        const labelCls = 'text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2 block';
+        const cardCls = 'bg-white rounded-2xl border border-slate-200 shadow-subtle p-6';
+        const saveBtnCls = 'bg-navy text-white px-6 py-3 rounded-full font-bold text-[14px] hover:bg-slate-800 transition-colors shadow-md focus:outline-none focus:ring-4 focus:ring-slate-200';
+
+        const root = document.getElementById('settingsRoot');
+
         function render() {
-            pageContent.innerHTML = `
-                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
-                    Settings
-                </h1>
+            const practiceName = escapeHtml(practice.practiceName || practice.name || 'Your Practice');
 
-                <div class="tabs">
-                    <button class="tab-item ${activeTab === 'practice-info' ? 'active' : ''}" onclick="switchTab('practice-info')">Practice Info</button>
-                    <button class="tab-item ${activeTab === 'contact-person' ? 'active' : ''}" onclick="switchTab('contact-person')">Primary Contact</button>
-                    <button class="tab-item ${activeTab === 'notifications' ? 'active' : ''}" onclick="switchTab('notifications')">Notifications</button>
-                </div>
-
-                <div class="tab-pane ${activeTab === 'practice-info' ? 'active' : ''}" id="tab-practice-info">
-                    <div class="content-card">
-                        <div class="content-card-header">
-                            <h2>Practice Information</h2>
+            root.innerHTML = `
+                <!-- Welcome / Title -->
+                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 animate-item">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 bg-brand-mint text-brand-green px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase mb-4 border border-brand-green/20">
+                            <span class="w-1.5 h-1.5 bg-brand-green rounded-full"></span>
+                            Practice Manager Portal
                         </div>
-                        <div class="content-card-body">
-                            <form id="practiceInfoForm" novalidate>
-                                <div class="form-group">
-                                    <label class="form-label" for="practiceName">Practice Name</label>
-                                    <input type="text" id="practiceName" class="form-input" value="${practice.practiceName}" required>
-                                    <div class="form-error"></div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label class="form-label" for="healthBoard">Health Board</label>
-                                        <select id="healthBoard" class="form-select" required>
-                                            ${healthBoards.map(hb => `<option value="${hb}" ${practice.healthBoard === hb ? 'selected' : ''}>${hb}</option>`).join('')}
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="computerSystem">Computer System</label>
-                                        <select id="computerSystem" class="form-select" required>
-                                            ${computerSystems.map(cs => `<option value="${cs}" ${practice.computerSystem === cs ? 'selected' : ''}>${cs}</option>`).join('')}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label" for="address">Address</label>
-                                    <input type="text" id="address" class="form-input" value="${practice.address}" required>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label class="form-label" for="city">City</label>
-                                        <input type="text" id="city" class="form-input" value="${practice.city}">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="postcode">Postcode</label>
-                                        <input type="text" id="postcode" class="form-input" value="${practice.postcode}">
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label class="form-label" for="phone">Phone</label>
-                                        <input type="tel" id="phone" class="form-input" value="${practice.phone}">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="patientListSize">Patient List Size</label>
-                                        <input type="number" id="patientListSize" class="form-input" value="${practice.patientListSize}">
-                                    </div>
-                                </div>
-
-                                <div style="padding-top: 12px;">
-                                    <button type="submit" class="btn btn-primary">Save Practice Info</button>
-                                </div>
-                            </form>
-                        </div>
+                        <h1 class="text-[44px] font-extrabold text-navy tracking-tight mb-2" style="font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1.2;">Practice Settings</h1>
+                        <p class="text-slate-500 text-[15px] font-medium">Manage ${practiceName}'s profile, contact details and preferences.</p>
                     </div>
                 </div>
 
-                <div class="tab-pane ${activeTab === 'contact-person' ? 'active' : ''}" id="tab-contact-person">
-                    <div class="content-card">
-                        <div class="content-card-header">
-                            <h2>Primary Contact</h2>
+                <!-- Profile Information card -->
+                <section class="${cardCls} animate-item delay-100">
+                    <div class="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 class="font-bold text-navy text-lg">Profile Information</h3>
+                            <p class="text-[13px] text-slate-500 mt-1">Core details about your practice visible to locums.</p>
                         </div>
-                        <div class="content-card-body">
-                            <form id="contactForm" novalidate>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label class="form-label" for="contactName">Full Name</label>
-                                        <input type="text" id="contactName" class="form-input" value="${practice.contactName}" required>
-                                        <div class="form-error"></div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="contactRole">Role</label>
-                                        <input type="text" id="contactRole" class="form-input" value="${practice.contactRole}">
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label class="form-label" for="contactEmail">Email</label>
-                                        <input type="email" id="contactEmail" class="form-input" value="${practice.contactEmail}" required data-validate="email">
-                                        <div class="form-error"></div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="contactPhone">Phone</label>
-                                        <input type="tel" id="contactPhone" class="form-input" value="${practice.contactPhone}">
-                                    </div>
-                                </div>
-
-                                <div style="padding-top: 12px;">
-                                    <button type="submit" class="btn btn-primary">Save Contact Info</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tab-pane ${activeTab === 'notifications' ? 'active' : ''}" id="tab-notifications">
-                    <div class="content-card">
-                        <div class="content-card-header">
-                            <h2>Email Notifications</h2>
-                        </div>
-                        <div class="content-card-body">
-                            <div class="form-toggle">
-                                <span class="form-toggle-label">Locum responses to your offers</span>
-                                <div class="toggle-switch ${notifPrefs.newApplications ? 'active' : ''}" data-pref="newApplications" onclick="toggleNotif(this)"></div>
-                            </div>
-                            <div class="form-toggle">
-                                <span class="form-toggle-label">Session reminders (24 hours before)</span>
-                                <div class="toggle-switch ${notifPrefs.shiftReminders ? 'active' : ''}" data-pref="shiftReminders" onclick="toggleNotif(this)"></div>
-                            </div>
-                            <div class="form-toggle">
-                                <span class="form-toggle-label">Locum booking confirmations</span>
-                                <div class="toggle-switch ${notifPrefs.locumConfirmations ? 'active' : ''}" data-pref="locumConfirmations" onclick="toggleNotif(this)"></div>
-                            </div>
-                            <div class="form-toggle">
-                                <span class="form-toggle-label">Billing and payment alerts</span>
-                                <div class="toggle-switch ${notifPrefs.billingAlerts ? 'active' : ''}" data-pref="billingAlerts" onclick="toggleNotif(this)"></div>
-                            </div>
-                            <div class="form-toggle">
-                                <span class="form-toggle-label">Weekly session coverage report</span>
-                                <div class="toggle-switch ${notifPrefs.weeklyReport ? 'active' : ''}" data-pref="weeklyReport" onclick="toggleNotif(this)"></div>
-                            </div>
-                            <div class="form-toggle" style="border-bottom: none;">
-                                <span class="form-toggle-label">GPRN news and updates</span>
-                                <div class="toggle-switch ${notifPrefs.marketingUpdates ? 'active' : ''}" data-pref="marketingUpdates" onclick="toggleNotif(this)"></div>
-                            </div>
-
-                            <div style="padding-top: 20px;">
-                                <button class="btn btn-primary" onclick="saveNotifications()">Save Notification Preferences</button>
-                            </div>
+                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
+                            <i class="ph ph-buildings text-xl"></i>
                         </div>
                     </div>
 
-                    <div class="content-card" style="margin-top: 20px;">
-                        <div class="content-card-header">
-                            <h2>Email Log</h2>
+                    <form id="practiceInfoForm" novalidate class="flex flex-col gap-5">
+                        <div>
+                            <label class="${labelCls}" for="practiceName">Practice Name</label>
+                            <input type="text" id="practiceName" class="${inputCls}" value="${escapeHtml(practice.practiceName || '')}" required>
                         </div>
-                        <div class="content-card-body">
-                            ${(() => {
-                                const emailLog = EmailManager.getLog(session.id).slice(0, 10);
-                                if (emailLog.length === 0) {
-                                    return '<p style="color: var(--dark-600); font-size: 0.88rem; padding: 12px 0;">No emails sent yet.</p>';
-                                }
-                                return emailLog.map(email => {
-                                    const time = new Date(email.timestamp);
-                                    const timeStr = time.toLocaleDateString() + ' ' + time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                    return '<div class="email-log-item">' +
-                                        '<div class="email-log-icon">' + getIcon('mail') + '</div>' +
-                                        '<div class="email-log-info">' +
-                                            '<div class="email-log-subject">' + email.subject + '</div>' +
-                                            '<div class="email-log-body">' + (email.body || '').substring(0, 120) + (email.body && email.body.length > 120 ? '...' : '') + '</div>' +
-                                        '</div>' +
-                                        '<div class="email-log-time">' + timeStr + '</div>' +
-                                    '</div>';
-                                }).join('');
-                            })()}
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="${labelCls}" for="healthBoard">Health Board</label>
+                                <select id="healthBoard" class="${inputCls}" required>
+                                    ${healthBoards.map(hb => `<option value="${hb}" ${practice.healthBoard === hb ? 'selected' : ''}>${hb}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="${labelCls}" for="computerSystem">Computer System</label>
+                                <select id="computerSystem" class="${inputCls}" required>
+                                    ${computerSystems.map(cs => `<option value="${cs}" ${practice.computerSystem === cs ? 'selected' : ''}>${cs}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="${labelCls}" for="patientListSize">Patient List Size</label>
+                            <input type="number" id="patientListSize" class="${inputCls}" value="${escapeHtml(practice.patientListSize || '')}">
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" class="${saveBtnCls}">Save Profile</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Contact & Location card -->
+                <section class="${cardCls} animate-item delay-200">
+                    <div class="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 class="font-bold text-navy text-lg">Contact & Location</h3>
+                            <p class="text-[13px] text-slate-500 mt-1">Where your practice is based and how locums can reach you.</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
+                            <i class="ph ph-map-pin text-xl"></i>
                         </div>
                     </div>
-                </div>
+
+                    <form id="contactForm" novalidate class="flex flex-col gap-5">
+                        <div>
+                            <label class="${labelCls}" for="address">Address</label>
+                            <input type="text" id="address" class="${inputCls}" value="${escapeHtml(practice.address || '')}" required>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="${labelCls}" for="city">City</label>
+                                <input type="text" id="city" class="${inputCls}" value="${escapeHtml(practice.city || '')}">
+                            </div>
+                            <div>
+                                <label class="${labelCls}" for="postcode">Postcode</label>
+                                <input type="text" id="postcode" class="${inputCls}" value="${escapeHtml(practice.postcode || '')}">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="${labelCls}" for="phone">Practice Phone</label>
+                                <input type="tel" id="phone" class="${inputCls}" value="${escapeHtml(practice.phone || '')}">
+                            </div>
+                            <div>
+                                <label class="${labelCls}" for="contactEmail">Contact Email</label>
+                                <input type="email" id="contactEmail" class="${inputCls}" value="${escapeHtml(practice.contactEmail || '')}" required data-validate="email">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="${labelCls}" for="contactName">Primary Contact Name</label>
+                                <input type="text" id="contactName" class="${inputCls}" value="${escapeHtml(practice.contactName || '')}" required>
+                            </div>
+                            <div>
+                                <label class="${labelCls}" for="contactRole">Contact Role</label>
+                                <input type="text" id="contactRole" class="${inputCls}" value="${escapeHtml(practice.contactRole || '')}">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="${labelCls}" for="contactPhone">Contact Phone</label>
+                            <input type="tel" id="contactPhone" class="${inputCls}" value="${escapeHtml(practice.contactPhone || '')}">
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" class="${saveBtnCls}">Save Contact Details</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Default Rates card -->
+                <section class="${cardCls} animate-item delay-300">
+                    <div class="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 class="font-bold text-navy text-lg">Default Rates</h3>
+                            <p class="text-[13px] text-slate-500 mt-1">Pre-fill your session offers with your usual rates. You can override these per shift.</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
+                            <i class="ph ph-currency-gbp text-xl"></i>
+                        </div>
+                    </div>
+
+                    <form id="ratesForm" novalidate class="flex flex-col gap-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="${labelCls}" for="defaultSessionRate">Default Session Rate (&pound;)</label>
+                                <input type="number" id="defaultSessionRate" class="${inputCls}" value="${escapeHtml(practice.defaultSessionRate || '')}" placeholder="e.g. 450">
+                            </div>
+                            <div>
+                                <label class="${labelCls}" for="defaultHourlyRate">Default Hourly Rate (&pound;)</label>
+                                <input type="number" id="defaultHourlyRate" class="${inputCls}" value="${escapeHtml(practice.defaultHourlyRate || '')}" placeholder="e.g. 110">
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" class="${saveBtnCls}">Save Rates</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Preferences / Notifications card -->
+                <section class="${cardCls} animate-item delay-400">
+                    <div class="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 class="font-bold text-navy text-lg">Notifications & Preferences</h3>
+                            <p class="text-[13px] text-slate-500 mt-1">Choose which updates you want to receive by email.</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
+                            <i class="ph ph-bell text-xl"></i>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col divide-y divide-slate-100">
+                        ${renderToggle('newApplications', 'Locum responses to your offers', 'Get notified the moment a locum accepts, counters or declines.')}
+                        ${renderToggle('shiftReminders', 'Session reminders', 'Reminder 24 hours before each confirmed session.')}
+                        ${renderToggle('locumConfirmations', 'Booking confirmations', 'Confirmation emails when a locum is booked.')}
+                        ${renderToggle('billingAlerts', 'Billing & payment alerts', 'Invoice and payment updates.')}
+                        ${renderToggle('weeklyReport', 'Weekly coverage report', 'A summary of your coverage every Monday.')}
+                        ${renderToggle('marketingUpdates', 'GPRN news & updates', 'Occasional product news and tips.')}
+                    </div>
+
+                    <div class="pt-6">
+                        <button type="button" id="savePrefsBtn" class="${saveBtnCls}">Save Preferences</button>
+                    </div>
+                </section>
+
+                <!-- Danger Zone card -->
+                <section class="rounded-2xl border border-red-200 bg-red-50/30 shadow-subtle p-6 animate-item delay-500">
+                    <div class="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 class="font-bold text-red-700 text-lg">Danger Zone</h3>
+                            <p class="text-[13px] text-red-600/80 mt-1">Sensitive account actions. Proceed with care.</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 border border-red-200">
+                            <i class="ph ph-warning text-xl"></i>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-white border border-red-100">
+                            <div>
+                                <div class="font-bold text-navy text-[14px]">Change Password</div>
+                                <div class="text-[13px] text-slate-500">Update the password used to sign in to this account.</div>
+                            </div>
+                            <button type="button" id="changePasswordBtn" class="bg-red-600 text-white px-5 py-2.5 rounded-full font-bold text-[13px] hover:bg-red-700 transition-colors shadow-sm">
+                                Change Password
+                            </button>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-white border border-red-100">
+                            <div>
+                                <div class="font-bold text-navy text-[14px]">Delete Practice Account</div>
+                                <div class="text-[13px] text-slate-500">Permanently remove this practice and all associated data. This cannot be undone.</div>
+                            </div>
+                            <button type="button" id="deleteAccountBtn" class="bg-white text-red-600 border border-red-300 px-5 py-2.5 rounded-full font-bold text-[13px] hover:bg-red-600 hover:text-white transition-colors shadow-sm">
+                                Delete Account
+                            </button>
+                        </div>
+                    </div>
+                </section>
             `;
 
-            // Attach form handlers after rendering
             attachFormHandlers();
         }
 
-        function switchTab(tab) {
-            activeTab = tab;
-            render();
+        function renderToggle(key, label, helper) {
+            const active = notifPrefs[key];
+            return `
+                <div class="flex items-center justify-between py-4 gap-4">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-navy text-[14px]">${label}</div>
+                        <div class="text-[13px] text-slate-500">${helper}</div>
+                    </div>
+                    <div class="toggle-switch ${active ? 'active' : ''}" data-pref="${key}" onclick="toggleNotif(this)"></div>
+                </div>
+            `;
         }
 
         function toggleNotif(el) {
             el.classList.toggle('active');
-            var pref = el.dataset.pref;
+            const pref = el.dataset.pref;
             if (pref) notifPrefs[pref] = el.classList.contains('active');
 
             // Also persist to mock data
-            var data = getMockData();
+            const data = getMockData();
             if (!data.userSettings) data.userSettings = {};
             if (!data.userSettings[session.id]) data.userSettings[session.id] = {};
             data.userSettings[session.id][pref] = el.classList.contains('active');
@@ -257,14 +499,10 @@
                         p.practiceName = document.getElementById('practiceName').value;
                         p.healthBoard = document.getElementById('healthBoard').value;
                         p.computerSystem = document.getElementById('computerSystem').value;
-                        p.address = document.getElementById('address').value;
-                        p.city = document.getElementById('city').value;
-                        p.postcode = document.getElementById('postcode').value;
-                        p.phone = document.getElementById('phone').value;
                         p.patientListSize = parseInt(document.getElementById('patientListSize').value) || 0;
                         saveMockData(d);
                     }
-                    Toast.show('Practice information saved successfully.', 'success');
+                    Toast.show('Profile saved successfully.', 'success');
                 });
             }
 
@@ -275,22 +513,91 @@
                     const d = getMockData();
                     const p = d.practices.find(pr => pr.id === session.id);
                     if (p) {
+                        p.address = document.getElementById('address').value;
+                        p.city = document.getElementById('city').value;
+                        p.postcode = document.getElementById('postcode').value;
+                        p.phone = document.getElementById('phone').value;
                         p.contactName = document.getElementById('contactName').value;
                         p.contactRole = document.getElementById('contactRole').value;
                         p.contactEmail = document.getElementById('contactEmail').value;
                         p.contactPhone = document.getElementById('contactPhone').value;
                         saveMockData(d);
                     }
-                    Toast.show('Contact information saved successfully.', 'success');
+                    Toast.show('Contact details saved successfully.', 'success');
+                });
+            }
+
+            const ratesForm = document.getElementById('ratesForm');
+            if (ratesForm) {
+                ratesForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const d = getMockData();
+                    const p = d.practices.find(pr => pr.id === session.id);
+                    if (p) {
+                        p.defaultSessionRate = parseFloat(document.getElementById('defaultSessionRate').value) || 0;
+                        p.defaultHourlyRate = parseFloat(document.getElementById('defaultHourlyRate').value) || 0;
+                        saveMockData(d);
+                    }
+                    Toast.show('Default rates saved.', 'success');
+                });
+            }
+
+            const savePrefsBtn = document.getElementById('savePrefsBtn');
+            if (savePrefsBtn) {
+                savePrefsBtn.addEventListener('click', saveNotifications);
+            }
+
+            const changePasswordBtn = document.getElementById('changePasswordBtn');
+            if (changePasswordBtn) {
+                changePasswordBtn.addEventListener('click', function() {
+                    if (typeof Modal !== 'undefined' && Modal.show) {
+                        Modal.show({
+                            title: 'Change Password',
+                            body: `
+                                <div style="display:flex; flex-direction:column; gap:14px;">
+                                    <div><label class="form-label">Current Password</label><input type="password" id="currentPwd" class="form-input"></div>
+                                    <div><label class="form-label">New Password</label><input type="password" id="newPwd" class="form-input"></div>
+                                    <div><label class="form-label">Confirm New Password</label><input type="password" id="confirmPwd" class="form-input"></div>
+                                </div>
+                            `,
+                            footer: '<button class="btn btn-primary" onclick="submitPasswordChange()">Update Password</button>'
+                        });
+                    } else {
+                        Toast.show('Password change unavailable.', 'error');
+                    }
+                });
+            }
+
+            const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+            if (deleteAccountBtn) {
+                deleteAccountBtn.addEventListener('click', function() {
+                    if (typeof Modal !== 'undefined' && Modal.show) {
+                        Modal.show({
+                            title: 'Delete Practice Account?',
+                            body: '<p style="color: var(--dark-600); font-size: 0.9rem;">This will permanently delete your practice account and all associated data. This action cannot be undone.</p>',
+                            footer: '<button class="btn btn-secondary" onclick="Modal.hide()">Cancel</button> <button class="btn btn-danger" onclick="Toast.show(\'Please contact support to delete your account.\', \'info\'); Modal.hide();">Delete Account</button>'
+                        });
+                    }
                 });
             }
         }
+
+        window.submitPasswordChange = function() {
+            const curr = document.getElementById('currentPwd').value;
+            const nw = document.getElementById('newPwd').value;
+            const cfm = document.getElementById('confirmPwd').value;
+            if (!curr || !nw || !cfm) { Toast.show('Please fill in all fields.', 'error'); return; }
+            if (nw !== cfm) { Toast.show('New passwords do not match.', 'error'); return; }
+            if (nw.length < 8) { Toast.show('Password must be at least 8 characters.', 'error'); return; }
+            Toast.show('Password updated successfully.', 'success');
+            Modal.hide();
+        };
 
         function saveNotifications() {
             localStorage.setItem('gprn_notif_prefs_' + session.id, JSON.stringify(notifPrefs));
 
             // Also persist to mock data
-            var data = getMockData();
+            const data = getMockData();
             if (!data.userSettings) data.userSettings = {};
             if (!data.userSettings[session.id]) data.userSettings[session.id] = {};
             Object.keys(notifPrefs).forEach(function(key) {
@@ -305,18 +612,17 @@
 
         // Load saved toggle states from mock data
         (function() {
-            var data = getMockData();
+            const data = getMockData();
             if (data.userSettings && data.userSettings[session.id]) {
-                var settings = data.userSettings[session.id];
+                const settings = data.userSettings[session.id];
                 document.querySelectorAll('.toggle-switch[data-pref]').forEach(function(el) {
-                    var key = el.dataset.pref;
+                    const key = el.dataset.pref;
                     if (settings.hasOwnProperty(key)) {
                         if (settings[key]) {
                             el.classList.add('active');
                         } else {
                             el.classList.remove('active');
                         }
-                        // Also update in-memory notifPrefs object
                         if (notifPrefs.hasOwnProperty(key)) {
                             notifPrefs[key] = settings[key];
                         }
@@ -324,6 +630,13 @@
                 });
             }
         })();
+
+        // Search bar — navigates to find-locums with query
+        document.getElementById('dashSearch').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.value.trim()) {
+                window.location.href = 'find-locums.html?q=' + encodeURIComponent(e.target.value.trim());
+            }
+        });
     </script>
 </body>
 </html>

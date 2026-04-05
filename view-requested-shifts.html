@@ -6,33 +6,233 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>My Sessions - GPRN</title>
+    <title>Manage Shifts - GPRN</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Syne + Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Existing app styles (modals, toasts, forms, badges) -->
     <link rel="stylesheet" href="styles.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Syne"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: {
+                            DEFAULT: '#0B0F19',
+                            50: '#141C2F',
+                        },
+                        brand: {
+                            green: '#059669',
+                            mint: '#ECFDF5',
+                            dark: '#022C22',
+                        },
+                        surface: '#F8F9FA'
+                    },
+                    boxShadow: {
+                        'card': '0 4px 20px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
+                        'subtle': '0 1px 2px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body.pm-dashboard { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+        .custom-scroll:hover::-webkit-scrollbar-thumb { background: #CBD5E1; }
+
+        @keyframes fade-in-up {
+            0% { opacity: 0; transform: translateY(15px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-item {
+            animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+
+        .sidebar-active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10%;
+            height: 80%;
+            width: 4px;
+            background-color: #0B0F19;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .filter-chip.active {
+            background-color: #0B0F19 !important;
+            color: white !important;
+            border-color: #0B0F19 !important;
+        }
+    </style>
 </head>
-<body class="app-layout">
+<body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
+
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
-<script src="supabase-client.js"></script>
+    <script src="supabase-client.js"></script>
     <script src="components.js"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
+    </script>
 
+    <!-- SIDEBAR -->
+    <aside class="w-[260px] bg-white border-r border-slate-200 flex flex-col shrink-0 relative z-20">
+        <div class="h-20 px-6 flex items-center">
+            <a href="index.html" class="flex items-center gap-2.5">
+                <div class="bg-navy text-white w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-xl">G</div>
+                <span class="font-extrabold text-[26px] tracking-tight text-navy leading-none">
+                    PRN<span class="text-brand-green">.</span>
+                </span>
+            </a>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scroll py-6 px-4 flex flex-col gap-8">
+            <nav class="flex flex-col gap-1.5">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] px-4 mb-2">Platform</p>
+
+                <a href="practice-dashboard.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-squares-four text-lg group-hover:text-navy transition-colors"></i> Dashboard
+                </a>
+                <a href="post-shift.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-calendar-plus text-lg group-hover:text-navy transition-colors"></i> Post Vacancy
+                </a>
+                <a href="view-requested-shifts.html" class="sidebar-active relative flex items-center gap-3 px-4 py-2.5 bg-slate-50 text-navy rounded-xl text-[14px] font-bold transition-all">
+                    <i class="ph-fill ph-clipboard-text text-lg"></i> Manage Shifts
+                </a>
+                <a href="find-locums.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-users text-lg group-hover:text-navy transition-colors"></i> Locum Network
+                </a>
+                <a href="billing.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-receipt text-lg group-hover:text-navy transition-colors"></i> Compliance & Billing
+                </a>
+                <a href="messages.html" id="sidebarMessagesLink" class="flex items-center justify-between px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-chat-circle-dots text-lg group-hover:text-navy transition-colors"></i> Messages
+                    </div>
+                    <span id="sidebarUnreadBadge" class="hidden text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full"></span>
+                </a>
+            </nav>
+
+            <nav class="flex flex-col gap-1.5 mt-auto">
+                <a href="practice-settings.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-gear text-lg"></i> Practice Settings
+                </a>
+                <button onclick="Auth.logout()" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl text-[14px] font-semibold transition-colors group cursor-pointer text-left">
+                    <i class="ph ph-sign-out text-lg"></i> Log Out
+                </button>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col relative w-full h-full">
+        <header class="h-20 px-10 flex items-center justify-between shrink-0 z-10 sticky top-0 bg-surface/80 backdrop-blur-md">
+            <div class="relative w-96 group">
+                <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-navy transition-colors"></i>
+                <input type="text" id="dashSearch" placeholder="Search shifts by date, type, or status..." class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
+            </div>
+
+            <div class="flex items-center gap-5">
+                <button onclick="window.location.href='practice-settings.html'" class="bg-navy rounded-full p-1 pl-1.5 pr-4 flex items-center gap-2.5 hover:bg-slate-800 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-navy group">
+                    <div class="bg-brand-green text-white w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold tracking-wider" id="headerAvatar">--</div>
+                    <span class="text-white text-[13px] font-semibold pr-1" id="headerName">User</span>
+                    <i class="ph-bold ph-caret-down text-slate-400 text-[10px] group-hover:text-white transition-colors"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto custom-scroll px-10 pb-20 pt-4">
+            <div class="max-w-[1400px] mx-auto w-full relative flex flex-col gap-8">
+
+                <!-- Page Heading -->
+                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 animate-item">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 bg-brand-mint text-brand-green px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase mb-4 border border-brand-green/20">
+                            <span class="w-1.5 h-1.5 bg-brand-green rounded-full"></span>
+                            Practice Manager Portal
+                        </div>
+                        <h2 class="text-[44px] font-extrabold text-navy tracking-tight mb-2" style="font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1.2;">Manage Shifts.</h2>
+                        <p class="text-slate-500 text-[15px] font-medium">Track every session you've posted, review offers and confirm bookings.</p>
+                    </div>
+                    <a href="post-shift.html" class="inline-flex items-center gap-2 bg-navy hover:bg-slate-800 text-white text-[13px] font-bold px-5 py-3 rounded-full transition-colors shadow-md">
+                        <i class="ph-bold ph-plus-circle text-base"></i> Post New Vacancy
+                    </a>
+                </div>
+
+                <!-- Filter Bar -->
+                <div class="flex items-center justify-between gap-4 flex-wrap animate-item delay-100">
+                    <div class="flex items-center gap-2 flex-wrap" id="filterChips">
+                        <button data-filter="all" class="filter-chip active text-[13px] font-bold text-slate-600 bg-white border border-slate-200 px-4 py-1.5 rounded-full hover:bg-slate-50 transition-colors shadow-sm">All</button>
+                        <button data-filter="open" class="filter-chip text-[13px] font-bold text-slate-600 bg-white border border-slate-200 px-4 py-1.5 rounded-full hover:bg-slate-50 transition-colors shadow-sm">Open</button>
+                        <button data-filter="filled" class="filter-chip text-[13px] font-bold text-slate-600 bg-white border border-slate-200 px-4 py-1.5 rounded-full hover:bg-slate-50 transition-colors shadow-sm">Filled</button>
+                        <button data-filter="history" class="filter-chip text-[13px] font-bold text-slate-600 bg-white border border-slate-200 px-4 py-1.5 rounded-full hover:bg-slate-50 transition-colors shadow-sm">History</button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="date" id="filterDateFrom" class="text-[13px] font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:bg-slate-50 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-navy/10">
+                        <span class="text-slate-400 text-[12px] font-bold">to</span>
+                        <input type="date" id="filterDateTo" class="text-[13px] font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:bg-slate-50 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-navy/10">
+                    </div>
+                </div>
+
+                <!-- Sessions Table -->
+                <div id="sessionsTable" class="animate-item delay-200"></div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ===== SESSION + HEADER =====
         const session = Auth.getSession();
-        const pageContent = initAppLayout('practice', 'my-sessions', 'My Sessions');
 
-        // Calendar state
-        var calYear = new Date().getFullYear();
-        var calMonth = new Date().getMonth();
-        var viewMode = 'calendar';
+        // Header profile pill
+        document.getElementById('headerAvatar').textContent = getInitials((session.firstName || '') + ' ' + (session.lastName || session.name || ''));
+        document.getElementById('headerName').textContent = session.firstName || (session.name || 'User').split(' ')[0];
+
+        // Unread messages badge
+        try {
+            const unreadMsgCount = MessageManager.getUnreadCount(session.id);
+            if (unreadMsgCount > 0) {
+                const badge = document.getElementById('sidebarUnreadBadge');
+                badge.textContent = unreadMsgCount;
+                badge.classList.remove('hidden');
+            }
+        } catch (e) { /* no-op */ }
+
+        // ===== STATE =====
         var currentStatusFilter = 'all';
         var currentDateFrom = '';
         var currentDateTo = '';
 
-        var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        var dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+        function escapeHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+                return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+            });
+        }
 
         function getSessionNeeds(statusFilter) {
             var currentData = getMockData();
@@ -46,98 +246,131 @@
             return needs;
         }
 
-        function getNeedStatusColor(need) {
-            var currentData = getMockData();
-            var hasCompleted = currentData.offers.some(function(o) { return o.sessionNeedId === need.id && o.status === 'completed'; });
-            if (hasCompleted) return 'completed';
-            if (need.status === 'filled') return 'filled';
-            return 'open';
+        // ===== STATUS PILL =====
+        function statusPill(status) {
+            var s = (status || '').toLowerCase();
+            var cls, label;
+            if (s === 'filled' || s === 'completed' || s === 'confirmed' || s === 'accepted') {
+                cls = 'bg-brand-mint text-brand-green border border-brand-green/20';
+                label = s === 'filled' ? 'Filled' : (s.charAt(0).toUpperCase() + s.slice(1));
+            } else if (s === 'open') {
+                cls = 'bg-sky-50 text-sky-700 border border-sky-100';
+                label = 'Open';
+            } else if (s === 'cancelled' || s === 'withdrawn') {
+                cls = 'bg-rose-50 text-rose-600 border border-rose-100';
+                label = s.charAt(0).toUpperCase() + s.slice(1);
+            } else {
+                cls = 'bg-slate-50 text-slate-600 border border-slate-200';
+                label = s ? (s.charAt(0).toUpperCase() + s.slice(1)) : 'Unknown';
+            }
+            return '<span class="inline-flex items-center gap-1 ' + cls + ' px-3 py-1 rounded-full text-[11px] font-bold">' + label + '</span>';
         }
 
-        // ============== CALENDAR VIEW ==============
-
-        function renderCalendarView() {
-            var daysInMonth = DateUtils.getDaysInMonth(calYear, calMonth);
-            var firstDay = DateUtils.getFirstDayOfMonth(calYear, calMonth);
-            var todayStr = DateUtils.toISO(new Date());
+        // ===== RENDER TABLE =====
+        function renderTable() {
+            var currentData = getMockData();
             var needs = getSessionNeeds(currentStatusFilter);
 
-            var needsByDate = {};
-            needs.forEach(function(n) {
-                if (!needsByDate[n.date]) needsByDate[n.date] = [];
-                needsByDate[n.date].push(n);
-            });
+            if (currentDateFrom) needs = needs.filter(function(n) { return n.date >= currentDateFrom; });
+            if (currentDateTo) needs = needs.filter(function(n) { return n.date <= currentDateTo; });
+            needs.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
 
-            var prevMonth = calMonth === 0 ? 11 : calMonth - 1;
-            var prevYear = calMonth === 0 ? calYear - 1 : calYear;
-            var daysInPrevMonth = DateUtils.getDaysInMonth(prevYear, prevMonth);
+            var tableEl = document.getElementById('sessionsTable');
 
-            var cells = '';
-            for (var i = firstDay - 1; i >= 0; i--) {
-                var day = daysInPrevMonth - i;
-                var dateStr = prevYear + '-' + String(prevMonth + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-                cells += buildDayCell(day, dateStr, needsByDate[dateStr] || [], false, todayStr);
-            }
-            for (var d = 1; d <= daysInMonth; d++) {
-                var dateStr = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-                cells += buildDayCell(d, dateStr, needsByDate[dateStr] || [], true, todayStr);
-            }
-            var totalCells = firstDay + daysInMonth;
-            var remainder = totalCells % 7;
-            if (remainder > 0) {
-                var nextMonth = calMonth === 11 ? 0 : calMonth + 1;
-                var nextYear = calMonth === 11 ? calYear + 1 : calYear;
-                for (var d = 1; d <= (7 - remainder); d++) {
-                    var dateStr = nextYear + '-' + String(nextMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-                    cells += buildDayCell(d, dateStr, needsByDate[dateStr] || [], false, todayStr);
-                }
-            }
-
-            return '<div class="calendar-container">'
-                + '<div class="calendar-header-bar">'
-                + '<div class="calendar-nav">'
-                + '<button id="calPrev">' + getIcon('chevron-left') + '</button>'
-                + '<span class="calendar-title">' + monthNames[calMonth] + ' ' + calYear + '</span>'
-                + '<button id="calNext">' + getIcon('chevron-right') + '</button>'
-                + '</div>'
-                + '<div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">'
-                + '<button class="btn btn-secondary btn-small" id="calToday">Today</button>'
-                + '<div style="display: flex; align-items: center; gap: 16px; font-size: 0.78rem; flex-wrap: wrap;">'
-                + '<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: var(--primary);"></span> Open</span>'
-                + '<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: var(--success);"></span> Filled</span>'
-                + '<span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: var(--secondary);"></span> Completed</span>'
-                + '</div></div></div>'
-                + '<div class="calendar-grid-full">'
-                + dayNames.map(function(d) { return '<div class="calendar-day-header">' + d + '</div>'; }).join('')
-                + cells
-                + '</div></div>';
-        }
-
-        function buildDayCell(day, dateStr, needs, isCurrentMonth, todayStr) {
-            var isToday = dateStr === todayStr;
-            var cls = 'calendar-day-cell' + (isToday ? ' today' : '') + (!isCurrentMonth ? ' other-month' : '');
-            var html = '<div class="' + cls + '" data-date="' + dateStr + '" style="cursor: pointer;">';
-            html += '<div class="cal-date">' + day + '</div>';
-
-            var maxShow = 3;
-            for (var i = 0; i < Math.min(needs.length, maxShow); i++) {
-                var n = needs[i];
-                var color = getNeedStatusColor(n);
-                var bgColor, textColor;
-                if (color === 'open') { bgColor = 'rgba(91, 77, 255,0.15)'; textColor = 'var(--primary)'; }
-                else if (color === 'filled') { bgColor = 'rgba(34, 197, 94,0.15)'; textColor = 'var(--success)'; }
-                else { bgColor = 'rgba(59, 130, 246,0.15)'; textColor = 'var(--secondary)'; }
-
-                html += '<div data-need-id="' + n.id + '" style="font-size: 0.65rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-bottom: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: ' + bgColor + '; color: ' + textColor + ';">'
-                    + n.sessionType + ' ' + n.startTime
+            if (needs.length === 0) {
+                tableEl.innerHTML = '<div class="bg-white rounded-2xl border border-slate-200 shadow-subtle p-16 flex flex-col items-center justify-center text-center">'
+                    + '<div class="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-5">'
+                    + '<i class="ph ph-calendar-blank text-3xl text-slate-400"></i>'
+                    + '</div>'
+                    + '<h3 class="text-[20px] font-extrabold text-navy mb-2">No sessions yet</h3>'
+                    + '<p class="text-slate-500 text-[14px] font-medium max-w-sm mb-6">You haven\'t posted any shifts matching these filters. Create your first session to start receiving offers from locums.</p>'
+                    + '<a href="post-shift.html" class="inline-flex items-center gap-2 bg-navy hover:bg-slate-800 text-white text-[13px] font-bold px-5 py-2.5 rounded-full transition-colors shadow-md">'
+                    + '<i class="ph-bold ph-plus-circle text-base"></i> Create Session'
+                    + '</a>'
                     + '</div>';
+                return;
             }
-            if (needs.length > maxShow) {
-                html += '<div style="font-size: 0.65rem; color: var(--dark-600);">+' + (needs.length - maxShow) + ' more</div>';
-            }
-            html += '</div>';
-            return html;
+
+            var headerRow = '<div class="grid grid-cols-12 gap-4 border-b border-slate-200 bg-slate-50/50 p-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">'
+                + '<div class="col-span-3">Date</div>'
+                + '<div class="col-span-2">Session</div>'
+                + '<div class="col-span-2">Status</div>'
+                + '<div class="col-span-2">Offers</div>'
+                + '<div class="col-span-2">Budget</div>'
+                + '<div class="col-span-1 text-right">Action</div>'
+                + '</div>';
+
+            var rows = needs.map(function(need) {
+                var allOffers = currentData.offers.filter(function(o) { return o.sessionNeedId === need.id; });
+                var activeOffers = allOffers.filter(function(o) { return ['sent', 'viewed', 'negotiating'].includes(o.status); });
+                var acceptedOffer = allOffers.find(function(o) { return ['accepted', 'confirmed', 'completed'].includes(o.status); });
+
+                var dateFull = DateUtils.format(need.date, 'full');
+                var timeLabel = need.startTime + ' - ' + need.endTime;
+
+                var offersCell;
+                if (acceptedOffer) {
+                    var loc = currentData.locums.find(function(l) { return l.id === acceptedOffer.locumId; });
+                    var name = loc ? (loc.title + ' ' + loc.firstName + ' ' + loc.lastName) : 'Assigned';
+                    offersCell = '<div class="flex items-center gap-2">'
+                        + '<div class="w-7 h-7 rounded-full bg-brand-green text-white flex items-center justify-center text-[10px] font-bold">' + (loc ? getInitials(loc.firstName + ' ' + loc.lastName) : '??') + '</div>'
+                        + '<span class="text-[13px] font-semibold text-navy truncate">' + escapeHtml(name) + '</span>'
+                        + '</div>';
+                } else {
+                    offersCell = '<span class="text-[13px] font-semibold text-slate-600">' + activeOffers.length + ' offer' + (activeOffers.length !== 1 ? 's' : '') + ' sent</span>';
+                }
+
+                var budgetCell = need.budgetRate ? '<span class="text-[13px] font-bold text-navy">' + formatCurrency(need.budgetRate) + '</span>' : '<span class="text-[12px] font-medium text-slate-400">Not set</span>';
+
+                return '<div class="grid grid-cols-12 gap-4 border-b border-slate-100 p-4 items-center hover:bg-slate-50 transition-colors cursor-pointer" data-need-id="' + need.id + '">'
+                    + '<div class="col-span-3">'
+                    + '<div class="text-[14px] font-bold text-navy">' + escapeHtml(dateFull) + '</div>'
+                    + '<div class="text-[12px] font-medium text-slate-500">' + escapeHtml(timeLabel) + '</div>'
+                    + '</div>'
+                    + '<div class="col-span-2 text-[13px] font-semibold text-slate-700">' + escapeHtml(need.sessionType || '—') + '</div>'
+                    + '<div class="col-span-2">' + statusPill(need.status) + '</div>'
+                    + '<div class="col-span-2">' + offersCell + '</div>'
+                    + '<div class="col-span-2">' + budgetCell + '</div>'
+                    + '<div class="col-span-1 flex justify-end">'
+                    + '<button class="row-action inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-50 hover:bg-navy hover:text-white text-slate-500 transition-colors" data-need-id="' + need.id + '">'
+                    + '<i class="ph-bold ph-arrow-right text-sm"></i>'
+                    + '</button>'
+                    + '</div>'
+                    + '</div>';
+            }).join('');
+
+            tableEl.innerHTML = '<div class="bg-white rounded-2xl border border-slate-200 shadow-subtle overflow-hidden">'
+                + headerRow
+                + rows
+                + '</div>';
+
+            // Bind row clicks
+            tableEl.querySelectorAll('[data-need-id]').forEach(function(el) {
+                el.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var id = this.getAttribute('data-need-id');
+                    if (id) openNeedDetailModal(id);
+                });
+            });
         }
+
+        // ===== FILTER CHIP BINDING =====
+        document.querySelectorAll('.filter-chip').forEach(function(chip) {
+            chip.addEventListener('click', function() {
+                document.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
+                this.classList.add('active');
+                currentStatusFilter = this.getAttribute('data-filter');
+                renderTable();
+            });
+        });
+        document.getElementById('filterDateFrom').addEventListener('change', function() {
+            currentDateFrom = this.value;
+            renderTable();
+        });
+        document.getElementById('filterDateTo').addEventListener('change', function() {
+            currentDateTo = this.value;
+            renderTable();
+        });
 
         // ============== SESSION NEED DETAIL MODAL ==============
 
@@ -252,194 +485,6 @@
             });
         }
 
-        // ============== DAY DETAIL ==============
-
-        function openDayDetail(dateStr) {
-            var allNeeds = getSessionNeeds(currentStatusFilter);
-            var dayNeeds = allNeeds.filter(function(n) { return n.date === dateStr; });
-
-            if (dayNeeds.length === 0) {
-                Modal.show({
-                    title: 'Sessions for ' + DateUtils.format(dateStr, 'full'),
-                    body: '<p style="color: var(--dark-600); padding: 12px 0;">No sessions scheduled for this day.</p><a href="post-shift.html" class="btn btn-primary btn-small">Create Session</a>',
-                    footer: '<button class="btn btn-ghost" data-modal-close>Close</button>'
-                });
-                return;
-            }
-
-            if (dayNeeds.length === 1) {
-                openNeedDetailModal(dayNeeds[0].id);
-                return;
-            }
-
-            var currentData = getMockData();
-            var body = '';
-            dayNeeds.forEach(function(need) {
-                var offersCount = currentData.offers.filter(function(o) { return o.sessionNeedId === need.id && ['sent','viewed','negotiating'].includes(o.status); }).length;
-                var filledOffer = currentData.offers.find(function(o) { return o.sessionNeedId === need.id && ['accepted','confirmed','completed'].includes(o.status); });
-
-                body += '<div onclick="Modal.close(this.closest(\'.modal-overlay\')); openNeedDetailModal(\'' + need.id + '\')" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background=\'var(--gray-50)\'" onmouseout="this.style.background=\'transparent\'">'
-                    + '<div style="display: flex; align-items: center; gap: 12px;">'
-                    + '<span class="badge ' + getStatusBadge(need.status) + '">' + getStatusLabel(need.status) + '</span>'
-                    + '<div><strong style="font-size: 0.9rem;">' + need.sessionType + '</strong>'
-                    + '<div style="font-size: 0.82rem; color: var(--dark-600);">' + need.startTime + ' - ' + need.endTime + '</div></div></div>'
-                    + '<div style="text-align: right; font-size: 0.82rem; color: var(--dark-600);">';
-
-                if (filledOffer) {
-                    var loc = currentData.locums.find(function(l) { return l.id === filledOffer.locumId; });
-                    body += loc ? loc.title + ' ' + loc.firstName + ' ' + loc.lastName : 'Assigned';
-                } else {
-                    body += offersCount + ' offer' + (offersCount !== 1 ? 's' : '') + ' sent';
-                }
-                body += '</div></div>';
-            });
-
-            Modal.show({
-                title: 'Sessions for ' + DateUtils.format(dateStr, 'full') + ' (' + dayNeeds.length + ')',
-                body: '<div style="margin: -20px -24px;">' + body + '</div>',
-                footer: '<button class="btn btn-ghost" data-modal-close>Close</button>'
-            });
-        }
-
-        // ============== LIST VIEW ==============
-
-        function renderSessionsList(statusFilter, dateFrom, dateTo) {
-            var currentData = getMockData();
-            var needs = getSessionNeeds(statusFilter);
-
-            if (dateFrom) needs = needs.filter(function(n) { return n.date >= dateFrom; });
-            if (dateTo) needs = needs.filter(function(n) { return n.date <= dateTo; });
-            needs.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
-
-            if (needs.length === 0) {
-                return renderEmptyState('list', 'No Sessions Found', 'No sessions match your current filters.', 'Create Session', 'post-shift.html');
-            }
-
-            return needs.map(function(need) {
-                var allOffers = currentData.offers.filter(function(o) { return o.sessionNeedId === need.id; });
-                var activeOffers = allOffers.filter(function(o) { return ['sent', 'viewed', 'negotiating'].includes(o.status); });
-                var acceptedOffer = allOffers.find(function(o) { return ['accepted', 'confirmed', 'completed'].includes(o.status); });
-
-                var html = '<div class="shift-card-full" data-need-id="' + need.id + '" style="cursor: pointer;" onclick="openNeedDetailModal(\'' + need.id + '\')">'
-                    + '<div class="shift-card-header"><div>'
-                    + '<h3 class="shift-card-title">' + DateUtils.format(need.date, 'full') + '</h3>'
-                    + '<p class="shift-card-location">' + need.startTime + ' - ' + need.endTime + ' &bull; ' + need.sessionType + '</p>'
-                    + '</div><div class="shift-card-badges">'
-                    + '<span class="badge ' + getStatusBadge(need.status) + '">' + getStatusLabel(need.status) + '</span>'
-                    + '<span class="badge badge-neutral">' + activeOffers.length + ' offer' + (activeOffers.length !== 1 ? 's' : '') + ' sent</span>'
-                    + '</div></div>';
-
-                // Show accepted locum if filled
-                if (acceptedOffer) {
-                    var loc = currentData.locums.find(function(l) { return l.id === acceptedOffer.locumId; });
-                    if (loc) {
-                        var rate = acceptedOffer.agreedRate || acceptedOffer.proposedRate;
-                        html += '<div style="padding:12px;background:rgba(34, 197, 94,0.06);border-radius:8px;margin-top:8px;border:1px solid rgba(34, 197, 94,0.15);">'
-                            + '<div style="display:flex;align-items:center;gap:10px;">'
-                            + '<div class="header-avatar" style="width:32px;height:32px;font-size:0.65rem;">' + getInitials(loc.firstName + ' ' + loc.lastName) + '</div>'
-                            + '<div><strong style="font-size:0.85rem;color:var(--dark);">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</strong>'
-                            + '<div style="font-size:0.78rem;color:var(--dark-600);"><span class="badge ' + getStatusBadge(acceptedOffer.status) + '" style="font-size:0.7rem;">' + getStatusLabel(acceptedOffer.status) + '</span> &bull; Rate: ' + formatCurrency(rate) + '</div>'
-                            + '</div></div></div>';
-                    }
-                }
-
-                html += '<div class="shift-card-footer">'
-                    + '<span style="font-size: 0.82rem; color: var(--gray-400);">' + (need.budgetRate ? 'Budget: ' + formatCurrency(need.budgetRate) : 'No budget set') + '</span>'
-                    + '<div style="display:flex;gap:8px;align-items:center;">';
-                if (need.status === 'open') {
-                    html += '<a href="find-locums.html?needId=' + need.id + '" class="btn btn-primary btn-small" onclick="event.stopPropagation();">Find Locum</a>';
-                }
-                html += '</div></div></div>';
-                return html;
-            }).join('');
-        }
-
-        // ============== MAIN RENDER ==============
-
-        function render() {
-            var statusEl = document.getElementById('filterStatus');
-            var dateFromEl = document.getElementById('filterDateFrom');
-            var dateToEl = document.getElementById('filterDateTo');
-            if (statusEl) currentStatusFilter = statusEl.value;
-            if (dateFromEl) currentDateFrom = dateFromEl.value;
-            if (dateToEl) currentDateTo = dateToEl.value;
-
-            var toggleBtnCal = viewMode === 'calendar' ? 'background: var(--primary); color: white;' : 'background: white; color: var(--dark);';
-            var toggleBtnList = viewMode === 'list' ? 'background: var(--primary); color: white;' : 'background: white; color: var(--dark);';
-
-            var html = '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">'
-                + '<h1 style="font-family: \'Space Grotesk\', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin: 0;">My Sessions</h1>'
-                + '<div style="display: flex; align-items: center; gap: 12px;">'
-                + '<a href="post-shift.html" class="btn btn-primary btn-small">' + getIcon('plus-circle') + ' Create Session</a>'
-                + '<div style="display: inline-flex; border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden;">'
-                + '<button onclick="viewMode=\'calendar\'; render();" style="padding: 8px 16px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 500; ' + toggleBtnCal + '">' + getIcon('calendar') + ' Calendar</button>'
-                + '<button onclick="viewMode=\'list\'; render();" style="padding: 8px 16px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 500; ' + toggleBtnList + '">' + getIcon('list') + ' List</button>'
-                + '</div></div></div>';
-
-            if (viewMode === 'list') {
-                html += '<div class="filter-bar">'
-                    + '<div class="form-group"><label class="form-label">Status</label>'
-                    + '<select id="filterStatus" class="form-select" onchange="render()">'
-                    + '<option value="all"' + (currentStatusFilter === 'all' ? ' selected' : '') + '>All Statuses</option>'
-                    + '<option value="open"' + (currentStatusFilter === 'open' ? ' selected' : '') + '>Open</option>'
-                    + '<option value="filled"' + (currentStatusFilter === 'filled' ? ' selected' : '') + '>Filled</option>'
-                    + '<option value="history"' + (currentStatusFilter === 'history' ? ' selected' : '') + '>All Historical</option>'
-                    + '</select></div>'
-                    + '<div class="form-group"><label class="form-label">From</label>'
-                    + '<input type="date" id="filterDateFrom" class="form-input" value="' + currentDateFrom + '" onchange="render()"></div>'
-                    + '<div class="form-group"><label class="form-label">To</label>'
-                    + '<input type="date" id="filterDateTo" class="form-input" value="' + currentDateTo + '" onchange="render()"></div>'
-                    + '</div>'
-                    + '<div id="sessionsList">' + renderSessionsList(currentStatusFilter, currentDateFrom, currentDateTo) + '</div>';
-            } else {
-                html += '<div style="margin-bottom: 16px;">'
-                    + '<select id="filterStatus" class="form-select" style="width: auto; min-width: 160px;" onchange="render()">'
-                    + '<option value="all"' + (currentStatusFilter === 'all' ? ' selected' : '') + '>All Statuses</option>'
-                    + '<option value="open"' + (currentStatusFilter === 'open' ? ' selected' : '') + '>Open</option>'
-                    + '<option value="filled"' + (currentStatusFilter === 'filled' ? ' selected' : '') + '>Filled</option>'
-                    + '<option value="history"' + (currentStatusFilter === 'history' ? ' selected' : '') + '>All Historical</option>'
-                    + '</select></div>';
-                html += renderCalendarView();
-            }
-
-            pageContent.innerHTML = html;
-
-            if (viewMode === 'calendar') {
-                document.getElementById('calPrev').addEventListener('click', function() {
-                    calMonth--;
-                    if (calMonth < 0) { calMonth = 11; calYear--; }
-                    render();
-                });
-                document.getElementById('calNext').addEventListener('click', function() {
-                    calMonth++;
-                    if (calMonth > 11) { calMonth = 0; calYear++; }
-                    render();
-                });
-                document.getElementById('calToday').addEventListener('click', function() {
-                    calYear = new Date().getFullYear();
-                    calMonth = new Date().getMonth();
-                    render();
-                });
-
-                document.querySelectorAll('.calendar-day-cell').forEach(function(cell) {
-                    cell.addEventListener('click', function(e) {
-                        if (e.target.closest('[data-need-id]')) return;
-                        var dateStr = this.dataset.date;
-                        if (dateStr) openDayDetail(dateStr);
-                    });
-                });
-                document.querySelectorAll('[data-need-id]').forEach(function(block) {
-                    block.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        var needId = this.dataset.needId;
-                        if (needId) openNeedDetailModal(needId);
-                    });
-                });
-            }
-        }
-
-        render();
-
         // ============== SHARED ACTIONS ==============
 
         function withdrawSentOffer(offerId) {
@@ -455,7 +500,7 @@
             } else {
                 Toast.show(result.message || 'Failed to withdraw offer.', 'error');
             }
-            setTimeout(function() { render(); }, 300);
+            setTimeout(function() { renderTable(); }, 300);
         }
 
         function acceptLocumCounter(offerId) {
@@ -479,7 +524,7 @@
                         } else {
                             Toast.show(result.message || 'Failed to accept rate.', 'error');
                         }
-                        setTimeout(function() { render(); }, 300);
+                        setTimeout(function() { renderTable(); }, 300);
                     });
                 }
             });
@@ -492,7 +537,7 @@
             } else {
                 Toast.show('Failed to confirm booking.', 'error');
             }
-            setTimeout(function() { render(); }, 300);
+            setTimeout(function() { renderTable(); }, 300);
         }
 
         function openNegotiate(offerId, currentRate) {
@@ -512,7 +557,7 @@
                         } else {
                             Toast.show(result.message || 'Failed to send counter-offer.', 'error');
                         }
-                        setTimeout(function() { render(); }, 300);
+                        setTimeout(function() { renderTable(); }, 300);
                     });
                 }
             });
@@ -532,14 +577,18 @@
                             return;
                         }
                         Toast.show('Session cancelled. All locums have been notified.', 'success');
-                        setTimeout(function() { render(); }, 300);
+                        setTimeout(function() { renderTable(); }, 300);
                     });
                 }
             });
         }
 
-        // Also expose cancelSessionNeed for the card component
+        // Expose cancelSessionNeed for card components
         window.cancelSessionNeed = confirmCancelNeed;
+        window.openNeedDetailModal = openNeedDetailModal;
+
+        // Initial render
+        renderTable();
     </script>
 </body>
 </html>

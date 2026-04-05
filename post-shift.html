@@ -6,27 +6,330 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Create Session - GPRN</title>
+    <title>Post Vacancy - GPRN</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Syne + Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Existing app styles (modals, toasts, forms, badges) -->
     <link rel="stylesheet" href="styles.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Syne"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: {
+                            DEFAULT: '#0B0F19',
+                            50: '#141C2F',
+                        },
+                        brand: {
+                            green: '#059669',
+                            mint: '#ECFDF5',
+                            dark: '#022C22',
+                        },
+                        surface: '#F8F9FA'
+                    },
+                    boxShadow: {
+                        'card': '0 4px 20px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
+                        'subtle': '0 1px 2px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body.pm-dashboard { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+        .custom-scroll:hover::-webkit-scrollbar-thumb { background: #CBD5E1; }
+
+        @keyframes fade-in-up {
+            0% { opacity: 0; transform: translateY(15px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-item {
+            animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+
+        .sidebar-active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10%;
+            height: 80%;
+            width: 4px;
+            background-color: #0B0F19;
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* Form field styles */
+        .ps-label { font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: block; }
+        .ps-input, .ps-select, .ps-textarea {
+            width: 100%;
+            background: #fff;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #0B0F19;
+            transition: all 0.15s ease;
+        }
+        .ps-input:focus, .ps-select:focus, .ps-textarea:focus {
+            outline: none;
+            border-color: #CBD5E1;
+            box-shadow: 0 0 0 4px #F1F5F9;
+        }
+        .ps-textarea { resize: vertical; min-height: 100px; }
+        .ps-hint { font-size: 12px; color: #94A3B8; margin-top: 6px; }
+
+        /* Toggle switch */
+        .ps-toggle { position: relative; width: 44px; height: 24px; background: #E2E8F0; border-radius: 999px; cursor: pointer; transition: background 0.2s; }
+        .ps-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .ps-toggle.active { background: #0B0F19; }
+        .ps-toggle.active::after { transform: translateX(20px); }
+    </style>
 </head>
-<body class="app-layout">
+<body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
+
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
-<script src="supabase-client.js"></script>
+    <script src="supabase-client.js"></script>
     <script src="components.js"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
+    </script>
 
+    <!-- SIDEBAR -->
+    <aside class="w-[260px] bg-white border-r border-slate-200 flex flex-col shrink-0 relative z-20">
+        <div class="h-20 px-6 flex items-center">
+            <a href="index.html" class="flex items-center gap-2.5">
+                <div class="bg-navy text-white w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-xl">G</div>
+                <span class="font-extrabold text-[26px] tracking-tight text-navy leading-none">
+                    PRN<span class="text-brand-green">.</span>
+                </span>
+            </a>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scroll py-6 px-4 flex flex-col gap-8">
+            <nav class="flex flex-col gap-1.5">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] px-4 mb-2">Platform</p>
+
+                <a href="practice-dashboard.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-squares-four text-lg group-hover:text-navy transition-colors"></i> Dashboard
+                </a>
+                <a href="post-shift.html" class="sidebar-active relative flex items-center gap-3 px-4 py-2.5 bg-slate-50 text-navy rounded-xl text-[14px] font-bold transition-all">
+                    <i class="ph-fill ph-calendar-plus text-lg"></i> Post Vacancy
+                </a>
+                <a href="view-requested-shifts.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-clipboard-text text-lg group-hover:text-navy transition-colors"></i> Manage Shifts
+                </a>
+                <a href="find-locums.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-users text-lg group-hover:text-navy transition-colors"></i> Locum Network
+                </a>
+                <a href="billing.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-receipt text-lg group-hover:text-navy transition-colors"></i> Compliance & Billing
+                </a>
+                <a href="messages.html" id="sidebarMessagesLink" class="flex items-center justify-between px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-chat-circle-dots text-lg group-hover:text-navy transition-colors"></i> Messages
+                    </div>
+                    <span id="sidebarUnreadBadge" class="hidden text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full"></span>
+                </a>
+            </nav>
+
+            <nav class="flex flex-col gap-1.5 mt-auto">
+                <a href="practice-settings.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-gear text-lg"></i> Practice Settings
+                </a>
+                <button onclick="Auth.logout()" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl text-[14px] font-semibold transition-colors group cursor-pointer text-left">
+                    <i class="ph ph-sign-out text-lg"></i> Log Out
+                </button>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col relative w-full h-full">
+        <header class="h-20 px-10 flex items-center justify-between shrink-0 z-10 sticky top-0 bg-surface/80 backdrop-blur-md">
+            <div class="relative w-96 group">
+                <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-navy transition-colors"></i>
+                <input type="text" id="dashSearch" placeholder="Search locums, shifts, or invoices..." class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
+            </div>
+
+            <div class="flex items-center gap-5">
+                <button onclick="window.location.href='practice-settings.html'" class="bg-navy rounded-full p-1 pl-1.5 pr-4 flex items-center gap-2.5 hover:bg-slate-800 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-navy group">
+                    <div class="bg-brand-green text-white w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold tracking-wider" id="headerAvatar">--</div>
+                    <span class="text-white text-[13px] font-semibold pr-1" id="headerName">User</span>
+                    <i class="ph-bold ph-caret-down text-slate-400 text-[10px] group-hover:text-white transition-colors"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto custom-scroll px-10 pb-20 pt-4">
+            <div class="max-w-[900px] mx-auto w-full relative flex flex-col gap-6">
+
+                <!-- Heading -->
+                <div class="animate-item">
+                    <span class="inline-block text-[11px] font-bold text-brand-green bg-brand-mint uppercase tracking-wider px-3 py-1 rounded-full mb-3">Practice Manager Portal</span>
+                    <h1 class="text-[44px] font-extrabold text-navy tracking-tight" style="font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1.2;">
+                        Post a Vacancy
+                    </h1>
+                    <p class="text-[14px] text-slate-500 mt-2">Create a new session need and open it to your locum network.</p>
+                </div>
+
+                <!-- Template card -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-subtle p-6 animate-item delay-100">
+                    <label class="ps-label" for="templateSelect">
+                        <i class="ph ph-file-text"></i> Use Template
+                    </label>
+                    <select id="templateSelect" class="ps-select" onchange="loadTemplate(this.value)">
+                        <option value="">-- Start from scratch --</option>
+                    </select>
+                    <div class="ps-hint">Select a saved template to pre-fill the form, or start from scratch.</div>
+                </div>
+
+                <!-- Form card -->
+                <form id="postShiftForm" class="bg-white rounded-2xl border border-slate-200 shadow-subtle p-8 animate-item delay-200 flex flex-col gap-6">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="ps-label" for="shiftDate">Date</label>
+                            <input type="date" id="shiftDate" class="ps-input" required>
+                        </div>
+                        <div>
+                            <label class="ps-label" for="sessionType">Session Type</label>
+                            <select id="sessionType" class="ps-select" required>
+                                <option value="">Select session type</option>
+                                <option value="AM">AM (Morning)</option>
+                                <option value="PM">PM (Afternoon)</option>
+                                <option value="Full Day">Full Day</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="ps-label" for="startTime">Start Time</label>
+                            <input type="time" id="startTime" class="ps-input" value="08:30" required>
+                        </div>
+                        <div>
+                            <label class="ps-label" for="endTime">End Time</label>
+                            <input type="time" id="endTime" class="ps-input" value="17:00" required>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="ps-label">Housecalls Required</label>
+                            <div class="flex items-center gap-3 pt-1">
+                                <div class="ps-toggle" id="housecallsToggle" onclick="this.classList.toggle('active'); document.getElementById('housecallsLabel').textContent = this.classList.contains('active') ? 'Yes' : 'No';"></div>
+                                <span id="housecallsLabel" class="text-[14px] text-slate-600 font-medium">No</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="ps-label" for="budgetRate">Session Budget (£) <span class="normal-case font-medium text-slate-400">(optional, visible only to you)</span></label>
+                            <input type="number" id="budgetRate" class="ps-input" placeholder="e.g. 450" min="0" step="10">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="ps-label" for="comments">Notes <span class="normal-case font-medium text-slate-400">(internal, not shown to locums)</span></label>
+                        <textarea id="comments" class="ps-textarea" rows="4" placeholder="Internal notes about this session need, e.g. expected caseload, special requirements..."></textarea>
+                    </div>
+
+                    <!-- Repeat This Session -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="repeatShift" class="w-4 h-4 rounded accent-navy" onchange="document.getElementById('repeatOptions').style.display = this.checked ? 'flex' : 'none';">
+                            <strong class="text-[14px] text-navy">Repeat This Session</strong>
+                        </label>
+                        <div id="repeatOptions" style="display: none;" class="items-center gap-3 mt-3 flex-wrap">
+                            <label class="text-[13px] font-semibold text-slate-600 whitespace-nowrap">Repeat for</label>
+                            <select id="repeatWeeks" class="ps-select" style="width: 140px;">
+                                <option value="1">1 week</option>
+                                <option value="2">2 weeks</option>
+                                <option value="3">3 weeks</option>
+                                <option value="4" selected>4 weeks</option>
+                                <option value="5">5 weeks</option>
+                                <option value="6">6 weeks</option>
+                                <option value="7">7 weeks</option>
+                                <option value="8">8 weeks</option>
+                            </select>
+                            <span class="text-[12px] text-slate-500">Creates one session per week on the same day.</span>
+                        </div>
+                    </div>
+
+                    <!-- Save as Template -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="saveAsTemplate" class="w-4 h-4 rounded accent-navy" onchange="document.getElementById('templateNameGroup').style.display = this.checked ? 'block' : 'none';">
+                            <strong class="text-[14px] text-navy">Save as Template</strong>
+                        </label>
+                        <div id="templateNameGroup" style="display: none;" class="mt-3">
+                            <input type="text" id="templateName" class="ps-input" placeholder="Template name, e.g. Standard AM Session" style="max-width: 400px;">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-2 flex-wrap">
+                        <button type="submit" class="bg-navy text-white px-6 py-3 rounded-full font-bold hover:bg-slate-800 transition-colors text-[14px] flex items-center gap-2">
+                            <i class="ph-bold ph-plus-circle text-lg"></i> Create Session
+                        </button>
+                        <a href="view-requested-shifts.html" class="bg-white border border-slate-200 text-navy px-6 py-3 rounded-full font-bold hover:bg-slate-50 transition-colors text-[14px] flex items-center">
+                            View My Sessions
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ===== DATA & SETUP =====
         const session = Auth.getSession();
         const practice = Auth.getCurrentUser();
-        const pageContent = initAppLayout('practice', 'create-session', 'Create Session');
 
+        // Header profile pill
+        document.getElementById('headerAvatar').textContent = getInitials((session.firstName || '') + ' ' + (session.lastName || session.name || ''));
+        document.getElementById('headerName').textContent = session.firstName || (session.name || 'User').split(' ')[0];
+
+        // Unread messages badge
+        if (typeof MessageManager !== 'undefined') {
+            const unreadMsgCount = MessageManager.getUnreadCount(session.id);
+            if (unreadMsgCount > 0) {
+                const badge = document.getElementById('sidebarUnreadBadge');
+                badge.textContent = unreadMsgCount;
+                badge.classList.remove('hidden');
+            }
+        }
+
+        // Set minimum date to tomorrow
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const minDate = tomorrow.toISOString().split('T')[0];
+        document.getElementById('shiftDate').min = minDate;
 
         // Load templates for this practice
         function getTemplates() {
@@ -35,127 +338,17 @@
             return data.shiftTemplates[session.id] || [];
         }
 
-        const templates = getTemplates();
-
-        pageContent.innerHTML = `
-            <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
-                Create a Session
-            </h1>
-
-            <div class="content-card">
-                <div class="content-card-body">
-                    <!-- Template Dropdown -->
-                    <div class="form-group" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid var(--gray-100);">
-                        <label class="form-label" for="templateSelect">
-                            ${getIcon('file-text')} Use Template
-                        </label>
-                        <select id="templateSelect" class="form-select" onchange="loadTemplate(this.value)">
-                            <option value="">-- Start from scratch --</option>
-                            ${templates.map((t, i) => `<option value="${i}">${t.name}</option>`).join('')}
-                        </select>
-                        <div class="form-hint">Select a saved template to pre-fill the form, or start from scratch.</div>
-                    </div>
-
-                    <form id="postShiftForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label" for="shiftDate">Date</label>
-                                <input type="date" id="shiftDate" class="form-input" min="${minDate}" required>
-                                <div class="form-error"></div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="sessionType">Session Type</label>
-                                <select id="sessionType" class="form-select" required>
-                                    <option value="">Select session type</option>
-                                    <option value="AM">AM (Morning)</option>
-                                    <option value="PM">PM (Afternoon)</option>
-                                    <option value="Full Day">Full Day</option>
-                                </select>
-                                <div class="form-error"></div>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label" for="startTime">Start Time</label>
-                                <input type="time" id="startTime" class="form-input" value="08:30" required>
-                                <div class="form-error"></div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="endTime">End Time</label>
-                                <input type="time" id="endTime" class="form-input" value="17:00" required>
-                                <div class="form-error"></div>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Housecalls Required</label>
-                                <div style="display: flex; align-items: center; gap: 12px; padding-top: 4px;">
-                                    <div class="toggle-switch" id="housecallsToggle" onclick="this.classList.toggle('active'); document.getElementById('housecallsLabel').textContent = this.classList.contains('active') ? 'Yes' : 'No';"></div>
-                                    <span id="housecallsLabel" style="font-size: 0.88rem; color: var(--dark-600);">No</span>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="budgetRate">Session Budget (£) <span style="font-weight: 400; color: var(--dark-600);">(optional, visible only to you)</span></label>
-                                <input type="number" id="budgetRate" class="form-input" placeholder="e.g. 450" min="0" step="10">
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label" for="comments">Notes <span style="font-weight: 400; color: var(--dark-600);">(internal, not shown to locums)</span></label>
-                            <textarea id="comments" class="form-textarea" rows="4" placeholder="Internal notes about this session need, e.g. expected caseload, special requirements..."></textarea>
-                        </div>
-
-                        <!-- Repeat This Session Section -->
-                        <div class="content-card" style="margin: 20px 0; background: var(--gray-50); border: 1px solid var(--gray-200);">
-                            <div class="content-card-body" style="padding: 16px;">
-                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                                    <label class="form-checkbox" style="margin: 0;">
-                                        <input type="checkbox" id="repeatShift" onchange="document.getElementById('repeatOptions').style.display = this.checked ? 'flex' : 'none';">
-                                        <strong>Repeat This Session</strong>
-                                    </label>
-                                </div>
-                                <div id="repeatOptions" style="display: none; align-items: center; gap: 12px;">
-                                    <label class="form-label" style="margin: 0; white-space: nowrap;">Repeat for</label>
-                                    <select id="repeatWeeks" class="form-select" style="width: 140px;">
-                                        <option value="1">1 week</option>
-                                        <option value="2">2 weeks</option>
-                                        <option value="3">3 weeks</option>
-                                        <option value="4" selected>4 weeks</option>
-                                        <option value="5">5 weeks</option>
-                                        <option value="6">6 weeks</option>
-                                        <option value="7">7 weeks</option>
-                                        <option value="8">8 weeks</option>
-                                    </select>
-                                    <span style="font-size: 0.85rem; color: var(--dark-600);">Creates one session per week on the same day.</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Save as Template Section -->
-                        <div style="padding: 16px; margin: 20px 0; background: var(--gray-50); border-radius: var(--radius); border: 1px solid var(--gray-200);">
-                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                                <label class="form-checkbox" style="margin: 0;">
-                                    <input type="checkbox" id="saveAsTemplate" onchange="document.getElementById('templateNameGroup').style.display = this.checked ? 'block' : 'none';">
-                                    <strong>Save as Template</strong>
-                                </label>
-                            </div>
-                            <div id="templateNameGroup" style="display: none; margin-top: 8px;">
-                                <input type="text" id="templateName" class="form-input" placeholder="Template name, e.g. Standard AM Session" style="max-width: 400px;">
-                            </div>
-                        </div>
-
-                        <div style="display: flex; gap: 12px; padding-top: 12px;">
-                            <button type="submit" class="btn btn-primary btn-large">
-                                ${getIcon('plus-circle')} Create Session
-                            </button>
-                            <a href="view-requested-shifts.html" class="btn btn-secondary btn-large">View My Sessions</a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        `;
+        // Populate template dropdown
+        (function populateTemplates() {
+            const templates = getTemplates();
+            const select = document.getElementById('templateSelect');
+            templates.forEach((t, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = t.name;
+                select.appendChild(opt);
+            });
+        })();
 
         // Load template into form
         function loadTemplate(index) {
@@ -167,9 +360,6 @@
             document.getElementById('sessionType').value = tmpl.sessionType || '';
             document.getElementById('startTime').value = tmpl.startTime || '08:30';
             document.getElementById('endTime').value = tmpl.endTime || '17:00';
-            document.getElementById('shiftType').value = tmpl.shiftType || 'GP Only';
-            document.getElementById('morningPatients').value = tmpl.morningPatients || '';
-            document.getElementById('afternoonPatients').value = tmpl.afternoonPatients || '';
             document.getElementById('comments').value = tmpl.comments || '';
             document.getElementById('budgetRate').value = tmpl.budgetRate || '';
 
@@ -221,9 +411,8 @@
 
             if (endTime && startTime && endTime <= startTime) {
                 Toast.show('End time must be after start time.', 'error');
-                // Highlight the end time field
                 const endEl = document.getElementById('endTime');
-                if (endEl) { endEl.style.borderColor = 'var(--danger)'; endEl.focus(); }
+                if (endEl) { endEl.style.borderColor = '#EF4444'; endEl.focus(); }
                 return;
             }
 
@@ -307,15 +496,15 @@
             Toast.show(sessionWord + ' created successfully!', 'success');
 
             const repeatMsg = totalSessions > 1
-                ? `<p style="font-size: 0.9rem; color: var(--dark-600); margin-top: 8px;">${totalSessions} sessions created (original + ${repeatWeeks} weekly repeats).</p>`
+                ? `<p style="font-size: 0.9rem; color: #64748B; margin-top: 8px;">${totalSessions} sessions created (original + ${repeatWeeks} weekly repeats).</p>`
                 : '';
             const templateMsg = document.getElementById('saveAsTemplate').checked
-                ? `<p style="font-size: 0.9rem; color: var(--success); margin-top: 8px;">Template saved for future use.</p>`
+                ? `<p style="font-size: 0.9rem; color: #059669; margin-top: 8px;">Template saved for future use.</p>`
                 : '';
 
             Modal.show({
                 title: sessionWord + ' Created',
-                body: `<p style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 8px;">Your session need for <strong>${DateUtils.format(date, 'full')}</strong> (${sessionType}) has been created.</p><p style="font-size: 0.9rem; color: var(--dark-600);">Now head to <strong>Find Locums</strong> to send invitations to available locums.</p>${repeatMsg}${templateMsg}`,
+                body: `<p style="font-size: 0.95rem; color: #64748B; margin-bottom: 8px;">Your session need for <strong>${DateUtils.format(date, 'full')}</strong> (${sessionType}) has been created.</p><p style="font-size: 0.9rem; color: #64748B;">Now head to <strong>Find Locums</strong> to send invitations to available locums.</p>${repeatMsg}${templateMsg}`,
                 footer: `
                     <button class="btn btn-secondary" onclick="Modal.close(); document.getElementById('postShiftForm').reset(); document.getElementById('repeatOptions').style.display='none'; document.getElementById('templateNameGroup').style.display='none'; document.getElementById('housecallsToggle').classList.remove('active'); document.getElementById('housecallsLabel').textContent='No';">Create Another</button>
                     <a href="find-locums.html" class="btn btn-primary">Find Locums</a>
