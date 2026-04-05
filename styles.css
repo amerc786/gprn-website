@@ -224,13 +224,13 @@ button:focus-visible, a:focus-visible, .btn:focus-visible {
 /* New logo mark: rounded navy square containing a white "G".
    Uses pseudo-element so legacy markup <span class="logo-icon">GP</span> still works. */
 .logo-icon {
-    background: #0B0F19 !important;
+    background: #101524 !important;
     -webkit-background-clip: border-box !important;
     background-clip: border-box !important;
     -webkit-text-fill-color: transparent !important;
     color: transparent !important;
-    width: 44px;
-    height: 44px;
+    width: 38px;
+    height: 38px;
     border-radius: 12px;
     display: inline-flex;
     align-items: center;
@@ -238,6 +238,7 @@ button:focus-visible, a:focus-visible, .btn:focus-visible {
     font-size: 0;
     position: relative;
     flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(16, 21, 36, 0.08);
     transition: background 0.3s;
 }
 
@@ -245,20 +246,25 @@ button:focus-visible, a:focus-visible, .btn:focus-visible {
     content: 'G';
     color: #ffffff;
     -webkit-text-fill-color: #ffffff;
-    font-size: 22px;
-    font-weight: 800;
+    font-size: 24px;
+    font-weight: 900;
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
     line-height: 1;
+    letter-spacing: -0.025em;
+    padding-top: 2px;
 }
 
-/* "PRN." wordmark — prepends P to legacy "RN" markup and appends green dot. */
+/* "PRN" wordmark + square green accent dot — prepends P to legacy "RN" markup. */
 .logo-text {
-    color: #0B0F19;
-    font-size: 1.75rem;
-    font-weight: 800;
+    color: #101524;
+    font-size: 32px;
+    font-weight: 900;
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    letter-spacing: -0.02em;
-    line-height: 1;
+    letter-spacing: -0.05em;
+    line-height: 0.8;
+    display: inline-flex;
+    align-items: baseline;
+    padding-top: 4px;
     transition: color 0.3s;
 }
 
@@ -267,9 +273,14 @@ button:focus-visible, a:focus-visible, .btn:focus-visible {
 }
 
 .logo-text::after {
-    content: '.';
-    color: #059669;
-    margin-left: 1px;
+    content: '';
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    background: #0F8B5A;
+    margin-left: 4px;
+    margin-bottom: 3px;
+    align-self: flex-end;
 }
 
 .nav-links {
@@ -1168,7 +1179,7 @@ button:focus-visible, a:focus-visible, .btn:focus-visible {
 
 .footer-brand .logo-text { color: #ffffff !important; }
 .footer-brand .logo-icon { background: #ffffff !important; }
-.footer-brand .logo-icon::before { color: #0B0F19 !important; -webkit-text-fill-color: #0B0F19 !important; }
+.footer-brand .logo-icon::before { color: #101524 !important; -webkit-text-fill-color: #101524 !important; }
 
 .social-links {
     display: flex;
@@ -1274,7 +1285,7 @@ button:focus-visible, a:focus-visible, .btn:focus-visible {
 .sidebar-header .logo { font-size: 1.4rem; }
 .sidebar-header .logo-text { color: #ffffff !important; }
 .sidebar-header .logo-icon { background: #ffffff !important; }
-.sidebar-header .logo-icon::before { color: #0B0F19 !important; -webkit-text-fill-color: #0B0F19 !important; }
+.sidebar-header .logo-icon::before { color: #101524 !important; -webkit-text-fill-color: #101524 !important; }
 
 .sidebar-close {
     display: none;
