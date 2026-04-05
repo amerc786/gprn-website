@@ -284,6 +284,7 @@
 
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
+<script src="supabase-client.js"></script>
     <script src="components.js"></script>
     <script>
         (function() {
@@ -442,54 +443,54 @@
                         practiceRates: {}
                     };
 
-                    // Try API registration first
-                    try {
-                        var regXhr = new XMLHttpRequest();
-                        regXhr.open('POST', '/api/auth/register/locum', false);
-                        regXhr.setRequestHeader('Content-Type', 'application/json');
-                        regXhr.send(JSON.stringify({
-                            email: newLocum.email,
-                            password: newLocum.password,
-                            title: newLocum.title,
-                            firstName: newLocum.firstName,
-                            lastName: newLocum.lastName,
-                            phone: newLocum.phone,
-                            gmcNumber: newLocum.gmcNumber,
-                            medicalSchool: newLocum.medicalSchool,
-                            yearQualified: newLocum.yearQualified,
-                            performerList: newLocum.performerList,
-                            nhsPension: newLocum.nhsPension,
-                            computerSystems: newLocum.computerSystems,
-                            signingScripts: newLocum.signingScripts,
-                            healthBoards: newLocum.healthBoards,
-                            preferredShiftTypes: newLocum.preferredShiftTypes,
-                            travelDistance: newLocum.travelDistance,
-                            bio: newLocum.bio
-                        }));
-                        if (regXhr.status === 201) {
-                            var apiResult = JSON.parse(regXhr.responseText);
-                            if (apiResult.session) {
-                                localStorage.setItem('gprn_session', JSON.stringify(apiResult.session));
-                                // Fetch data from API
-                                var dataXhr = new XMLHttpRequest();
-                                dataXhr.open('GET', '/api/data', false);
-                                dataXhr.setRequestHeader('Authorization', 'Bearer ' + apiResult.session.token);
-                                dataXhr.send();
-                                if (dataXhr.status === 200) {
-                                    localStorage.setItem('gprn_data', dataXhr.responseText);
-                                }
-                            }
-                        }
-                    } catch(e) {
-                        console.log('API registration unavailable, using offline mode');
+                    // Create the Supabase Auth account first so subsequent saves are authenticated
+                    var signupResult = window.SupaSignup ? window.SupaSignup(newLocum.email, newLocum.password) : null;
+                    if (!signupResult || signupResult.error) {
+                        var msg = signupResult && signupResult.error && signupResult.error.msg
+                            ? signupResult.error.msg
+                            : (signupResult && signupResult.error && signupResult.error.message) || 'Could not create account. Please try again.';
+                        alert('Registration failed: ' + msg);
+                        return;
+                    }
+                    if (signupResult.needsConfirmation) {
+                        alert('Account created. Please check your email to confirm, then log in.');
+                        window.location.href = 'login.html';
+                        return;
                     }
 
-                    // Fallback: save to mock data (also serves as local cache)
-                    data.locums.push(newLocum);
-                    saveMockData(data);
+                    // Refresh the server blob now that we are authenticated, then add the new profile
+                    if (window.SupabaseClient && window.SupabaseClient.refresh) {
+                        var serverData = window.SupabaseClient.refresh();
+                        if (serverData) {
+                            // Ensure the base collections exist
+                            serverData.locums = serverData.locums || [];
+                            serverData.practices = serverData.practices || [];
+                            // Re-derive newId against the authoritative server state
+                            newLocum.id = 'loc-' + String(serverData.locums.length + 1).padStart(3, '0');
+                            serverData.locums.push(newLocum);
+                            saveMockData(serverData);
+                        } else {
+                            data.locums.push(newLocum);
+                            saveMockData(data);
+                        }
+                    } else {
+                        data.locums.push(newLocum);
+                        saveMockData(data);
+                    }
 
-                    // Log in automatically
-                    var session = Auth.login(newLocum.email, newLocum.password);
+                    // Populate the session with profile details (Supabase Auth gave us the tokens)
+                    var rawSession = localStorage.getItem('gprn_session');
+                    if (rawSession) {
+                        try {
+                            var sessObj = JSON.parse(rawSession);
+                            sessObj.id = newLocum.id;
+                            sessObj.role = 'locum';
+                            sessObj.name = (newLocum.title ? newLocum.title + ' ' : '') + newLocum.firstName + ' ' + newLocum.lastName;
+                            sessObj.firstName = newLocum.firstName;
+                            localStorage.setItem('gprn_session', JSON.stringify(sessObj));
+                        } catch(e) {}
+                    }
+                    var session = JSON.parse(localStorage.getItem('gprn_session') || 'null');
                     if (session) {
                         // Show verification email modal
                         var userEmail = newLocum.email;

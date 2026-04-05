@@ -196,6 +196,7 @@
 
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
+<script src="supabase-client.js"></script>
     <script src="components.js"></script>
     <script>
         (function() {
@@ -295,53 +296,52 @@
                         contactPhone: document.getElementById('contactPhone').value.trim()
                     };
 
-                    // Try API registration first
-                    try {
-                        var regXhr = new XMLHttpRequest();
-                        regXhr.open('POST', '/api/auth/register/practice', false);
-                        regXhr.setRequestHeader('Content-Type', 'application/json');
-                        regXhr.send(JSON.stringify({
-                            email: newPractice.email,
-                            password: newPractice.password,
-                            practiceName: newPractice.practiceName,
-                            odsCode: newPractice.odsCode,
-                            healthBoard: newPractice.healthBoard,
-                            address: newPractice.address,
-                            city: newPractice.city,
-                            postcode: newPractice.postcode,
-                            phone: newPractice.phone,
-                            computerSystem: newPractice.computerSystem,
-                            partners: newPractice.partners,
-                            patientListSize: newPractice.patientListSize,
-                            contactName: newPractice.contactName,
-                            contactRole: newPractice.contactRole,
-                            contactEmail: newPractice.contactEmail,
-                            contactPhone: newPractice.contactPhone
-                        }));
-                        if (regXhr.status === 201) {
-                            var apiResult = JSON.parse(regXhr.responseText);
-                            if (apiResult.session) {
-                                localStorage.setItem('gprn_session', JSON.stringify(apiResult.session));
-                                // Fetch data from API
-                                var dataXhr = new XMLHttpRequest();
-                                dataXhr.open('GET', '/api/data', false);
-                                dataXhr.setRequestHeader('Authorization', 'Bearer ' + apiResult.session.token);
-                                dataXhr.send();
-                                if (dataXhr.status === 200) {
-                                    localStorage.setItem('gprn_data', dataXhr.responseText);
-                                }
-                            }
-                        }
-                    } catch(e) {
-                        console.log('API registration unavailable, using offline mode');
+                    // Create the Supabase Auth account first so subsequent saves are authenticated
+                    var signupResult = window.SupaSignup ? window.SupaSignup(newPractice.email, newPractice.password) : null;
+                    if (!signupResult || signupResult.error) {
+                        var msg = signupResult && signupResult.error && signupResult.error.msg
+                            ? signupResult.error.msg
+                            : (signupResult && signupResult.error && signupResult.error.message) || 'Could not create account. Please try again.';
+                        alert('Registration failed: ' + msg);
+                        return;
+                    }
+                    if (signupResult.needsConfirmation) {
+                        alert('Account created. Please check your email to confirm, then log in.');
+                        window.location.href = 'login.html';
+                        return;
                     }
 
-                    // Fallback: save to mock data (also serves as local cache)
-                    data.practices.push(newPractice);
-                    saveMockData(data);
+                    // Refresh the server blob now that we are authenticated, then add the new profile
+                    if (window.SupabaseClient && window.SupabaseClient.refresh) {
+                        var serverData = window.SupabaseClient.refresh();
+                        if (serverData) {
+                            serverData.locums = serverData.locums || [];
+                            serverData.practices = serverData.practices || [];
+                            newPractice.id = 'prac-' + String(serverData.practices.length + 1).padStart(3, '0');
+                            serverData.practices.push(newPractice);
+                            saveMockData(serverData);
+                        } else {
+                            data.practices.push(newPractice);
+                            saveMockData(data);
+                        }
+                    } else {
+                        data.practices.push(newPractice);
+                        saveMockData(data);
+                    }
 
-                    // Log in automatically
-                    var session = Auth.login(newPractice.email, newPractice.password);
+                    // Populate the session with profile details
+                    var rawSession = localStorage.getItem('gprn_session');
+                    if (rawSession) {
+                        try {
+                            var sessObj = JSON.parse(rawSession);
+                            sessObj.id = newPractice.id;
+                            sessObj.role = 'practice';
+                            sessObj.name = newPractice.practiceName;
+                            sessObj.firstName = (newPractice.contactName || '').split(' ')[0] || newPractice.practiceName;
+                            localStorage.setItem('gprn_session', JSON.stringify(sessObj));
+                        } catch(e) {}
+                    }
+                    var session = JSON.parse(localStorage.getItem('gprn_session') || 'null');
                     if (session) {
                         // Show verification email modal
                         var userEmail = newPractice.email;
