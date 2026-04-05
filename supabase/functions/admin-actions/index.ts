@@ -118,14 +118,18 @@ async function fetchProfileById(profileId: string): Promise<ProfileRow | null> {
 
 // ---- Action: reset_password ----
 async function actionResetPassword(email: string): Promise<Response> {
-  // Public recover endpoint — sends Supabase's built-in password reset email
+  // Public recover endpoint — sends Supabase's built-in password reset email.
+  // `redirect_to` tells Supabase where to send the user when they click the
+  // link in the email. The target URL must be in the Supabase project's
+  // Redirect URLs allowlist (Auth → URL Configuration).
+  const redirectTo = `${APP_URL}/reset-password.html`;
   const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
     method: "POST",
     headers: {
       "apikey": SUPABASE_ANON_KEY,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, redirect_to: redirectTo }),
   });
   if (!res.ok) {
     const text = await res.text();

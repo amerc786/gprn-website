@@ -6,6 +6,19 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <script>
+        // Safety-net: if a Supabase password-recovery link lands on the homepage
+        // (e.g. because Site URL points here), forward the recovery hash to the
+        // real reset page so the user isn't stuck looking at the landing page.
+        (function() {
+            try {
+                var h = window.location.hash || '';
+                if (h && h.indexOf('type=recovery') !== -1 && h.indexOf('access_token=') !== -1) {
+                    window.location.replace('reset-password.html' + h);
+                }
+            } catch (e) {}
+        })();
+    </script>
     <title>GPRN - GP Right Now | The Right GP, Right Now</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
