@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Admin — Account Approvals · GPRN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background: var(--bg, #081425);
+            color: var(--text-primary, #F8FAFC);
+            font-family: Inter, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+        }
+        .admin-wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .admin-header .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #F8FAFC;
+            text-decoration: none;
+            font-family: 'Space Grotesk', Inter, sans-serif;
+            font-weight: 800;
+            font-size: 1.4rem;
+        }
+        .admin-header .logo-icon {
+            background: linear-gradient(135deg, #3B82F6, #5B4DFF, #8B5CF6);
+            color: #fff;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+        }
+        .admin-user {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #CBD5E1;
+            font-size: 0.9rem;
+        }
+        .admin-user button {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #CBD5E1;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .admin-user button:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .admin-title {
+            font-family: 'Space Grotesk', Inter, sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.25rem;
+        }
+        .admin-subtitle {
+            color: #94A3B8;
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+        }
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .filter-tab {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #CBD5E1;
+            padding: 0.55rem 1.1rem;
+            border-radius: 999px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 150ms;
+        }
+        .filter-tab:hover {
+            background: rgba(255,255,255,0.08);
+        }
+        .filter-tab.active {
+            background: linear-gradient(135deg, #3B82F6, #5B4DFF);
+            border-color: transparent;
+            color: #fff;
+        }
+        .filter-tab .count {
+            display: inline-block;
+            margin-left: 0.4rem;
+            background: rgba(255,255,255,0.15);
+            padding: 0.05rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+        }
+        .profile-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .profile-card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        .profile-name {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #F8FAFC;
+            margin: 0 0 0.15rem;
+        }
+        .profile-email {
+            color: #94A3B8;
+            font-size: 0.85rem;
+            word-break: break-all;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .role-badge.locum {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60A5FA;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .role-badge.practice {
+            background: rgba(20, 184, 166, 0.15);
+            color: #2DD4BF;
+            border: 1px solid rgba(20, 184, 166, 0.3);
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .status-badge.pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: #FCD34D;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .status-badge.approved {
+            background: rgba(34, 197, 94, 0.15);
+            color: #86EFAC;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        .status-badge.rejected {
+            background: rgba(239, 68, 68, 0.15);
+            color: #FCA5A5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .profile-meta {
+            font-size: 0.82rem;
+            color: #94A3B8;
+            line-height: 1.5;
+        }
+        .profile-meta strong {
+            color: #CBD5E1;
+            font-weight: 600;
+        }
+        .profile-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .btn-admin {
+            flex: 1;
+            padding: 0.55rem 0.85rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            transition: all 150ms;
+        }
+        .btn-admin.primary {
+            background: linear-gradient(135deg, #22C55E, #14B8A6);
+            color: #fff;
+        }
+        .btn-admin.primary:hover {
+            filter: brightness(1.1);
+        }
+        .btn-admin.danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #FCA5A5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .btn-admin.danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+        }
+        .btn-admin.ghost {
+            background: transparent;
+            color: #94A3B8;
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        .btn-admin.ghost:hover {
+            background: rgba(255,255,255,0.05);
+            color: #F8FAFC;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 4rem 1rem;
+            color: #94A3B8;
+        }
+        .empty-state svg {
+            color: #14B8A6;
+            margin-bottom: 1rem;
+        }
+        .empty-state h3 {
+            color: #F8FAFC;
+            margin: 0 0 0.5rem;
+            font-size: 1.25rem;
+        }
+        .details-list {
+            list-style: none;
+            padding: 0;
+            margin: 0.5rem 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .details-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.85rem;
+        }
+        .details-list li span:first-child {
+            color: #94A3B8;
+            font-weight: 500;
+        }
+        .details-list li span:last-child {
+            color: #F8FAFC;
+            font-weight: 600;
+            text-align: right;
+            margin-left: 1rem;
+            word-break: break-word;
+        }
+        /* Modal */
+        .admin-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            padding: 1rem;
+        }
+        .admin-modal {
+            background: #10233D;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.75rem;
+            max-width: 560px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            color: #F8FAFC;
+        }
+        .admin-modal h3 {
+            font-family: 'Space Grotesk', Inter, sans-serif;
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin: 0 0 1rem;
+        }
+        .admin-modal textarea {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 0.75rem;
+            color: #F8FAFC;
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 1rem;
+        }
+        .admin-modal .modal-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+        .toast-holder {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 20000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .admin-toast {
+            background: #10233D;
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #F8FAFC;
+            padding: 0.85rem 1.1rem;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            max-width: 360px;
+        }
+        .admin-toast.success { border-color: rgba(34, 197, 94, 0.4); }
+        .admin-toast.error { border-color: rgba(239, 68, 68, 0.4); }
+    </style>
+</head>
+<body>
+    <script src="mock-data.js"></script>
+    <script src="app.js"></script>
+    <script src="supabase-client.js"></script>
+
+    <div class="admin-wrap">
+        <div class="admin-header">
+            <a href="index.html" class="logo">
+                <span class="logo-icon">GP</span><span>RN</span>
+            </a>
+            <div class="admin-user">
+                <span id="adminEmail"></span>
+                <button onclick="Auth.logout()">Sign out</button>
+            </div>
+        </div>
+
+        <h1 class="admin-title">Account Approvals</h1>
+        <p class="admin-subtitle">Review and approve new account registrations. All new sign-ups start as pending until you act on them.</p>
+
+        <div class="filter-tabs" id="filterTabs">
+            <button class="filter-tab active" data-filter="pending">Pending <span class="count" id="cntPending">0</span></button>
+            <button class="filter-tab" data-filter="approved">Approved <span class="count" id="cntApproved">0</span></button>
+            <button class="filter-tab" data-filter="rejected">Rejected <span class="count" id="cntRejected">0</span></button>
+            <button class="filter-tab" data-filter="all">All <span class="count" id="cntAll">0</span></button>
+        </div>
+
+        <div id="profilesContainer"></div>
+    </div>
+
+    <div class="toast-holder" id="toastHolder"></div>
+
+    <script>
+        (function() {
+            // ---- Access gate ----
+            if (!Auth.isLoggedIn()) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            var session = Auth.getSession();
+            if (!session.is_admin) {
+                // Double check against server — the session flag could be stale
+                var isAdminServer = AdminApproval.isCurrentUserAdmin();
+                if (!isAdminServer) {
+                    window.location.href = (session.role === 'locum') ? 'locum-dashboard.html' : 'practice-dashboard.html';
+                    return;
+                }
+            }
+
+            document.getElementById('adminEmail').textContent = session.email || '';
+
+            // ---- State ----
+            var currentFilter = 'pending';
+            var allProfiles = [];
+
+            // ---- Helpers ----
+            function esc(str) {
+                return String(str == null ? '' : str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function formatDate(iso) {
+                if (!iso) return '—';
+                try {
+                    var d = new Date(iso);
+                    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                         + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                } catch(e) { return iso; }
+            }
+
+            function showToast(msg, type) {
+                var t = document.createElement('div');
+                t.className = 'admin-toast ' + (type || '');
+                t.textContent = msg;
+                document.getElementById('toastHolder').appendChild(t);
+                setTimeout(function() { t.style.opacity = '0'; t.style.transition = 'opacity 300ms'; }, 3200);
+                setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 3600);
+            }
+
+            function displayNameFor(p) {
+                var pd = p.profile_data || {};
+                if (p.role === 'locum') {
+                    var bits = [pd.title, pd.firstName, pd.lastName].filter(Boolean);
+                    if (bits.length) return bits.join(' ');
+                } else {
+                    if (pd.practiceName) return pd.practiceName;
+                }
+                return p.email;
+            }
+
+            // ---- Rendering ----
+            function updateCounts() {
+                var counts = { pending: 0, approved: 0, rejected: 0 };
+                allProfiles.forEach(function(p) {
+                    if (counts[p.approval_status] !== undefined) counts[p.approval_status]++;
+                });
+                document.getElementById('cntPending').textContent = counts.pending;
+                document.getElementById('cntApproved').textContent = counts.approved;
+                document.getElementById('cntRejected').textContent = counts.rejected;
+                document.getElementById('cntAll').textContent = allProfiles.length;
+            }
+
+            function renderList() {
+                var filtered = allProfiles.filter(function(p) {
+                    if (currentFilter === 'all') return true;
+                    return p.approval_status === currentFilter;
+                });
+
+                var container = document.getElementById('profilesContainer');
+
+                if (!filtered.length) {
+                    var message = currentFilter === 'pending'
+                        ? 'No pending registrations to review right now.'
+                        : 'No ' + currentFilter + ' profiles.';
+                    container.innerHTML = ''
+                        + '<div class="empty-state">'
+                        +   '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>'
+                        +   '<h3>All caught up</h3>'
+                        +   '<p>' + esc(message) + '</p>'
+                        + '</div>';
+                    return;
+                }
+
+                var html = '<div class="profile-grid">';
+                filtered.forEach(function(p) {
+                    var pd = p.profile_data || {};
+                    var name = displayNameFor(p);
+                    var metaBits = [];
+                    if (p.role === 'locum') {
+                        if (pd.phone) metaBits.push('<strong>Phone:</strong> ' + esc(pd.phone));
+                        if (pd.gmcNumber) metaBits.push('<strong>GMC:</strong> ' + esc(pd.gmcNumber));
+                        if (pd.yearsExperience != null) metaBits.push('<strong>Experience:</strong> ' + esc(pd.yearsExperience) + ' yrs');
+                        if (pd.healthBoard) metaBits.push('<strong>Health board:</strong> ' + esc(pd.healthBoard));
+                    } else {
+                        if (pd.phone) metaBits.push('<strong>Phone:</strong> ' + esc(pd.phone));
+                        if (pd.contactName) metaBits.push('<strong>Contact:</strong> ' + esc(pd.contactName));
+                        if (pd.healthBoard) metaBits.push('<strong>Health board:</strong> ' + esc(pd.healthBoard));
+                        if (pd.city) metaBits.push('<strong>City:</strong> ' + esc(pd.city));
+                        if (pd.odsCode) metaBits.push('<strong>ODS:</strong> ' + esc(pd.odsCode));
+                    }
+                    metaBits.push('<strong>Registered:</strong> ' + esc(formatDate(p.created_at)));
+                    if (p.approval_status === 'approved' && p.approved_at) {
+                        metaBits.push('<strong>Approved:</strong> ' + esc(formatDate(p.approved_at)));
+                    }
+                    if (p.approval_status === 'rejected' && p.rejected_at) {
+                        metaBits.push('<strong>Rejected:</strong> ' + esc(formatDate(p.rejected_at)));
+                        if (p.rejection_reason) metaBits.push('<strong>Reason:</strong> ' + esc(p.rejection_reason));
+                    }
+
+                    var actions = '';
+                    if (p.approval_status === 'pending') {
+                        actions = ''
+                            + '<div class="profile-actions">'
+                            +   '<button class="btn-admin ghost" data-action="view" data-id="' + esc(p.id) + '">Details</button>'
+                            +   '<button class="btn-admin danger" data-action="reject" data-id="' + esc(p.id) + '">Reject</button>'
+                            +   '<button class="btn-admin primary" data-action="approve" data-id="' + esc(p.id) + '">Approve</button>'
+                            + '</div>';
+                    } else {
+                        actions = ''
+                            + '<div class="profile-actions">'
+                            +   '<button class="btn-admin ghost" data-action="view" data-id="' + esc(p.id) + '">View details</button>'
+                            + '</div>';
+                    }
+
+                    html += ''
+                        + '<div class="profile-card">'
+                        +   '<div class="profile-card-head">'
+                        +     '<div>'
+                        +       '<div class="profile-name">' + esc(name) + '</div>'
+                        +       '<div class="profile-email">' + esc(p.email) + '</div>'
+                        +     '</div>'
+                        +     '<span class="role-badge ' + esc(p.role) + '">' + esc(p.role) + '</span>'
+                        +   '</div>'
+                        +   '<span class="status-badge ' + esc(p.approval_status) + '">' + esc(p.approval_status) + '</span>'
+                        +   '<div class="profile-meta">' + metaBits.join('<br>') + '</div>'
+                        +   actions
+                        + '</div>';
+                });
+                html += '</div>';
+                container.innerHTML = html;
+
+                // Wire up action buttons
+                container.querySelectorAll('button[data-action]').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var action = btn.getAttribute('data-action');
+                        var id = btn.getAttribute('data-id');
+                        var profile = allProfiles.find(function(p) { return p.id === id; });
+                        if (!profile) return;
+                        if (action === 'view') showDetails(profile);
+                        else if (action === 'approve') confirmApprove(profile);
+                        else if (action === 'reject') openRejectModal(profile);
+                    });
+                });
+            }
+
+            function loadProfiles() {
+                allProfiles = AdminApproval.listProfiles('all');
+                updateCounts();
+                renderList();
+            }
+
+            // ---- Modal machinery ----
+            function openModal(innerHtml, onMount) {
+                var overlay = document.createElement('div');
+                overlay.className = 'admin-modal-overlay';
+                overlay.innerHTML = '<div class="admin-modal">' + innerHtml + '</div>';
+                document.body.appendChild(overlay);
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === overlay) document.body.removeChild(overlay);
+                });
+                if (onMount) onMount(overlay);
+                return {
+                    close: function() { if (overlay.parentNode) document.body.removeChild(overlay); }
+                };
+            }
+
+            function showDetails(profile) {
+                var pd = profile.profile_data || {};
+                var items = '';
+                Object.keys(pd).forEach(function(k) {
+                    if (k === 'password') return;
+                    var v = pd[k];
+                    if (v == null || v === '') return;
+                    if (typeof v === 'object') v = JSON.stringify(v);
+                    items += '<li><span>' + esc(k) + '</span><span>' + esc(v) + '</span></li>';
+                });
+                openModal(''
+                    + '<h3>' + esc(displayNameFor(profile)) + '</h3>'
+                    + '<p style="color:#94A3B8; font-size:0.85rem; margin-bottom:1rem;">' + esc(profile.email) + ' · ' + esc(profile.role) + ' · ' + esc(profile.approval_status) + '</p>'
+                    + '<ul class="details-list">' + items + '</ul>'
+                    + '<div class="modal-actions">'
+                    +   '<button class="btn-admin ghost" id="closeDetails">Close</button>'
+                    + '</div>'
+                , function(overlay) {
+                    overlay.querySelector('#closeDetails').addEventListener('click', function() {
+                        document.body.removeChild(overlay);
+                    });
+                });
+            }
+
+            function confirmApprove(profile) {
+                openModal(''
+                    + '<h3>Approve this account?</h3>'
+                    + '<p style="color:#CBD5E1; font-size:0.9rem; margin-bottom:1rem;">'
+                    +   esc(displayNameFor(profile)) + ' (<strong>' + esc(profile.email) + '</strong>) will be able to log in and access the platform. An approval email will be sent automatically.'
+                    + '</p>'
+                    + '<div class="modal-actions">'
+                    +   '<button class="btn-admin ghost" id="cancelApprove">Cancel</button>'
+                    +   '<button class="btn-admin primary" id="doApprove">Approve account</button>'
+                    + '</div>'
+                , function(overlay) {
+                    overlay.querySelector('#cancelApprove').addEventListener('click', function() {
+                        document.body.removeChild(overlay);
+                    });
+                    overlay.querySelector('#doApprove').addEventListener('click', function() {
+                        var btn = overlay.querySelector('#doApprove');
+                        btn.disabled = true;
+                        btn.textContent = 'Approving…';
+                        var res = AdminApproval.approveProfile(profile.id);
+                        if (res && res.success) {
+                            showToast('Approved ' + profile.email, 'success');
+                            document.body.removeChild(overlay);
+                            loadProfiles();
+                        } else {
+                            showToast('Approval failed: ' + (res && res.error || 'unknown'), 'error');
+                            btn.disabled = false;
+                            btn.textContent = 'Approve account';
+                        }
+                    });
+                });
+            }
+
+            function openRejectModal(profile) {
+                openModal(''
+                    + '<h3>Reject this account?</h3>'
+                    + '<p style="color:#CBD5E1; font-size:0.9rem; margin-bottom:1rem;">'
+                    +   esc(displayNameFor(profile)) + ' (<strong>' + esc(profile.email) + '</strong>) will not be able to log in. Optionally include a reason below (shared with them in the rejection email).'
+                    + '</p>'
+                    + '<textarea id="rejectReason" placeholder="Reason (optional)"></textarea>'
+                    + '<div class="modal-actions">'
+                    +   '<button class="btn-admin ghost" id="cancelReject">Cancel</button>'
+                    +   '<button class="btn-admin danger" id="doReject">Reject account</button>'
+                    + '</div>'
+                , function(overlay) {
+                    overlay.querySelector('#cancelReject').addEventListener('click', function() {
+                        document.body.removeChild(overlay);
+                    });
+                    overlay.querySelector('#doReject').addEventListener('click', function() {
+                        var reason = overlay.querySelector('#rejectReason').value.trim();
+                        var btn = overlay.querySelector('#doReject');
+                        btn.disabled = true;
+                        btn.textContent = 'Rejecting…';
+                        var res = AdminApproval.rejectProfile(profile.id, reason || null);
+                        if (res && res.success) {
+                            showToast('Rejected ' + profile.email, 'success');
+                            document.body.removeChild(overlay);
+                            loadProfiles();
+                        } else {
+                            showToast('Rejection failed: ' + (res && res.error || 'unknown'), 'error');
+                            btn.disabled = false;
+                            btn.textContent = 'Reject account';
+                        }
+                    });
+                });
+            }
+
+            // ---- Filter tabs ----
+            document.getElementById('filterTabs').addEventListener('click', function(e) {
+                var btn = e.target.closest('.filter-tab');
+                if (!btn) return;
+                document.querySelectorAll('.filter-tab').forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                currentFilter = btn.getAttribute('data-filter');
+                renderList();
+            });
+
+            // ---- Initial load ----
+            loadProfiles();
+        })();
+    </script>
+</body>
+</html>

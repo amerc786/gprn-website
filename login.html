@@ -195,10 +195,22 @@
                 if (result && result.error === 'wrong_role') {
                     const correctTab = result.actualRole === 'locum' ? 'Locum GP' : 'Practice Manager';
                     Toast.show('This account is registered as a ' + correctTab + '. Please switch to the ' + correctTab + ' tab.', 'error');
+                } else if (result && result.error === 'pending_approval') {
+                    window.location.href = 'pending-approval.html?email=' + encodeURIComponent(email);
+                } else if (result && result.error === 'rejected') {
+                    var qs = '?status=rejected&email=' + encodeURIComponent(email);
+                    if (result.reason) qs += '&reason=' + encodeURIComponent(result.reason);
+                    window.location.href = 'pending-approval.html' + qs;
+                } else if (result && result.error === 'no_profile') {
+                    Toast.show('No profile found for this account. Please register or contact support.', 'error');
                 } else if (result && result.role) {
                     Toast.show('Welcome back, ' + result.firstName + '!', 'success');
                     setTimeout(() => {
-                        window.location.href = result.role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html';
+                        if (result.is_admin) {
+                            window.location.href = 'admin-approvals.html';
+                        } else {
+                            window.location.href = result.role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html';
+                        }
                     }, 600);
                 } else {
                     Toast.show('Invalid email or password. Please try again.', 'error');
