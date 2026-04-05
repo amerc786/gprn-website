@@ -127,6 +127,8 @@
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
         .bento-hover { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         .bento-hover:hover {
@@ -588,116 +590,315 @@
                 <p class="text-lg text-slate-600">Stop scrolling through endless WhatsApp groups. This is what an optimized locum dashboard looks like.</p>
             </div>
 
-            <!-- The Mock UI Shell -->
-            <div class="w-full max-w-5xl mx-auto bg-slate-50 rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden flex flex-col md:flex-row">
+            <!-- The Mock UI Shell (Practice Manager View) -->
+            <div class="w-full max-w-[1200px] mx-auto bg-slate-50 rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden flex flex-col md:flex-row h-[700px] relative group pointer-events-auto">
 
-                <!-- Sidebar Nav (Mock) -->
-                <div class="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-6 flex-col gap-8 hidden md:flex">
-                    <div class="flex items-center gap-2">
-                        <div class="w-6 h-6 rounded bg-slate-900 text-white flex items-center justify-center text-xs font-bold">G</div>
-                        <span class="font-bold text-slate-900 tracking-tight">GPRN</span>
+                <!-- Overlay glow effect for visual tension -->
+                <div class="absolute -inset-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-indigo-500/10 rounded-[2.2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none z-[-1]"></div>
+
+                <!-- Sidebar Navigation (Dark App Theme) -->
+                <div class="w-full md:w-[260px] bg-[#0B1120] border-r border-[#1E293B] flex-col hidden md:flex shrink-0">
+                    <!-- Logo area -->
+                    <div class="p-6 flex items-center gap-3 mb-2 border-b border-white/5">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold font-display shadow-[0_0_15px_rgba(79,70,229,0.4)]">G</div>
+                        <span class="font-bold text-white tracking-widest font-display text-lg">GPRN</span>
                     </div>
 
-                    <div class="flex flex-col gap-1">
-                        <div class="px-3 py-2 bg-slate-100 text-slate-900 rounded-lg text-sm font-semibold flex items-center gap-3">
-                            <i class="ph ph-magnifying-glass"></i> Find Shifts
+                    <div class="flex-1 overflow-y-auto px-4 py-6 scrollbar-hide">
+                        <!-- Main Nav -->
+                        <div class="flex flex-col gap-1.5 mb-8">
+                            <div class="px-3 py-2.5 bg-indigo-500/15 text-indigo-400 rounded-xl text-sm font-semibold flex items-center gap-3 border border-indigo-500/20">
+                                <i class="ph ph-squares-four text-lg"></i> Dashboard
+                            </div>
+                            <div class="px-3 py-2.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer group/nav">
+                                <i class="ph ph-plus-circle text-lg group-hover/nav:text-indigo-400 transition-colors"></i> Create Session
+                            </div>
+                            <div class="px-3 py-2.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer group/nav">
+                                <i class="ph ph-list-dashes text-lg group-hover/nav:text-indigo-400 transition-colors"></i> My Sessions
+                            </div>
+                            <div class="px-3 py-2.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer group/nav">
+                                <i class="ph ph-magnifying-glass text-lg group-hover/nav:text-indigo-400 transition-colors"></i> Find Locums
+                            </div>
+                            <div class="px-3 py-2.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer group/nav">
+                                <i class="ph ph-credit-card text-lg group-hover/nav:text-indigo-400 transition-colors"></i> Billing
+                            </div>
+                            <div class="px-3 py-2.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer justify-between group/nav">
+                                <div class="flex items-center gap-3">
+                                    <i class="ph ph-envelope-simple text-lg group-hover/nav:text-indigo-400 transition-colors"></i> Messages
+                                </div>
+                                <span class="bg-indigo-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">2</span>
+                            </div>
                         </div>
-                        <div class="px-3 py-2 text-slate-500 hover:bg-slate-50 rounded-lg text-sm font-medium flex items-center gap-3 transition-colors">
-                            <i class="ph ph-calendar-blank"></i> My Roster
+
+                        <!-- Resources Nav -->
+                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Resources</div>
+                        <div class="flex flex-col gap-1.5">
+                            <div class="px-3 py-2.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer">
+                                <i class="ph ph-bookmark-simple text-lg"></i> CPD Events
+                            </div>
+                            <div class="px-3 py-2.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer">
+                                <i class="ph ph-briefcase text-lg"></i> Jobs Board
+                            </div>
+                            <div class="px-3 py-2.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer">
+                                <i class="ph ph-question text-lg"></i> Help / FAQ
+                            </div>
                         </div>
-                        <div class="px-3 py-2 text-slate-500 hover:bg-slate-50 rounded-lg text-sm font-medium flex items-center gap-3 transition-colors">
-                            <i class="ph ph-file-text"></i> Invoices
+                    </div>
+
+                    <!-- Bottom Nav -->
+                    <div class="p-4 border-t border-white/5 bg-[#0B1120] shrink-0 mt-auto">
+                        <div class="px-3 py-2.5 text-slate-400 hover:text-slate-200 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer hover:bg-white/5">
+                            <i class="ph ph-gear text-lg"></i> Settings
                         </div>
-                        <div class="px-3 py-2 text-slate-500 hover:bg-slate-50 rounded-lg text-sm font-medium flex items-center gap-3 transition-colors">
-                            <i class="ph ph-shield-check"></i> Compliance
+                        <div class="px-3 py-2.5 text-slate-500 hover:text-rose-400 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer hover:bg-rose-500/10 mt-1">
+                            <i class="ph ph-sign-out text-lg"></i> Log Out
                         </div>
                     </div>
                 </div>
 
-                <!-- Main Content Area (Mock) -->
-                <div class="flex-1 p-6 md:p-8 overflow-hidden flex flex-col">
+                <!-- Main Workspace Area -->
+                <div class="flex-1 flex flex-col bg-slate-50/80 backdrop-blur-xl overflow-hidden relative">
 
-                    <!-- Top Bar Filter Mock -->
-                    <div class="flex justify-between items-center mb-8 pb-4 border-b border-slate-200">
-                        <h3 class="font-display font-semibold text-xl text-slate-900">Available Shifts</h3>
-                        <div class="flex gap-2">
-                            <div class="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600 flex items-center gap-2">
-                                Cardiff <i class="ph ph-caret-down"></i>
-                            </div>
-                            <div class="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600 flex items-center gap-2">
-                                Dates <i class="ph ph-caret-down"></i>
+                    <!-- Top Navbar inside workspace -->
+                    <div class="h-[72px] bg-white/70 backdrop-blur-md border-b border-slate-200/60 px-8 flex justify-between items-center shrink-0 z-20">
+                        <div class="font-display font-bold text-lg text-slate-900 tracking-tight">Dashboard</div>
+                        <div class="flex items-center gap-5">
+                            <button class="relative text-slate-400 hover:text-slate-900 transition-colors bg-white p-2 rounded-full border border-slate-200 shadow-sm hover:shadow">
+                                <i class="ph ph-bell text-lg"></i>
+                                <span class="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white"></span>
+                            </button>
+                            <div class="h-8 w-px bg-slate-200"></div>
+                            <div class="flex items-center gap-3 cursor-pointer group bg-white pr-4 pl-1 py-1 rounded-full border border-slate-200 shadow-sm hover:border-indigo-300 transition-colors">
+                                <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shadow-inner">SP</div>
+                                <div class="text-sm font-semibold text-slate-700 group-hover:text-slate-900 flex items-center gap-2">
+                                    Saf's practice <i class="ph-bold ph-caret-down text-[10px] text-slate-400"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Data Density: Shift List -->
-                    <div class="flex flex-col gap-3 overflow-y-auto no-scrollbar pr-2 pb-4">
+                    <!-- Scrollable Viewport -->
+                    <div class="flex-1 overflow-y-auto overflow-x-hidden p-8 pb-32 no-scrollbar relative z-10 scroll-smooth">
 
-                        <!-- Shift Row 1 -->
-                        <div class="group bg-white border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 hover:shadow-md transition-all cursor-pointer">
-                            <div class="flex gap-4 items-center">
-                                <div class="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-700 flex flex-col items-center justify-center flex-shrink-0">
-                                    <span class="text-xs font-bold leading-none">OCT</span>
-                                    <span class="text-lg font-display font-bold leading-none mt-1">24</span>
+                        <!-- Header & Greeting -->
+                        <div class="mb-8 animate-slide-up">
+                            <h1 class="font-display text-3xl font-bold text-slate-900 tracking-tight mb-2">Good evening, Safina</h1>
+                            <p class="text-slate-500 text-sm font-medium flex items-center gap-2">
+                                <i class="ph-fill ph-check-circle text-emerald-500"></i> Practice Manager — Saf's practice
+                            </p>
+                        </div>
+
+                        <!-- 4-Stat Grid Data Density -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8 animate-slide-up" style="animation-delay: 100ms;">
+                            <!-- Stat Card 1 -->
+                            <div class="bg-white rounded-[1.25rem] p-6 border border-slate-200/60 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300">
+                                <div class="flex justify-between items-start mb-6">
+                                    <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                                        <i class="ph ph-calendar-plus text-2xl"></i>
+                                    </div>
+                                    <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold flex items-center gap-1">
+                                        <i class="ph-bold ph-trend-up"></i> Sessions
+                                    </span>
                                 </div>
-                                <div>
-                                    <h4 class="font-semibold text-slate-900 text-sm">Riverside Medical Centre</h4>
-                                    <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><i class="ph ph-map-pin"></i> Cardiff • 08:30 - 18:30 (10 hrs)</p>
+                                <div class="font-display text-4xl font-bold text-slate-900 mb-1">1</div>
+                                <div class="text-slate-500 text-xs font-medium">Open Session pending</div>
+                            </div>
+
+                            <!-- Stat Card 2 -->
+                            <div class="bg-white rounded-[1.25rem] p-6 border border-slate-200/60 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <i class="ph-fill ph-envelope-open text-6xl text-indigo-500 transform rotate-12"></i>
+                                </div>
+                                <div class="relative z-10">
+                                    <div class="flex justify-between items-start mb-6">
+                                        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                            <i class="ph ph-envelope-open text-2xl"></i>
+                                        </div>
+                                    </div>
+                                    <div class="font-display text-4xl font-bold text-slate-900 mb-1">2</div>
+                                    <div class="text-slate-500 text-xs font-medium">Active Offers waiting for review</div>
                                 </div>
                             </div>
-                            <div class="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                                <div class="text-right">
-                                    <div class="font-display font-bold text-slate-900">£850</div>
-                                    <div class="text-[10px] text-slate-400 font-medium">£85/hr</div>
+
+                            <!-- Stat Card 3 -->
+                            <div class="bg-white rounded-[1.25rem] p-6 border border-slate-200/60 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300">
+                                <div class="flex justify-between items-start mb-6">
+                                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                                        <i class="ph ph-check-square-offset text-2xl"></i>
+                                    </div>
+                                    <span class="px-2 py-1 rounded text-emerald-600 bg-emerald-50 text-[10px] font-bold flex items-center gap-1">
+                                        <i class="ph-bold ph-trend-up"></i> +12%
+                                    </span>
                                 </div>
-                                <button class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors">Apply</button>
+                                <div class="font-display text-4xl font-bold text-slate-900 mb-1">86%</div>
+                                <div class="text-slate-500 text-xs font-medium">Locum Fill Rate (30d)</div>
+                            </div>
+
+                            <!-- Stat Card 4 -->
+                            <div class="bg-white rounded-[1.25rem] p-6 border border-slate-200/60 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300">
+                                <div class="flex justify-between items-start mb-6">
+                                    <div class="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center">
+                                        <i class="ph ph-currency-gbp text-2xl"></i>
+                                    </div>
+                                </div>
+                                <div class="font-display text-3xl font-bold text-slate-900 mb-1 tracking-tight">£5,240<span class="text-lg text-slate-400 font-medium">.00</span></div>
+                                <div class="text-slate-500 text-xs font-medium flex items-center gap-1.5 mt-1 border-t border-slate-100 pt-2">
+                                    Monthly Spend <span class="w-1 h-1 rounded-full bg-slate-300"></span> Apr '26
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Shift Row 2 -->
-                        <div class="group bg-white border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 hover:shadow-md transition-all cursor-pointer relative overflow-hidden">
-                            <div class="absolute top-0 right-0 bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">URGENT</div>
-                            <div class="flex gap-4 items-center">
-                                <div class="w-12 h-12 rounded-lg bg-rose-50 text-rose-700 flex flex-col items-center justify-center flex-shrink-0 border border-rose-100">
-                                    <span class="text-xs font-bold leading-none">OCT</span>
-                                    <span class="text-lg font-display font-bold leading-none mt-1">25</span>
-                                </div>
-                                <div>
-                                    <h4 class="font-semibold text-slate-900 text-sm">St. David's Clinic</h4>
-                                    <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><i class="ph ph-map-pin"></i> Newport • 08:00 - 13:00 (5 hrs)</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                                <div class="text-right">
-                                    <div class="font-display font-bold text-slate-900">£500</div>
-                                    <div class="text-[10px] text-slate-400 font-medium">£100/hr</div>
-                                </div>
-                                <button class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors">Apply</button>
-                            </div>
-                        </div>
+                        <!-- Meso-Architecture: Dual Tables -->
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-slide-up" style="animation-delay: 200ms;">
 
-                        <!-- Shift Row 3 -->
-                        <div class="group bg-white border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 hover:shadow-md transition-all cursor-pointer">
-                            <div class="flex gap-4 items-center">
-                                <div class="w-12 h-12 rounded-lg bg-slate-100 text-slate-600 flex flex-col items-center justify-center flex-shrink-0">
-                                    <span class="text-xs font-bold leading-none">NOV</span>
-                                    <span class="text-lg font-display font-bold leading-none mt-1">02</span>
+                            <!-- Left Section: Weekly Coverage (Visual Tensor) -->
+                            <div class="lg:col-span-7 bg-white rounded-[1.5rem] border border-slate-200/60 shadow-sm flex flex-col h-[380px]">
+                                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-[1.5rem]">
+                                    <h3 class="font-display font-semibold text-slate-900 text-lg">Session Coverage This Week</h3>
+                                    <button class="bg-white border border-slate-200 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:shadow-sm transition-all">
+                                        <i class="ph ph-calendar-blank text-lg"></i>
+                                    </button>
                                 </div>
-                                <div>
-                                    <h4 class="font-semibold text-slate-900 text-sm">Afon Valley Practice</h4>
-                                    <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><i class="ph ph-map-pin"></i> Swansea • 09:00 - 17:00 (8 hrs)</p>
+                                <div class="p-4 flex flex-col gap-1.5 flex-1 overflow-y-auto no-scrollbar">
+
+                                    <!-- Mon Row -->
+                                    <div class="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-xl transition-colors group">
+                                        <div class="w-10 text-center">
+                                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mon</div>
+                                            <div class="font-display font-bold text-slate-900">06</div>
+                                        </div>
+                                        <div class="w-px h-8 bg-slate-100"></div>
+                                        <div class="flex-1 flex gap-2">
+                                            <div class="h-8 max-w-[140px] w-full bg-emerald-50 border border-emerald-200/50 rounded-lg flex items-center px-3 gap-2">
+                                                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                                <span class="text-xs font-semibold text-emerald-800 truncate">Dr. A. Hughes</span>
+                                            </div>
+                                            <div class="h-8 max-w-[140px] w-full bg-emerald-50 border border-emerald-200/50 rounded-lg flex items-center px-3 gap-2">
+                                                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                                <span class="text-xs font-semibold text-emerald-800 truncate">Dr. P. Patel</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tue Row (Actionable Alert) -->
+                                    <div class="flex items-center gap-4 p-3 bg-red-50/30 rounded-xl transition-colors group border border-transparent hover:border-red-100">
+                                        <div class="w-10 text-center">
+                                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tue</div>
+                                            <div class="font-display font-bold text-slate-900">07</div>
+                                        </div>
+                                        <div class="w-px h-8 bg-slate-100"></div>
+                                        <div class="flex-1 flex gap-2 items-center">
+                                            <div class="h-8 px-4 bg-white border border-dashed border-red-300 rounded-lg flex items-center justify-center gap-2 shadow-sm cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors">
+                                                <span class="absolute w-2 h-2 rounded-full bg-red-500 animate-ping opacity-75 left-4 hidden"></span>
+                                                <i class="ph-fill ph-warning-circle text-red-500"></i>
+                                                <span class="text-xs font-bold text-slate-700">1 Open Session</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Wed Row -->
+                                    <div class="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-xl transition-colors group opacity-60">
+                                        <div class="w-10 text-center">
+                                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Wed</div>
+                                            <div class="font-display font-bold text-slate-900">08</div>
+                                        </div>
+                                        <div class="w-px h-8 bg-slate-100"></div>
+                                        <div class="flex-1">
+                                            <span class="text-xs text-slate-400 font-medium">No sessions scheduled</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Thu Row -->
+                                    <div class="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-xl transition-colors group">
+                                        <div class="w-10 text-center">
+                                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Thu</div>
+                                            <div class="font-display font-bold text-slate-900">09</div>
+                                        </div>
+                                        <div class="w-px h-8 bg-slate-100"></div>
+                                        <div class="flex-1 flex gap-2">
+                                            <div class="h-8 max-w-[140px] w-full bg-emerald-50 border border-emerald-200/50 rounded-lg flex items-center px-3 gap-2">
+                                                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                                <span class="text-xs font-semibold text-emerald-800 truncate">Dr. S. Ali</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
-                            <div class="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                                <div class="text-right">
-                                    <div class="font-display font-bold text-slate-900">£720</div>
-                                    <div class="text-[10px] text-slate-400 font-medium">£90/hr</div>
+
+                            <!-- Right Section: Active Offers Request list -->
+                            <div class="lg:col-span-5 bg-white rounded-[1.5rem] border border-slate-200/60 shadow-sm flex flex-col h-[380px]">
+                                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-[1.5rem]">
+                                    <h3 class="font-display font-semibold text-slate-900 text-lg">Active Offers</h3>
+                                    <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full cursor-pointer hover:bg-indigo-100 transition-colors">View All</span>
                                 </div>
-                                <button class="px-4 py-2 bg-white border border-slate-200 text-slate-900 text-xs font-bold rounded-lg hover:border-slate-900 transition-colors">Apply</button>
+                                <div class="flex flex-col flex-1 overflow-y-auto no-scrollbar">
+
+                                    <!-- Doctor Offer 1 -->
+                                    <div class="p-5 border-b border-slate-100 flex flex-col gap-4 hover:bg-slate-50/80 transition-colors group relative">
+                                        <!-- Sent Status Line -->
+                                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-400 rounded-r-full"></div>
+
+                                        <div class="flex items-start gap-4">
+                                            <div class="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm mt-0.5 relative">
+                                                DS
+                                                <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center">
+                                                    <i class="ph-fill ph-check-circle text-[10px] text-emerald-500"></i>
+                                                </div>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="flex justify-between items-start">
+                                                    <div class="font-semibold text-slate-900 text-sm">Dr Safina Ali</div>
+                                                    <div class="text-[9px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-wider">Sent</div>
+                                                </div>
+                                                <div class="text-xs text-slate-500 font-medium mt-0.5">Wed 08 Apr 2026 • Full Day</div>
+                                                <div class="font-display font-bold text-slate-800 text-sm mt-1">£ 780.00 <span class="text-[10px] font-sans text-slate-400 font-normal">/session</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-end gap-2">
+                                            <button class="text-xs font-semibold text-slate-600 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm">Withdraw</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Doctor Offer 2 -->
+                                    <div class="p-5 flex flex-col gap-4 hover:bg-slate-50/80 transition-colors group relative">
+                                        <!-- Viewed Status Line -->
+                                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-amber-400 rounded-r-full"></div>
+
+                                        <div class="flex items-start gap-4">
+                                            <div class="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm mt-0.5">DS</div>
+                                            <div class="flex-1">
+                                                <div class="flex justify-between items-start">
+                                                    <div class="font-semibold text-slate-900 text-sm">Dr Safina Ali</div>
+                                                    <div class="text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-100 uppercase tracking-wider flex items-center gap-1">
+                                                        <i class="ph-fill ph-eye"></i> Viewed
+                                                    </div>
+                                                </div>
+                                                <div class="text-xs text-slate-500 font-medium mt-0.5">Wed 08 Apr 2026 • Full Day</div>
+                                                <div class="font-display font-bold text-slate-800 text-sm mt-1">£ 780.00 <span class="text-[10px] font-sans text-slate-400 font-normal">/session</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-end gap-2">
+                                            <button class="text-xs font-semibold text-slate-600 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm">Withdraw</button>
+                                        </div>
+                                    </div>
+
+                                </div>
                             </div>
                         </div>
 
                     </div>
+
+                    <!-- Floating Action Buttons -->
+                    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 z-30 opacity-0 animate-slide-up" style="animation-delay: 500ms;">
+                        <button class="bg-[#4F46E5] text-white px-6 py-3.5 rounded-full text-sm font-semibold flex items-center gap-2.5 hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all shadow-[0_8px_20px_rgba(79,70,229,0.3)]">
+                            <i class="ph ph-magnifying-glass text-lg"></i> Find Locums
+                        </button>
+                        <button class="bg-white text-slate-700 px-6 py-3.5 rounded-full text-sm font-semibold flex items-center gap-2.5 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all shadow-[0_8px_20px_rgba(0,0,0,0.06)] border border-slate-200">
+                            <i class="ph ph-envelope-simple text-lg"></i> Messages
+                        </button>
+                    </div>
+
                 </div>
             </div>
         </div>
