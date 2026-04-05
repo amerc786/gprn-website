@@ -7,26 +7,194 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Dashboard - GPRN</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Syne + Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Existing app styles (modals, toasts, forms, badges) -->
     <link rel="stylesheet" href="styles.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Syne"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: {
+                            DEFAULT: '#0B0F19',
+                            50: '#141C2F',
+                        },
+                        brand: {
+                            green: '#059669',
+                            mint: '#ECFDF5',
+                            dark: '#022C22',
+                        },
+                        surface: '#F8F9FA'
+                    },
+                    boxShadow: {
+                        'card': '0 4px 20px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
+                        'subtle': '0 1px 2px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body.pm-dashboard { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+        .custom-scroll:hover::-webkit-scrollbar-thumb { background: #CBD5E1; }
+
+        @keyframes fade-in-up {
+            0% { opacity: 0; transform: translateY(15px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-item {
+            animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        .status-pulse { animation: pulse-ring 2s infinite; }
+
+        .sidebar-active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10%;
+            height: 80%;
+            width: 4px;
+            background-color: #0B0F19;
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
 </head>
-<body class="app-layout">
+<body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
+
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
-<script src="supabase-client.js"></script>
+    <script src="supabase-client.js"></script>
     <script src="components.js"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
-
-        const session = Auth.getSession();
         Booking.expireOffers();
+    </script>
+
+    <!-- SIDEBAR -->
+    <aside class="w-[260px] bg-white border-r border-slate-200 flex flex-col shrink-0 relative z-20">
+        <div class="h-20 px-8 flex items-center pt-2">
+            <a href="index.html" class="flex items-center gap-[6px]">
+                <div class="bg-navy text-white w-[26px] h-[26px] rounded-[6px] flex items-center justify-center font-bold text-[14px]">G</div>
+                <span class="font-display font-bold text-[24px] tracking-tight text-navy leading-none mt-1">
+                    PRN<span class="text-brand-green text-[26px] leading-none -ml-[1px]">.</span>
+                </span>
+            </a>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scroll py-6 px-4 flex flex-col gap-8">
+            <nav class="flex flex-col gap-1.5">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] px-4 mb-2">Platform</p>
+
+                <a href="practice-dashboard.html" class="sidebar-active relative flex items-center gap-3 px-4 py-2.5 bg-slate-50 text-navy rounded-xl text-[14px] font-bold transition-all">
+                    <i class="ph-fill ph-squares-four text-lg"></i> Dashboard
+                </a>
+                <a href="post-shift.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-calendar-plus text-lg group-hover:text-navy transition-colors"></i> Post Vacancy
+                </a>
+                <a href="view-requested-shifts.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-clipboard-text text-lg group-hover:text-navy transition-colors"></i> Manage Shifts
+                </a>
+                <a href="find-locums.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-users text-lg group-hover:text-navy transition-colors"></i> Locum Network
+                </a>
+                <a href="billing.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-receipt text-lg group-hover:text-navy transition-colors"></i> Compliance & Billing
+                </a>
+                <a href="messages.html" id="sidebarMessagesLink" class="flex items-center justify-between px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-chat-circle-dots text-lg group-hover:text-navy transition-colors"></i> Messages
+                    </div>
+                    <span id="sidebarUnreadBadge" class="hidden text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full"></span>
+                </a>
+            </nav>
+
+            <nav class="flex flex-col gap-1.5 mt-auto">
+                <a href="practice-settings.html" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-gear text-lg"></i> Practice Settings
+                </a>
+                <button onclick="Auth.logout()" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl text-[14px] font-semibold transition-colors group cursor-pointer text-left">
+                    <i class="ph ph-sign-out text-lg"></i> Log Out
+                </button>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col relative w-full h-full">
+        <header class="h-20 px-10 flex items-center justify-between shrink-0 z-10 sticky top-0 bg-surface/80 backdrop-blur-md">
+            <div class="relative w-96 group">
+                <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-navy transition-colors"></i>
+                <input type="text" id="dashSearch" placeholder="Search locums, shifts, or invoices..." class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
+            </div>
+
+            <div class="flex items-center gap-5">
+                <button onclick="window.location.href='practice-settings.html'" class="bg-navy rounded-full p-1 pl-1.5 pr-4 flex items-center gap-2.5 hover:bg-slate-800 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-navy group">
+                    <div class="bg-brand-green text-white w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold tracking-wider" id="headerAvatar">--</div>
+                    <span class="text-white text-[13px] font-semibold pr-1" id="headerName">User</span>
+                    <i class="ph-bold ph-caret-down text-slate-400 text-[10px] group-hover:text-white transition-colors"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto custom-scroll px-10 pb-20 pt-4">
+            <div class="max-w-[1400px] mx-auto w-full relative flex flex-col gap-8" id="dashboardRoot">
+                <!-- Populated by script below -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ===== DATA =====
+        const session = Auth.getSession();
         const data = getMockData();
         const practice = Auth.getCurrentUser();
-        const pageContent = initAppLayout('practice', 'dashboard', 'Dashboard');
 
-        // Compute stats — new model uses sessionNeeds instead of shifts
+        // Header profile pill
+        document.getElementById('headerAvatar').textContent = getInitials((session.firstName || '') + ' ' + (session.lastName || session.name || ''));
+        document.getElementById('headerName').textContent = session.firstName || (session.name || 'User').split(' ')[0];
+
+        // Unread messages badge
+        const unreadMsgCount = MessageManager.getUnreadCount(session.id);
+        if (unreadMsgCount > 0) {
+            const badge = document.getElementById('sidebarUnreadBadge');
+            badge.textContent = unreadMsgCount;
+            badge.classList.remove('hidden');
+        }
+
+        // Stats
         const sessionNeeds = (data.sessionNeeds || []).filter(n => n.practiceId === session.id);
         const openSessions = sessionNeeds.filter(n => n.status === 'open');
         const practiceOffers = data.offers.filter(o => o.practiceId === session.id);
@@ -37,18 +205,15 @@
             (o.status === 'accepted' || o.status === 'completed' || o.status === 'confirmed') &&
             new Date(o.sessionDate || o.shiftDate) >= monthStart && new Date(o.sessionDate || o.shiftDate) <= monthEnd
         );
-        const monthlySpend = filledThisMonth.reduce((sum, o) => {
-            return sum + (o.agreedRate || o.proposedRate || 0);
-        }, 0);
+        const monthlySpend = filledThisMonth.reduce((sum, o) => sum + (o.agreedRate || o.proposedRate || 0), 0);
 
-        // Fill rate metric
         const totalNeedCount = sessionNeeds.length;
         const filledNeedCount = sessionNeeds.filter(n => n.status === 'filled').length;
         const completedOfferCount = practiceOffers.filter(o => o.status === 'completed' || o.status === 'accepted' || o.status === 'confirmed').length;
         const fillRate = totalNeedCount > 0 ? Math.round(((filledNeedCount + completedOfferCount) / Math.max(totalNeedCount, 1)) * 100) : 0;
         const fillRateDisplay = Math.min(fillRate, 100);
 
-        // Coverage data for Mon-Fri — store dates for click handlers
+        // Weekly coverage — current week Mon-Fri
         const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
         const today = new Date();
         const dayOfWeek = today.getDay();
@@ -61,66 +226,19 @@
             d.setDate(monday.getDate() + i);
             const dateStr = d.toISOString().split('T')[0];
             coverageDates.push(dateStr);
-            const totalNeeds = sessionNeeds.filter(n => n.date === dateStr).length;
+            const dayNeeds = sessionNeeds.filter(n => n.date === dateStr);
             const filledNeeds = practiceOffers.filter(o =>
                 (o.sessionDate || o.shiftDate) === dateStr &&
                 (o.status === 'accepted' || o.status === 'confirmed' || o.status === 'completed')
-            ).length;
-            const pct = totalNeeds > 0 ? Math.round((filledNeeds / totalNeeds) * 100) : 0;
-            return { day, pct, totalShifts: totalNeeds, filledShifts: filledNeeds, dateStr };
+            );
+            const pct = dayNeeds.length > 0 ? Math.round((filledNeeds.length / dayNeeds.length) * 100) : 0;
+            return { day, pct, dateStr, dayNum: d.getDate(), needs: dayNeeds, filledOffers: filledNeeds };
         });
 
-        // Top locums - most used based on completed offers
-        const locumUsage = {};
-        practiceOffers.filter(o => o.status === 'completed' || o.status === 'accepted').forEach(o => {
-            locumUsage[o.locumId] = (locumUsage[o.locumId] || 0) + 1;
-        });
-        const topLocums = Object.entries(locumUsage)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([locumId, count]) => {
-                const locum = data.locums.find(l => l.id === locumId);
-                const avgRating = FeedbackManager.getAverageRating(locumId);
-                return {
-                    id: locumId,
-                    name: locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown',
-                    count: count,
-                    reliability: locum ? locum.bookingReliability : 0,
-                    rating: avgRating
-                };
-            });
-
-        // Spending trend — store month metadata for click handlers
-        const invoices = InvoiceManager.getForPractice(session.id);
-        const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const spendingData = [];
-        const spendingMeta = [];
-        for (let i = 5; i >= 0; i--) {
-            const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const mMonth = m.getMonth();
-            const mYear = m.getFullYear();
-            const monthInvoices = invoices.filter(inv => {
-                const d = new Date(inv.sessionDate || inv.shiftDate);
-                return d.getMonth() === mMonth && d.getFullYear() === mYear;
-            });
-            const total = monthInvoices.reduce((s, inv) => s + inv.total, 0);
-            spendingData.push({ label: monthsShort[mMonth], value: total });
-            spendingMeta.push({ month: mMonth, year: mYear, label: monthsShort[mMonth] + ' ' + mYear });
-        }
-        const maxSpend = Math.max(...spendingData.map(e => e.value), 1);
-
-        // Pending feedback reminders
-        const completedNoFeedback = practiceOffers
-            .filter(o => o.status === 'completed' && !FeedbackManager.hasReviewed(session.id, o.id));
-
-        // Unread messages
-        const unreadMsgCount = MessageManager.getUnreadCount(session.id);
-
-        // Active offers sent by this practice (sent/viewed/negotiating/accepted)
+        // Active offers
         const locums = data.locums;
         const activeOffers = practiceOffers.filter(o => ['sent', 'viewed', 'negotiating', 'accepted'].includes(o.status));
-
-        const pendingApps = activeOffers.slice(0, 5).map(offer => {
+        const pendingApps = activeOffers.slice(0, 8).map(offer => {
             const loc = locums.find(l => l.id === offer.locumId);
             return {
                 offerId: offer.id,
@@ -133,276 +251,381 @@
                 rate: offer.agreedRate || offer.proposedRate || 0,
                 status: offer.status,
                 reliability: loc ? loc.bookingReliability : 0,
-                isBarred: BarredList.isBarred(session.id, offer.locumId),
-                isPreferred: BarredList.isPreferred(session.id, offer.locumId)
+                rating: FeedbackManager.getAverageRating(offer.locumId)
             };
         });
 
-        // Notifications - filtered for current user, exclude acknowledged
+        // Notifications
         const notifications = (data.notifications || [])
             .filter(n => (n.userId === session.id || !n.userId) && !n.acknowledged)
             .slice(0, 20);
 
-        let html = `
-            <div style="margin-bottom: 32px;">
-                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">
-                    ${getGreeting()}, ${session.firstName || session.name}
-                </h1>
-                <p style="color: var(--dark-600); font-size: 0.95rem;">Practice Manager &mdash; ${session.name}</p>
-            </div>
+        // Top / favourite locums
+        const locumUsage = {};
+        practiceOffers.filter(o => o.status === 'completed' || o.status === 'accepted').forEach(o => {
+            locumUsage[o.locumId] = (locumUsage[o.locumId] || 0) + 1;
+        });
+        const topLocums = Object.entries(locumUsage)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 4)
+            .map(([locumId, count]) => {
+                const locum = locums.find(l => l.id === locumId);
+                return {
+                    id: locumId,
+                    name: locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown',
+                    initials: locum ? getInitials(locum.firstName + ' ' + locum.lastName) : '??',
+                    count
+                };
+            });
 
-            ${sessionNeeds.length === 0 ? `
-            <div class="content-card" style="margin-bottom: 24px; border-left: 4px solid var(--primary); background: rgba(91, 77, 255,0.03);">
-                <div class="content-card-body" style="padding: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 200px;">
-                        <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--dark); margin-bottom: 6px;">Welcome to GPRN</h3>
-                        <p style="font-size: 0.9rem; color: var(--dark-600); line-height: 1.6;">Create your first session to start finding available locums. You can post a session need and send invitations to GPs in your area.</p>
-                    </div>
-                    <a href="post-shift.html" class="btn btn-primary btn-large">Create Your First Session</a>
-                </div>
-            </div>
-            ` : ''}
+        // Spending meta for KPI drill-in
+        const invoices = InvoiceManager.getForPractice(session.id);
+        const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const spendingMeta = [];
+        for (let i = 5; i >= 0; i--) {
+            const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            spendingMeta.push({ month: m.getMonth(), year: m.getFullYear(), label: monthsShort[m.getMonth()] + ' ' + m.getFullYear() });
+        }
 
-            <div class="dash-stats-row">
-                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('openSessions')" role="button" aria-label="View open sessions details" tabindex="0">
-                    <div class="dash-stat-icon" style="background: rgba(91, 77, 255,0.1); color: var(--primary)">
-                        ${getIcon('search')}
-                    </div>
-                    <div class="dash-stat-info">
-                        <span class="dash-stat-value">${openSessions.length}</span>
-                        <span class="dash-stat-label">Open Sessions</span>
-                    </div>
-                </div>
-                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('activeOffers')" role="button" aria-label="View active offers details" tabindex="0">
-                    <div class="dash-stat-icon" style="background: rgba(91, 77, 255,0.1); color: var(--primary)">
-                        ${getIcon('mail')}
-                    </div>
-                    <div class="dash-stat-info">
-                        <span class="dash-stat-value">${activeOffers.length}</span>
-                        <span class="dash-stat-label">Active Offers</span>
-                    </div>
-                </div>
-                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('fillRate')" role="button" aria-label="View fill rate details" tabindex="0">
-                    <div class="dash-stat-icon" style="background: rgba(91, 77, 255,0.1); color: var(--primary)">
-                        ${getIcon('check')}
-                    </div>
-                    <div class="dash-stat-info">
-                        <span class="dash-stat-value">${fillRateDisplay}%</span>
-                        <span class="dash-stat-label">Fill Rate</span>
-                    </div>
-                </div>
-                <div class="dash-stat-card" style="cursor: pointer;" onclick="showKPIDetail('monthlySpend')" role="button" aria-label="View monthly spend details" tabindex="0">
-                    <div class="dash-stat-icon" style="background: rgba(91, 77, 255,0.1); color: var(--primary)">
-                        ${getIcon('pound')}
-                    </div>
-                    <div class="dash-stat-info">
-                        <span class="dash-stat-value">${formatCurrency(monthlySpend)}</span>
-                        <span class="dash-stat-label">Monthly Spend</span>
-                    </div>
-                </div>
-            </div>
+        // ===== RENDER =====
+        const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+        const greeting = (typeof getGreeting === 'function') ? getGreeting() : 'Hello';
+        const practiceName = escapeHtml(session.name || 'Your Practice');
+        const subTitleLoc = practice && (practice.address || practice.locality || practice.healthBoard);
+        const subTitle = subTitleLoc ? `${practiceName}${practice.healthBoard ? ' — ' + escapeHtml(practice.healthBoard) : ''}` : practiceName;
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-                <div class="content-card">
-                    <div class="content-card-header">
-                        <h2>Session Coverage This Week</h2>
+        // Welcome Section
+        const welcomeHTML = `
+            <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 animate-item">
+                <div>
+                    <div class="inline-flex items-center gap-1.5 bg-brand-mint text-brand-green px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase mb-4 border border-brand-green/20">
+                        <span class="w-1.5 h-1.5 bg-brand-green rounded-full"></span>
+                        Practice Manager Portal
                     </div>
-                    <div class="content-card-body">
-                        ${coverageData.map((c, i) => {
-                            if (c.totalShifts === 0) {
-                                return `
-                                <div class="coverage-bar-container" style="cursor: pointer;" onclick="showDayCoverage(${i})" role="button" aria-label="${c.day} session coverage - no sessions" tabindex="0">
-                                    <div class="coverage-label">
-                                        <span>${c.day}</span>
-                                        <span class="coverage-pct" style="color: var(--gray-400);">No sessions</span>
-                                    </div>
-                                    <div class="coverage-bar">
-                                        <div class="coverage-fill" style="width: 0%"></div>
-                                    </div>
-                                </div>`;
-                            }
-                            const colorClass = c.pct >= 80 ? '' : (c.pct >= 50 ? 'warn' : 'danger');
-                            const fillClass = c.pct < 50 ? 'warning' : '';
-                            return `
-                                <div class="coverage-bar-container" style="cursor: pointer;" onclick="showDayCoverage(${i})" role="button" aria-label="${c.day} session coverage - ${c.filledShifts} of ${c.totalShifts} filled" tabindex="0">
-                                    <div class="coverage-label">
-                                        <span>${c.day}</span>
-                                        <span class="coverage-pct ${colorClass}">${c.filledShifts}/${c.totalShifts} (${c.pct}%)</span>
-                                    </div>
-                                    <div class="coverage-bar">
-                                        <div class="coverage-fill ${fillClass}" style="width: ${c.pct}%"></div>
-                                    </div>
-                                </div>`;
-                        }).join('')}
-                    </div>
+                    <h2 class="font-display text-[44px] font-bold text-navy tracking-tight leading-none mb-2">${greeting}, ${escapeHtml(session.firstName || practiceName)}.</h2>
+                    <p class="text-slate-500 text-[15px] font-medium">${subTitle}</p>
                 </div>
-
-                <div class="content-card">
-                    <div class="content-card-header">
-                        <h2>Spending Trend (6 Months)</h2>
-                    </div>
-                    <div class="content-card-body">
-                        <div class="bar-chart">
-                            ${spendingData.map((e, i) => `
-                                <div class="bar-chart-item" style="cursor: pointer;" onclick="showMonthSpend(${i})" role="button" aria-label="${e.label} spending - ${e.value > 0 ? formatCurrency(e.value) : 'no spend'}" tabindex="0">
-                                    <div class="bar-chart-value">${e.value > 0 ? formatCurrency(e.value) : '-'}</div>
-                                    <div class="bar-chart-bar" style="height: ${e.value > 0 ? Math.max((e.value / maxSpend) * 120, 4) : 4}px;"></div>
-                                    <div class="bar-chart-label">${e.label}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            ${topLocums.length > 0 ? `
-            <div class="content-card" style="margin-bottom: 24px;">
-                <div class="content-card-header">
-                    <h2>Top Locums</h2>
-                    <a href="find-locums.html" class="btn btn-ghost btn-small">Find Locums</a>
-                </div>
-                <div class="content-card-body">
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-                        ${topLocums.map((loc, idx) => `
-                            <div style="text-align: center; padding: 16px; background: var(--gray-50); border-radius: var(--radius);">
-                                <div class="header-avatar" style="width: 48px; height: 48px; font-size: 0.9rem; margin: 0 auto 8px;">${getInitials(loc.name)}</div>
-                                <strong style="display: block; font-size: 0.9rem;">${loc.name}</strong>
-                                <span style="font-size: 0.82rem; color: var(--dark-600);">${loc.count} session${loc.count !== 1 ? 's' : ''} completed</span>
-                                <div style="margin-top: 6px;">
-                                    <span class="badge badge-success" style="font-size: 0.75rem;">${loc.reliability}% reliable</span>
-                                    ${loc.rating ? `<span style="font-size: 0.78rem; color: var(--coral); margin-left: 4px;">&#9733; ${loc.rating}</span>` : ''}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            </div>
-            ` : ''}
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-                <div class="content-card">
-                    <div class="content-card-header">
-                        <h2>Active Offers</h2>
-                        <a href="view-requested-shifts.html" class="btn btn-ghost btn-small">View All</a>
-                    </div>
-                    <div class="content-card-body">
-                        ${pendingApps.length === 0 ? `
-                            <div class="empty-state" style="padding: 30px 10px;">
-                                <p style="color: var(--dark-600);">No active offers</p>
-                                <a href="find-locums.html" class="btn btn-primary btn-small" style="margin-top: 8px;">Find Locums</a>
-                            </div>
-                        ` : pendingApps.map(app => `
-                            <div style="padding: 14px 0; border-bottom: 1px solid var(--gray-100);">
-                                ${(app.isBarred || app.isPreferred) ? renderBarredWarning(session.id, app.locumId) : ''}
-                                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                                    <div style="display: flex; align-items: center; gap: 12px;">
-                                        <div class="header-avatar" style="width: 40px; height: 40px; font-size: 0.8rem;">${getInitials(app.locumName)}</div>
-                                        <div>
-                                            <strong style="display: block; font-size: 0.9rem;">${app.locumName}</strong>
-                                            <span style="font-size: 0.82rem; color: var(--dark-600);">${DateUtils.format(app.sessionDate, 'medium')} &bull; ${app.sessionType || 'AM'} &bull; ${formatCurrency(app.rate)}/session</span>
-                                            <span class="badge ${getStatusBadge(app.status)}" style="font-size: 0.7rem; margin-left: 6px;">${getStatusLabel(app.status)}</span>
-                                        </div>
-                                    </div>
-                                    <div style="display: flex; gap: 8px;">
-                                        ${app.status === 'accepted' ? `<button class="btn btn-primary btn-small" onclick="confirmOfferFromDash('${app.offerId}')">Confirm</button>` : ''}
-                                        ${['sent', 'viewed', 'negotiating'].includes(app.status) ? `<button class="btn btn-ghost btn-small" onclick="withdrawOfferFromDash('${app.offerId}')">Withdraw</button>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-
-                <div class="content-card">
-                    <div class="content-card-header">
-                        <h2>Recent Notifications</h2>
-                        <span style="font-size: 0.78rem; color: var(--dark-600);">${notifications.length} unread</span>
-                    </div>
-                    <div class="content-card-body" id="notifPane" style="max-height: 320px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;">
-                        <style>#notifPane::-webkit-scrollbar { display: none; }</style>
-                        ${notifications.length === 0
-                            ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No new notifications.</p>'
-                            : notifications.slice(0, 5).map((n, idx) => {
-                                const dotColor = n.type === 'offer_accepted' ? 'var(--success)' :
-                                    n.type === 'shift_cancelled' || n.type === 'no_show' ? 'var(--danger)' :
-                                    n.type === 'new_offer' || n.type === 'offer_received' ? 'var(--primary)' :
-                                    'var(--coral)';
-                                return `
-                                <div class="notif-item" id="notif-${idx}" style="cursor: pointer;" onclick="expandNotification(${idx})" role="button" aria-label="Notification: ${n.title}" tabindex="0">
-                                    <div class="notif-dot ${n.read ? 'read' : 'unread'}" style="background: ${dotColor};"></div>
-                                    <div style="flex: 1;">
-                                        <div class="notif-title">${n.title}</div>
-                                        <div class="notif-message" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${n.message}</div>
-                                        <div class="notif-time">${DateUtils.relative(n.date)}</div>
-                                    </div>
-                                </div>
-                            `}).join('')
-                        }
-                    </div>
-                </div>
-            </div>
-
-            ${completedNoFeedback.length > 0 ? `
-            <div class="content-card" style="margin-bottom: 24px;">
-                <div class="content-card-header">
-                    <h2>Pending Feedback</h2>
-                    <span class="badge badge-info">${completedNoFeedback.length}</span>
-                </div>
-                <div class="content-card-body">
-                    ${completedNoFeedback.slice(0, 5).map(offer => {
-                        const locum = data.locums.find(l => l.id === offer.locumId);
-                        const locumName = locum ? locum.title + ' ' + locum.firstName + ' ' + locum.lastName : 'Unknown';
-                        return `
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
-                            <div>
-                                <strong style="font-size: 0.9rem;">${locumName}</strong>
-                                <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${DateUtils.format(offer.sessionDate || offer.shiftDate, 'medium')} &bull; ${offer.sessionType}</span>
-                            </div>
-                            <button class="btn btn-secondary btn-small" onclick="leaveFeedback('${offer.id}', '${offer.locumId}')" aria-label="Rate locum for ${DateUtils.format(offer.sessionDate || offer.shiftDate, 'medium')} session">
-                                ${getIcon('award')} Rate Locum
-                            </button>
-                        </div>`;
-                    }).join('')}
-                </div>
-            </div>
-            ` : ''}
-
-            <div style="display: flex; gap: 12px; justify-content: center; padding: 20px 0;">
-                <a href="find-locums.html" class="btn btn-primary btn-large">
-                    ${getIcon('search')} Find Locums
-                </a>
-                <a href="messages.html" class="btn btn-secondary btn-large">
-                    ${getIcon('mail')} Messages${unreadMsgCount > 0 ? ' (' + unreadMsgCount + ')' : ''}
+                <a href="post-shift.html" class="bg-navy text-white px-6 py-3 rounded-full text-[14px] font-bold flex items-center gap-2 hover:bg-slate-800 transition-all shadow-md hover:shadow-lg active:scale-95 group focus:outline-none focus:ring-4 focus:ring-slate-200 self-start sm:self-auto">
+                    Post a Vacancy <i class="ph-bold ph-arrow-right group-hover:translate-x-1 transition-transform"></i>
                 </a>
             </div>
         `;
 
-        pageContent.innerHTML = html;
+        // Stats
+        const statsHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 animate-item delay-100">
+                <button type="button" onclick="showKPIDetail('openSessions')" class="text-left bg-white rounded-2xl p-6 border border-slate-200 shadow-subtle hover:shadow-card transition-shadow flex flex-col justify-between min-h-[160px] group cursor-pointer">
+                    <div class="flex justify-between items-start w-full">
+                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
+                            <i class="ph ph-calendar-blank text-xl"></i>
+                        </div>
+                        ${openSessions.length > 0 ? `<span class="text-rose-600 text-[12px] font-bold bg-rose-50 px-2.5 py-1 rounded-md border border-rose-100 flex items-center gap-1">Action Needed</span>` : ''}
+                    </div>
+                    <div>
+                        <div class="font-display text-[32px] font-bold text-navy leading-none mb-1 ${openSessions.length > 0 ? 'group-hover:text-rose-600' : ''} transition-colors">${openSessions.length}</div>
+                        <div class="text-[13px] text-slate-500 font-semibold uppercase tracking-wider">Open Sessions</div>
+                    </div>
+                </button>
 
-        // ===== HANDLER FUNCTIONS =====
+                <button type="button" onclick="showKPIDetail('activeOffers')" class="text-left bg-white rounded-2xl p-6 border border-slate-200 shadow-subtle hover:shadow-card transition-shadow flex flex-col justify-between min-h-[160px] group cursor-pointer">
+                    <div class="flex justify-between items-start w-full">
+                        <div class="w-10 h-10 rounded-full bg-navy flex items-center justify-center text-white border border-slate-800 shadow-md">
+                            <i class="ph ph-envelope-open text-xl"></i>
+                        </div>
+                        ${activeOffers.length > 0 ? `<span class="w-2.5 h-2.5 bg-brand-green rounded-full status-pulse"></span>` : ''}
+                    </div>
+                    <div>
+                        <div class="font-display text-[32px] font-bold text-navy leading-none mb-1">${activeOffers.length}</div>
+                        <div class="text-[13px] text-slate-500 font-semibold uppercase tracking-wider">Pending Offers</div>
+                    </div>
+                </button>
 
-        // --- Accept / Decline (existing) ---
+                <button type="button" onclick="showKPIDetail('fillRate')" class="text-left bg-white rounded-2xl p-6 border border-slate-200 shadow-subtle hover:shadow-card transition-shadow flex flex-col justify-between min-h-[160px] group cursor-pointer">
+                    <div class="flex justify-between items-start w-full">
+                        <div class="w-10 h-10 rounded-full bg-brand-mint flex items-center justify-center text-brand-green border border-brand-green/20">
+                            <i class="ph ph-chart-line-up text-xl"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="font-display text-[32px] font-bold text-navy leading-none mb-1">${totalNeedCount > 0 ? fillRateDisplay + '%' : '—'}</div>
+                        <div class="text-[13px] text-slate-500 font-semibold uppercase tracking-wider">Fill Rate (30d)</div>
+                    </div>
+                </button>
+
+                <button type="button" onclick="showKPIDetail('monthlySpend')" class="text-left bg-white rounded-2xl p-6 border border-slate-200 shadow-subtle hover:shadow-card transition-shadow flex flex-col justify-between min-h-[160px] group cursor-pointer">
+                    <div class="flex justify-between items-start w-full">
+                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
+                            <i class="ph ph-currency-gbp text-xl"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="font-display text-[32px] font-bold text-navy leading-none mb-1 tracking-tight">${formatCurrency(monthlySpend)}</div>
+                        <div class="text-[13px] text-slate-500 font-semibold uppercase tracking-wider">Spend (This Mo)</div>
+                    </div>
+                </button>
+            </div>
+        `;
+
+        // Schedule Coverage
+        function renderCoverageRow(c, i) {
+            const dayNum = c.dayNum;
+            const dayLabel = c.day;
+            const isEmpty = c.needs.length === 0;
+            const hasUnfilled = c.needs.some(n => n.status === 'open');
+            const allFilled = !isEmpty && !hasUnfilled;
+
+            let content;
+            if (isEmpty) {
+                content = `
+                    <a href="post-shift.html?date=${c.dateStr}" class="flex-1 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-lg py-3 hover:border-slate-300 transition-colors cursor-pointer text-slate-400 hover:text-navy no-underline">
+                        <div class="text-[13px] font-bold flex items-center gap-2"><i class="ph-bold ph-plus"></i> Add Session</div>
+                    </a>`;
+            } else {
+                const pills = c.needs.slice(0, 2).map(need => {
+                    const offer = practiceOffers.find(o => (o.sessionNeedId || o.shiftId) === need.id && ['accepted','confirmed','completed'].includes(o.status));
+                    if (offer) {
+                        const loc = locums.find(l => l.id === offer.locumId);
+                        const locName = loc ? `${loc.title} ${loc.firstName[0]}. ${loc.lastName}` : 'Locum';
+                        const initials = loc ? getInitials(loc.firstName + ' ' + loc.lastName) : '??';
+                        return `
+                            <div class="bg-brand-mint border border-brand-green/20 rounded-lg px-4 py-2.5 flex items-center gap-3 flex-1 cursor-pointer hover:shadow-md transition-shadow" onclick="showDayCoverage(${i})">
+                                <div class="w-8 h-8 rounded-full bg-brand-green text-white flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-sm shrink-0">${escapeHtml(initials)}</div>
+                                <div class="min-w-0">
+                                    <div class="text-[13px] font-bold text-brand-dark truncate">${escapeHtml(locName)}</div>
+                                    <div class="text-[11px] font-semibold text-brand-green">${escapeHtml(need.startTime || '')} - ${escapeHtml(need.endTime || '')}</div>
+                                </div>
+                            </div>`;
+                    } else {
+                        return `
+                            <div class="bg-white border-2 border-dashed border-rose-200 rounded-lg px-4 py-2.5 flex items-center justify-between flex-1 cursor-pointer hover:border-rose-400 transition-colors group/alert" onclick="showDayCoverage(${i})">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div class="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 shrink-0"><i class="ph-bold ph-warning-circle text-lg"></i></div>
+                                    <div class="min-w-0">
+                                        <div class="text-[13px] font-bold text-rose-700 truncate">Unfilled — ${escapeHtml(need.sessionType || 'Session')}</div>
+                                        <div class="text-[11px] font-semibold text-rose-500">${escapeHtml(need.startTime || '')} - ${escapeHtml(need.endTime || '')}</div>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }
+                }).join('');
+                const extraCount = c.needs.length > 2 ? `<button onclick="showDayCoverage(${i})" class="text-[11px] font-bold text-slate-500 hover:text-navy underline">+${c.needs.length - 2} more</button>` : '';
+                content = `<div class="flex-1 flex gap-3 items-center flex-wrap">${pills}${extraCount}</div>`;
+            }
+
+            const accent = hasUnfilled ? '<div class="absolute left-0 top-0 bottom-0 w-1 bg-rose-500"></div>' : '';
+            const dayNumColor = isEmpty ? 'text-slate-400' : 'text-navy';
+
+            return `
+                <div class="flex items-center border-b border-slate-100 p-4 hover:bg-slate-50 transition-colors relative overflow-hidden">
+                    ${accent}
+                    <div class="w-20 shrink-0 text-center border-r border-slate-100 mr-6">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">${dayLabel}</div>
+                        <div class="text-2xl font-display font-bold ${dayNumColor}">${dayNum}</div>
+                    </div>
+                    ${content}
+                </div>`;
+        }
+
+        const scheduleHTML = `
+            <div class="lg:col-span-2 flex flex-col gap-4">
+                <div class="flex items-center justify-between px-1">
+                    <h3 class="text-lg font-bold text-navy">Schedule Coverage</h3>
+                    <a href="view-requested-shifts.html" class="text-[12px] font-bold text-slate-500 hover:text-navy transition-colors">View all</a>
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-subtle overflow-hidden">
+                    ${coverageData.map((c, i) => renderCoverageRow(c, i)).join('')}
+                </div>
+            </div>
+        `;
+
+        // Activity Box / Notifications
+        const notifIconMap = {
+            'offer_accepted': { icon: 'ph-check-circle', bg: 'bg-brand-mint', color: 'text-brand-green' },
+            'new_offer': { icon: 'ph-envelope', bg: 'bg-slate-100', color: 'text-slate-600' },
+            'offer_received': { icon: 'ph-envelope', bg: 'bg-slate-100', color: 'text-slate-600' },
+            'invoice': { icon: 'ph-file-text', bg: 'bg-slate-100', color: 'text-slate-600' },
+            'shift_cancelled': { icon: 'ph-warning-octagon', bg: 'bg-rose-50', color: 'text-rose-500' },
+            'no_show': { icon: 'ph-warning-octagon', bg: 'bg-rose-50', color: 'text-rose-500' },
+            'compliance': { icon: 'ph-warning-octagon', bg: 'bg-rose-50', color: 'text-rose-500' }
+        };
+        function renderNotifItem(n, idx) {
+            const map = notifIconMap[n.type] || { icon: 'ph-bell', bg: 'bg-slate-100', color: 'text-slate-600' };
+            return `
+                <div id="notif-${idx}" onclick="expandNotification(${idx})" class="p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors flex items-start gap-3 relative">
+                    ${!n.read ? '<span class="absolute top-4 right-4 w-2 h-2 bg-brand-green rounded-full"></span>' : ''}
+                    <div class="w-9 h-9 rounded-full ${map.bg} flex items-center justify-center ${map.color} shrink-0 mt-0.5">
+                        <i class="ph-fill ${map.icon} text-lg"></i>
+                    </div>
+                    <div class="min-w-0 pr-4">
+                        <p class="text-[13px] text-navy font-medium leading-snug"><span class="font-bold">${escapeHtml(n.title)}</span> — ${escapeHtml((n.message || '').slice(0, 90))}${(n.message || '').length > 90 ? '…' : ''}</p>
+                        <p class="text-[11px] text-slate-400 font-semibold mt-1">${DateUtils.relative(n.date)}</p>
+                    </div>
+                </div>`;
+        }
+        const activityHTML = `
+            <div class="flex flex-col gap-4 h-full">
+                <div class="flex items-center justify-between px-1">
+                    <h3 class="text-lg font-bold text-navy">Activity Box</h3>
+                    ${notifications.length > 0 ? `<button onclick="markAllNotifRead()" class="text-[12px] font-bold text-slate-500 hover:text-navy transition-colors">Mark all read</button>` : ''}
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-subtle p-2 flex-1 flex flex-col min-h-[260px]">
+                    ${notifications.length === 0 ? `
+                        <div class="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-400">
+                            <div class="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mb-3"><i class="ph ph-bell-slash text-2xl"></i></div>
+                            <p class="text-[13px] font-semibold text-slate-500">All clear</p>
+                            <p class="text-[11px] font-medium">No new notifications</p>
+                        </div>
+                    ` : notifications.slice(0, 5).map((n, i) => renderNotifItem(n, i)).join('<hr class="border-slate-100 mx-3">')}
+                    ${notifications.length > 0 ? `<a href="view-requested-shifts.html" class="mt-auto mx-3 mb-2 py-2 text-[12px] font-bold text-navy bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 text-center">View Activity Log</a>` : ''}
+                </div>
+            </div>
+        `;
+
+        const middleHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-item delay-200">
+                ${scheduleHTML}
+                ${activityHTML}
+            </div>
+        `;
+
+        // Locum Candidates Table
+        function renderCandidateRow(app, idx) {
+            const initials = getInitials(app.locumName);
+            const needsAction = app.status === 'accepted';
+            const accent = needsAction ? '<div class="absolute left-0 top-0 bottom-0 w-1 bg-navy"></div>' : '';
+            const ratingLabel = app.rating ? `<i class="ph-fill ph-star text-amber-400"></i> ${app.rating}` : `<span class="inline-block px-1.5 py-0.5 bg-slate-100 rounded text-[9px] uppercase tracking-wider text-slate-500">${app.reliability}% Reliable</span>`;
+            let actionCell;
+            if (needsAction) {
+                actionCell = `
+                    <button onclick="confirmOfferFromDash('${escapeHtml(app.offerId)}')" class="text-[13px] font-bold text-white bg-navy border border-navy px-6 py-2 rounded-xl hover:bg-slate-800 transition-colors shadow-md">Confirm</button>
+                    <button onclick="withdrawOfferFromDash('${escapeHtml(app.offerId)}')" class="text-[13px] font-bold text-navy bg-white border border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">Withdraw</button>
+                `;
+            } else {
+                actionCell = `
+                    <div class="flex items-center gap-2 bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-[12px] font-bold border border-slate-200">
+                        <i class="ph ph-clock text-lg"></i> ${getStatusLabel(app.status)}
+                    </div>
+                    <button onclick="withdrawOfferFromDash('${escapeHtml(app.offerId)}')" class="ml-2 w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors" title="Withdraw offer"><i class="ph-bold ph-x"></i></button>
+                `;
+            }
+
+            return `
+                <div class="grid grid-cols-12 gap-4 border-b border-slate-100 p-4 items-center hover:bg-slate-50 transition-colors group relative ${needsAction ? '' : 'opacity-90 hover:opacity-100'}">
+                    ${accent}
+                    <div class="col-span-4 flex items-center gap-4 pl-2">
+                        <div class="w-12 h-12 rounded-full bg-brand-mint text-brand-green flex items-center justify-center border border-brand-green/20 text-sm font-bold shadow-sm shrink-0">${escapeHtml(initials)}</div>
+                        <div class="min-w-0">
+                            <div class="text-[14px] font-bold text-navy group-hover:text-brand-green transition-colors truncate">${escapeHtml(app.locumName)}</div>
+                            <div class="text-[12px] font-semibold text-slate-500 flex items-center gap-1 mt-0.5">${ratingLabel}</div>
+                        </div>
+                    </div>
+                    <div class="col-span-3">
+                        <div class="text-[13px] font-bold text-navy">${escapeHtml(DateUtils.format(app.sessionDate, 'medium'))}</div>
+                        <div class="text-[12px] font-medium text-slate-500">${escapeHtml(app.startTime || '')} - ${escapeHtml(app.endTime || '')} (${escapeHtml(app.sessionType || '')})</div>
+                    </div>
+                    <div class="col-span-2">
+                        <div class="text-[15px] font-display font-bold text-navy">${formatCurrency(app.rate)}</div>
+                        <div class="text-[11px] font-semibold text-slate-400">Per Session</div>
+                    </div>
+                    <div class="col-span-3 flex justify-end items-center gap-2 pr-2">${actionCell}</div>
+                </div>`;
+        }
+
+        const candidatesHTML = `
+            <div class="flex flex-col gap-4 animate-item delay-300">
+                <div class="flex items-center justify-between px-1">
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-lg font-bold text-navy">Locum Candidates</h3>
+                        ${activeOffers.length > 0 ? `<span class="bg-navy text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${activeOffers.length} Pending</span>` : ''}
+                    </div>
+                    <a href="view-requested-shifts.html" class="text-[13px] font-bold text-slate-600 bg-white border border-slate-200 px-4 py-1.5 rounded-full hover:bg-slate-50 transition-colors shadow-sm">View All</a>
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-subtle overflow-hidden relative">
+                    ${pendingApps.length > 0 ? `
+                        <div class="grid grid-cols-12 gap-4 border-b border-slate-200 bg-slate-50/50 p-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            <div class="col-span-4 pl-2">Locum Profile</div>
+                            <div class="col-span-3">Shift Details</div>
+                            <div class="col-span-2">Proposed Rate</div>
+                            <div class="col-span-3 text-right pr-2">Action / Status</div>
+                        </div>
+                        ${pendingApps.map((a, i) => renderCandidateRow(a, i)).join('')}
+                    ` : `
+                        <div class="p-10 flex flex-col items-center justify-center text-center">
+                            <div class="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-4 text-slate-400"><i class="ph ph-users text-2xl"></i></div>
+                            <p class="text-[15px] font-bold text-navy mb-1">No active candidates</p>
+                            <p class="text-[13px] text-slate-500 mb-4">Once you send offers to locums, they'll appear here for review.</p>
+                            <a href="find-locums.html" class="bg-navy text-white px-5 py-2.5 rounded-full text-[13px] font-bold hover:bg-slate-800 transition-colors inline-flex items-center gap-2">
+                                <i class="ph ph-magnifying-glass"></i> Find Locums
+                            </a>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+
+        // Favourite / Recent Locums
+        const favouritesHTML = `
+            <div class="flex flex-col gap-4 animate-item delay-400 pb-10">
+                <div class="flex items-center justify-between px-1">
+                    <h3 class="text-lg font-bold text-navy">Favourite / Recent Locums</h3>
+                    <a href="find-locums.html" class="text-[13px] font-bold text-brand-green hover:underline">View Directory</a>
+                </div>
+                <div class="flex gap-4 overflow-x-auto custom-scroll pb-2 -mx-2 px-2">
+                    ${topLocums.length > 0 ? topLocums.map(loc => `
+                        <div class="min-w-[200px] bg-white rounded-2xl border border-slate-200 p-4 shrink-0 flex flex-col items-center text-center hover:shadow-card transition-all cursor-pointer group">
+                            <div class="w-14 h-14 rounded-full bg-brand-mint text-brand-green flex items-center justify-center text-xl font-bold mb-3 shadow-sm group-hover:scale-105 transition-transform">${escapeHtml(loc.initials)}</div>
+                            <div class="text-[14px] font-bold text-navy truncate max-w-full">${escapeHtml(loc.name)}</div>
+                            <div class="text-[11px] text-slate-500 font-semibold mb-4">Worked here ${loc.count}x</div>
+                            <a href="find-locums.html?locumId=${escapeHtml(loc.id)}" class="w-full py-1.5 rounded-lg border border-slate-200 text-[12px] font-bold text-navy group-hover:bg-navy group-hover:text-white transition-colors no-underline inline-block">Direct Invite</a>
+                        </div>
+                    `).join('') : `
+                        <div class="flex-1 min-w-[400px] bg-white rounded-2xl border border-slate-200 p-8 flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+                            <div class="w-14 h-14 rounded-full bg-brand-mint text-brand-green flex items-center justify-center shrink-0"><i class="ph ph-heart text-2xl"></i></div>
+                            <div class="flex-1">
+                                <p class="text-[15px] font-bold text-navy">Build your trusted roster</p>
+                                <p class="text-[13px] text-slate-500">Locums you book regularly will appear here for quick direct invites.</p>
+                            </div>
+                            <a href="find-locums.html" class="bg-navy text-white px-5 py-2.5 rounded-full text-[13px] font-bold hover:bg-slate-800 transition-colors shrink-0">Browse Locums</a>
+                        </div>
+                    `}
+                    ${topLocums.length >= 3 ? `
+                        <a href="find-locums.html" class="min-w-[120px] bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-2xl p-4 shrink-0 flex flex-col items-center justify-center text-center hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer text-slate-400 hover:text-navy no-underline">
+                            <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center mb-2 shadow-sm"><i class="ph-bold ph-arrow-right"></i></div>
+                            <div class="text-[12px] font-bold">View All</div>
+                        </a>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+
+        document.getElementById('dashboardRoot').innerHTML = welcomeHTML + statsHTML + middleHTML + candidatesHTML + favouritesHTML;
+
+        // ===== HANDLERS =====
+
         function confirmOfferFromDash(offerId) {
             const success = Booking.confirmBooking(offerId);
-            if (success) {
-                Toast.show('Booking confirmed! Locum has been notified.', 'success');
-            } else {
-                Toast.show('Failed to confirm booking.', 'error');
-            }
+            Toast.show(success ? 'Booking confirmed! Locum has been notified.' : 'Failed to confirm booking.', success ? 'success' : 'error');
             setTimeout(() => window.location.reload(), 800);
         }
 
         function withdrawOfferFromDash(offerId) {
             const result = Booking.withdrawOffer(offerId);
-            if (result.success) {
-                Toast.show('Offer withdrawn.', 'info');
-            } else {
-                Toast.show(result.message || 'Failed to withdraw offer.', 'error');
-            }
+            Toast.show(result.success ? 'Offer withdrawn.' : (result.message || 'Failed to withdraw offer.'), result.success ? 'info' : 'error');
             setTimeout(() => window.location.reload(), 800);
         }
 
-        // --- Notification Expand & Dismiss ---
+        function markAllNotifRead() {
+            const d = getMockData();
+            (d.notifications || []).forEach(n => {
+                if ((n.userId === session.id || !n.userId) && !n.acknowledged) {
+                    n.read = true;
+                }
+            });
+            saveMockData(d);
+            Toast.show('All notifications marked as read.', 'info', 1500);
+            document.querySelectorAll('[id^="notif-"] .bg-brand-green.rounded-full').forEach(el => el.remove());
+        }
+
         function expandNotification(idx) {
             const freshData = getMockData();
             const notifs = (freshData.notifications || [])
@@ -415,57 +638,41 @@
                 size: 'medium',
                 body: `
                     <div style="margin-bottom: 16px;">
-                        <p style="font-size: 0.95rem; color: var(--dark); line-height: 1.6;">${n.message}</p>
+                        <p style="font-size: 0.95rem; color: var(--dark); line-height: 1.6;">${escapeHtml(n.message)}</p>
                     </div>
                     <div style="padding: 10px 14px; background: var(--gray-50); border-radius: var(--radius); font-size: 0.82rem; color: var(--dark-600);">
                         ${getIcon('clock')} ${n.date ? DateUtils.format(n.date, 'full') + ' &bull; ' + DateUtils.relative(n.date) : 'Recently'}
                     </div>
-                    ${n.type ? `<div style="margin-top: 8px;"><span class="badge badge-info" style="font-size: 0.75rem;">${n.type.replace(/_/g, ' ')}</span></div>` : ''}
+                    ${n.type ? `<div style="margin-top: 8px;"><span class="badge badge-info" style="font-size: 0.75rem;">${escapeHtml(n.type.replace(/_/g, ' '))}</span></div>` : ''}
                 `,
                 footer: '<button class="btn btn-primary" id="ackNotifBtn">Acknowledge &amp; Dismiss</button>'
             });
 
-            overlay.querySelector('#ackNotifBtn').addEventListener('click', () => {
-                // Mark acknowledged in mock data
+            const acknowledge = () => {
                 const d = getMockData();
-                const allNotifs = d.notifications || [];
-                const match = allNotifs.find(nn => nn.title === n.title && nn.message === n.message && nn.date === n.date);
-                if (match) {
-                    match.acknowledged = true;
-                    match.read = true;
-                }
+                const match = (d.notifications || []).find(nn => nn.title === n.title && nn.message === n.message && nn.date === n.date);
+                if (match) { match.acknowledged = true; match.read = true; }
                 saveMockData(d);
-                // Remove from DOM
                 const el = document.getElementById('notif-' + idx);
                 if (el) el.remove();
+            };
+
+            overlay.querySelector('#ackNotifBtn').addEventListener('click', () => {
+                acknowledge();
                 Modal.close(overlay);
                 Toast.show('Notification dismissed.', 'info', 1500);
             });
-
-            // Also dismiss on modal close (clicking X or backdrop)
             const closeBtn = overlay.querySelector('[data-modal-close]');
-            closeBtn.addEventListener('click', () => {
-                const d = getMockData();
-                const allNotifs = d.notifications || [];
-                const match = allNotifs.find(nn => nn.title === n.title && nn.message === n.message && nn.date === n.date);
-                if (match) {
-                    match.acknowledged = true;
-                    match.read = true;
-                }
-                saveMockData(d);
-                const el = document.getElementById('notif-' + idx);
-                if (el) el.remove();
-            });
+            if (closeBtn) closeBtn.addEventListener('click', acknowledge);
         }
 
-        // --- Day Coverage Detail Modal ---
         function showDayCoverage(dayIndex) {
             const dateStr = coverageDates[dayIndex];
             const dayName = weekDays[dayIndex];
             const freshData = getMockData();
             const dayShifts = (freshData.sessionNeeds || []).filter(s => s.practiceId === session.id && s.date === dateStr);
 
-            let shiftRows = '';
+            let shiftRows;
             if (dayShifts.length === 0) {
                 shiftRows = '<p style="color: var(--dark-600); font-size: 0.88rem; padding: 16px 0;">No sessions scheduled for this day.</p>';
             } else {
@@ -474,31 +681,26 @@
                     const pendingCount = freshData.offers.filter(o => (o.sessionNeedId || o.shiftId) === shift.id && ['sent', 'viewed', 'negotiating'].includes(o.status)).length;
                     let statusBadge = '';
                     let details = '';
-
                     if (shift.status === 'filled' || offer) {
                         statusBadge = '<span class="badge badge-success">Filled</span>';
                         if (offer) {
                             const loc = freshData.locums.find(l => l.id === offer.locumId);
                             const locName = loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown';
-                            const rate = offer.sessionType === 'Full Day' ? (offer.rateFullDay || 820) : (offer.sessionType === 'PM' ? (offer.ratePM || 430) : (offer.rateAM || 430));
-                            details = `
-                                <div style="margin-top: 8px; padding: 10px; background: rgba(34, 197, 94,0.08); border-radius: var(--radius); font-size: 0.85rem;">
-                                    ${getIcon('user')} <strong>${locName}</strong> &bull; ${formatCurrency(rate)}/session
-                                </div>`;
+                            const rate = offer.agreedRate || offer.proposedRate || 0;
+                            details = `<div style="margin-top: 8px; padding: 10px; background: rgba(34, 197, 94,0.08); border-radius: var(--radius); font-size: 0.85rem;">${getIcon('user')} <strong>${escapeHtml(locName)}</strong> &bull; ${formatCurrency(rate)}/session</div>`;
                         }
                     } else if (shift.status === 'open') {
                         statusBadge = '<span class="badge badge-warning">Open</span>';
-                        details = `<div style="margin-top: 6px; font-size: 0.82rem; color: var(--dark-600);">${pendingCount} pending offer${pendingCount !== 1 ? 's' : ''} &bull; <a href="view-requested-shifts.html" style="color: var(--primary);">View details</a></div>`;
+                        details = `<div style="margin-top: 6px; font-size: 0.82rem; color: var(--dark-600);">${pendingCount} pending offer${pendingCount !== 1 ? 's' : ''} &bull; <a href="find-locums.html?needId=${shift.id}" style="color: var(--primary);">Find Locums</a></div>`;
                     } else {
-                        statusBadge = `<span class="badge">${shift.status}</span>`;
+                        statusBadge = `<span class="badge">${escapeHtml(shift.status)}</span>`;
                     }
-
                     return `
                         <div style="padding: 14px 0; border-bottom: 1px solid var(--gray-100);">
                             <div style="display: flex; align-items: center; justify-content: space-between;">
                                 <div>
-                                    <strong style="font-size: 0.9rem;">${shift.sessionType || 'Session'}</strong>
-                                    <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${shift.startTime} - ${shift.endTime}</span>
+                                    <strong style="font-size: 0.9rem;">${escapeHtml(shift.sessionType || 'Session')}</strong>
+                                    <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${escapeHtml(shift.startTime || '')} - ${escapeHtml(shift.endTime || '')}</span>
                                 </div>
                                 ${statusBadge}
                             </div>
@@ -513,15 +715,13 @@
                 body: `
                     <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 0.88rem; color: var(--dark-600);">${dayShifts.length} session${dayShifts.length !== 1 ? 's' : ''} scheduled</span>
-                        <span class="badge ${coverageData[dayIndex].pct >= 80 ? 'badge-success' : coverageData[dayIndex].pct >= 50 ? 'badge-warning' : 'badge-danger'}">${coverageData[dayIndex].pct}% covered</span>
                     </div>
                     ${shiftRows}
                 `,
-                footer: `<a href="post-shift.html" class="btn btn-primary">${getIcon('plus-circle')} Create Session for ${dayName}</a>`
+                footer: `<a href="post-shift.html?date=${dateStr}" class="btn btn-primary">${getIcon('plus-circle')} Create Session for ${dayName}</a>`
             });
         }
 
-        // --- Monthly Spend Detail Modal ---
         function showMonthSpend(monthIndex) {
             const meta = spendingMeta[monthIndex];
             const freshInvoices = InvoiceManager.getForPractice(session.id);
@@ -529,44 +729,35 @@
                 const d = new Date(inv.shiftDate);
                 return d.getMonth() === meta.month && d.getFullYear() === meta.year;
             });
-
             const totalSpent = monthInvoices.reduce((s, inv) => s + inv.total, 0);
             const paidTotal = monthInvoices.filter(i => i.status === 'paid').reduce((s, inv) => s + inv.total, 0);
             const outstandingTotal = monthInvoices.filter(i => i.status !== 'paid').reduce((s, inv) => s + inv.total, 0);
-
             const freshData = getMockData();
-            let invoiceRows = '';
+
+            let invoiceRows;
             if (monthInvoices.length === 0) {
                 invoiceRows = '<p style="color: var(--dark-600); font-size: 0.88rem; padding: 16px 0;">No invoices for this month.</p>';
             } else {
                 invoiceRows = `<table style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--gray-200); text-align: left;">
-                            <th style="padding: 8px 4px;">Invoice</th>
-                            <th style="padding: 8px 4px;">Locum</th>
-                            <th style="padding: 8px 4px;">Session Date</th>
-                            <th style="padding: 8px 4px;">Session</th>
-                            <th style="padding: 8px 4px; text-align: right;">Amount</th>
-                            <th style="padding: 8px 4px;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${monthInvoices.map(inv => {
-                            const loc = freshData.locums.find(l => l.id === inv.locumId);
-                            const locName = loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown';
-                            const statusClass = inv.status === 'paid' ? 'badge-success' : (inv.status === 'overdue' ? 'badge-danger' : 'badge-warning');
-                            return `
-                                <tr style="border-bottom: 1px solid var(--gray-100);">
-                                    <td style="padding: 8px 4px; font-weight: 600;">${inv.invoiceId || inv.id}</td>
-                                    <td style="padding: 8px 4px;">${locName}</td>
-                                    <td style="padding: 8px 4px;">${DateUtils.format(inv.shiftDate, 'short')}</td>
-                                    <td style="padding: 8px 4px;">${inv.sessionType || '-'}</td>
-                                    <td style="padding: 8px 4px; text-align: right; font-weight: 600;">${formatCurrency(inv.total)}</td>
-                                    <td style="padding: 8px 4px;"><span class="badge ${statusClass}" style="font-size: 0.72rem;">${inv.status || 'pending'}</span></td>
-                                </tr>`;
-                        }).join('')}
-                    </tbody>
-                </table>`;
+                    <thead><tr style="border-bottom: 2px solid var(--gray-200); text-align: left;">
+                        <th style="padding: 8px 4px;">Invoice</th><th style="padding: 8px 4px;">Locum</th>
+                        <th style="padding: 8px 4px;">Session Date</th><th style="padding: 8px 4px;">Session</th>
+                        <th style="padding: 8px 4px; text-align: right;">Amount</th><th style="padding: 8px 4px;">Status</th>
+                    </tr></thead><tbody>
+                    ${monthInvoices.map(inv => {
+                        const loc = freshData.locums.find(l => l.id === inv.locumId);
+                        const locName = loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown';
+                        const statusClass = inv.status === 'paid' ? 'badge-success' : (inv.status === 'overdue' ? 'badge-danger' : 'badge-warning');
+                        return `<tr style="border-bottom: 1px solid var(--gray-100);">
+                            <td style="padding: 8px 4px; font-weight: 600;">${escapeHtml(inv.invoiceId || inv.id)}</td>
+                            <td style="padding: 8px 4px;">${escapeHtml(locName)}</td>
+                            <td style="padding: 8px 4px;">${DateUtils.format(inv.shiftDate, 'short')}</td>
+                            <td style="padding: 8px 4px;">${escapeHtml(inv.sessionType || '-')}</td>
+                            <td style="padding: 8px 4px; text-align: right; font-weight: 600;">${formatCurrency(inv.total)}</td>
+                            <td style="padding: 8px 4px;"><span class="badge ${statusClass}" style="font-size: 0.72rem;">${escapeHtml(inv.status || 'pending')}</span></td>
+                        </tr>`;
+                    }).join('')}
+                    </tbody></table>`;
             }
 
             Modal.show({
@@ -594,21 +785,20 @@
             });
         }
 
-        // --- KPI Detail Modals ---
         function showKPIDetail(type) {
             const freshData = getMockData();
 
             if (type === 'openSessions') {
                 const needs = (freshData.sessionNeeds || []).filter(n => n.practiceId === session.id && n.status === 'open');
                 const rows = needs.length === 0
-                    ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No open sessions.</p>'
+                    ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No open sessions. Create one to start receiving offers from locums.</p>'
                     : needs.map(n => {
                         const offersSent = freshData.offers.filter(o => o.sessionNeedId === n.id && ['sent','viewed','negotiating'].includes(o.status)).length;
                         return `
                             <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
                                 <div>
                                     <strong style="font-size: 0.9rem;">${DateUtils.format(n.date, 'medium')}</strong>
-                                    <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${n.sessionType} &bull; ${n.startTime} - ${n.endTime}</span>
+                                    <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${escapeHtml(n.sessionType)} &bull; ${escapeHtml(n.startTime)} - ${escapeHtml(n.endTime)}</span>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <span style="font-size: 0.82rem; color: var(--dark-600);">${offersSent} offer${offersSent !== 1 ? 's' : ''} sent</span>
@@ -616,18 +806,16 @@
                                 </div>
                             </div>`;
                     }).join('');
-
                 Modal.show({
                     title: `Open Sessions (${needs.length})`,
                     size: 'large',
                     body: rows,
                     footer: `<a href="post-shift.html" class="btn btn-primary">${getIcon('plus-circle')} Create Session</a>`
                 });
-
             } else if (type === 'activeOffers') {
                 const active = freshData.offers.filter(o => o.practiceId === session.id && ['sent','viewed','negotiating','accepted'].includes(o.status));
                 const rows = active.length === 0
-                    ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No active offers.</p>'
+                    ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No active offers. Send offers to locums to fill your sessions.</p>'
                     : active.map(o => {
                         const loc = freshData.locums.find(l => l.id === o.locumId);
                         const locName = loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown';
@@ -637,21 +825,14 @@
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.75rem;">${getInitials(locName)}</div>
                                     <div>
-                                        <strong style="font-size: 0.9rem;">${locName}</strong>
-                                        <div style="font-size: 0.82rem; color: var(--dark-600);">${DateUtils.format(o.sessionDate || o.shiftDate, 'medium')} &bull; ${o.sessionType} &bull; ${formatCurrency(rate)}</div>
+                                        <strong style="font-size: 0.9rem;">${escapeHtml(locName)}</strong>
+                                        <div style="font-size: 0.82rem; color: var(--dark-600);">${DateUtils.format(o.sessionDate || o.shiftDate, 'medium')} &bull; ${escapeHtml(o.sessionType)} &bull; ${formatCurrency(rate)}</div>
                                     </div>
                                 </div>
                                 <span class="badge ${getStatusBadge(o.status)}">${getStatusLabel(o.status)}</span>
                             </div>`;
                     }).join('');
-
-                Modal.show({
-                    title: `Active Offers (${active.length})`,
-                    size: 'large',
-                    body: rows,
-                    footer: `<a href="view-requested-shifts.html" class="btn btn-secondary">View All Sessions</a>`
-                });
-
+                Modal.show({ title: `Active Offers (${active.length})`, size: 'large', body: rows, footer: `<a href="view-requested-shifts.html" class="btn btn-secondary">View All Sessions</a>` });
             } else if (type === 'fillRate') {
                 const allNeeds = (freshData.sessionNeeds || []).filter(n => n.practiceId === session.id);
                 const total = allNeeds.length;
@@ -659,21 +840,15 @@
                 const completed = freshData.offers.filter(o => o.practiceId === session.id && (o.status === 'completed' || o.status === 'accepted' || o.status === 'confirmed')).length;
                 const open = allNeeds.filter(n => n.status === 'open');
                 const rate = total > 0 ? Math.min(Math.round(((filled + completed) / total) * 100), 100) : 0;
-
                 const unfilledRows = open.length === 0
-                    ? '<p style="color: var(--dark-600); font-size: 0.85rem;">All sessions are filled!</p>'
+                    ? '<p style="color: var(--dark-600); font-size: 0.85rem;">All sessions filled.</p>'
                     : open.slice(0, 10).map(n => `
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-                            <div>
-                                <strong style="font-size: 0.88rem;">${DateUtils.format(n.date, 'medium')}</strong>
-                                <span style="font-size: 0.82rem; color: var(--dark-600); margin-left: 8px;">${n.sessionType} &bull; ${n.startTime}-${n.endTime}</span>
-                            </div>
+                            <div><strong style="font-size: 0.88rem;">${DateUtils.format(n.date, 'medium')}</strong> <span style="font-size: 0.82rem; color: var(--dark-600); margin-left: 8px;">${escapeHtml(n.sessionType)} &bull; ${escapeHtml(n.startTime)}-${escapeHtml(n.endTime)}</span></div>
                             <a href="find-locums.html?needId=${n.id}" class="btn btn-primary btn-small">Find Locum</a>
-                        </div>
-                    `).join('');
-
+                        </div>`).join('');
                 Modal.show({
-                    title: `Fill Rate Breakdown`,
+                    title: 'Fill Rate Breakdown',
                     size: 'medium',
                     body: `
                         <div style="text-align: center; margin-bottom: 20px;">
@@ -681,81 +856,24 @@
                             <div style="font-size: 0.88rem; color: var(--dark-600);">Overall Fill Rate</div>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px;">
-                            <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
-                                <div style="font-size: 1.3rem; font-weight: 700;">${total}</div>
-                                <div style="font-size: 0.78rem; color: var(--dark-600);">Total Sessions</div>
-                            </div>
-                            <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
-                                <div style="font-size: 1.3rem; font-weight: 700; color: var(--success);">${filled + completed}</div>
-                                <div style="font-size: 0.78rem; color: var(--dark-600);">Filled / Completed</div>
-                            </div>
-                            <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
-                                <div style="font-size: 1.3rem; font-weight: 700; color: var(--coral);">${open.length}</div>
-                                <div style="font-size: 0.78rem; color: var(--dark-600);">Still Open</div>
-                            </div>
+                            <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;"><div style="font-size: 1.3rem; font-weight: 700;">${total}</div><div style="font-size: 0.78rem; color: var(--dark-600);">Total Sessions</div></div>
+                            <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;"><div style="font-size: 1.3rem; font-weight: 700; color: var(--success);">${filled + completed}</div><div style="font-size: 0.78rem; color: var(--dark-600);">Filled / Completed</div></div>
+                            <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;"><div style="font-size: 1.3rem; font-weight: 700; color: var(--coral);">${open.length}</div><div style="font-size: 0.78rem; color: var(--dark-600);">Still Open</div></div>
                         </div>
-                        ${open.length > 0 ? `<h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 8px;">Unfilled Sessions</h4>` : ''}
+                        ${open.length > 0 ? '<h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 8px;">Unfilled Sessions</h4>' : ''}
                         ${unfilledRows}
                     `,
                     footer: `<a href="post-shift.html" class="btn btn-primary">${getIcon('plus-circle')} Create Session</a>`
                 });
-
             } else if (type === 'monthlySpend') {
                 showMonthSpend(spendingMeta.length - 1);
             }
         }
 
-        // --- Leave Feedback (existing) ---
-        function leaveFeedback(offerId, locumId) {
-            const locum = data.locums.find(l => l.id === locumId);
-            const locumName = locum ? locum.title + ' ' + locum.firstName + ' ' + locum.lastName : 'Unknown';
-            Modal.show({
-                title: 'Rate ' + locumName,
-                size: 'medium',
-                body: `
-                    <div style="margin-bottom: 16px;">
-                        <label class="form-label">Overall Rating</label>
-                        <div id="ratingStars" style="display: flex; gap: 8px; cursor: pointer;">
-                            ${[1,2,3,4,5].map(i => `<svg data-star="${i}" width="28" height="28" viewBox="0 0 24 24" fill="#E2E8F0" stroke="#E2E8F0" stroke-width="1" style="cursor:pointer;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`).join('')}
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Comment (optional)</label>
-                        <textarea id="feedbackComment" class="form-textarea" rows="3" placeholder="How was the locum's performance?"></textarea>
-                    </div>
-                `,
-                footer: `<button class="btn btn-primary" id="submitFeedbackBtn">Submit Feedback</button>`,
-                onOpen: (overlay) => {
-                    let selectedRating = 0;
-                    const stars = overlay.querySelectorAll('#ratingStars svg');
-                    stars.forEach(star => {
-                        star.addEventListener('click', () => {
-                            selectedRating = parseInt(star.dataset.star);
-                            stars.forEach((s, idx) => {
-                                s.setAttribute('fill', idx < selectedRating ? '#14B8A6' : '#E2E8F0');
-                                s.setAttribute('stroke', idx < selectedRating ? '#14B8A6' : '#E2E8F0');
-                            });
-                        });
-                    });
-                    overlay.querySelector('#submitFeedbackBtn').addEventListener('click', () => {
-                        if (selectedRating === 0) {
-                            Toast.show('Please select a rating.', 'warning');
-                            return;
-                        }
-                        const comment = overlay.querySelector('#feedbackComment').value;
-                        FeedbackManager.submit(session.id, locumId, offerId, { overall: selectedRating }, comment, 'practice');
-                        Modal.close(overlay);
-                        Toast.show('Feedback submitted. Thank you!', 'success');
-                        setTimeout(() => location.reload(), 500);
-                    });
-                }
-            });
-        }
-        // Keyboard support for role="button" elements
-        document.addEventListener('keydown', function(e) {
-            if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute('role') === 'button') {
-                e.preventDefault();
-                e.target.click();
+        // Search bar — navigates to find-locums with query
+        document.getElementById('dashSearch').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.value.trim()) {
+                window.location.href = 'find-locums.html?q=' + encodeURIComponent(e.target.value.trim());
             }
         });
     </script>
