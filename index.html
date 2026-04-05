@@ -265,6 +265,62 @@
             transform: translateY(-1px);
         }
 
+        /* Logged-in user pill (replaces Log In / Register in nav when session exists) */
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .nav-user-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.4rem 0.85rem 0.4rem 0.4rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s;
+        }
+        .nav-user-link:hover {
+            background: rgba(91, 77, 255, 0.15);
+            border-color: rgba(91, 77, 255, 0.4);
+        }
+        .nav-user-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3B82F6 0%, #5B4DFF 50%, #8B5CF6 100%);
+            color: var(--white);
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 0.02em;
+        }
+        .nav-user-name {
+            color: var(--white);
+            font-size: 0.85rem;
+            font-weight: 600;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .nav-user-logout {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .nav-user-logout:hover { color: var(--white); background: rgba(239, 68, 68, 0.15); }
+
         .nav-mobile-toggle {
             display: none;
             flex-direction: column;
@@ -1353,6 +1409,60 @@
             </div>
         </div>
     </nav>
+
+    <!-- Logged-in state: swap nav auth links with user pill if session exists -->
+    <script>
+        (function() {
+            try {
+                var raw = localStorage.getItem('gprn_session');
+                if (!raw) return;
+                var session = JSON.parse(raw);
+                if (!session || !session.role) return;
+
+                var dashUrl = session.role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html';
+                var displayName = session.firstName || (session.name ? session.name.split(' ')[0] : 'Account');
+                var initials = (session.name || displayName).split(' ').map(function(p){ return p.charAt(0); }).join('').slice(0, 2).toUpperCase();
+
+                function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+                // Desktop nav
+                var navAuth = document.querySelector('.nav-auth');
+                if (navAuth) {
+                    navAuth.innerHTML =
+                        '<div class="nav-user">' +
+                            '<a href="' + dashUrl + '" class="nav-user-link" title="Go to your dashboard">' +
+                                '<span class="nav-user-avatar">' + escapeHtml(initials) + '</span>' +
+                                '<span class="nav-user-name">' + escapeHtml(displayName) + '</span>' +
+                            '</a>' +
+                            '<button type="button" class="nav-user-logout" onclick="localStorage.removeItem(\'gprn_session\'); window.location.reload();">Log out</button>' +
+                        '</div>';
+                }
+
+                // Mobile menu
+                var mobileMenu = document.querySelector('.nav-mobile-menu');
+                if (mobileMenu) {
+                    var logInLink = mobileMenu.querySelector('a[href="login.html"]');
+                    var regLocumLink = mobileMenu.querySelector('a[href="register-locum.html"]');
+                    var regPracticeLink = mobileMenu.querySelector('a[href="register-practice.html"]');
+                    if (logInLink) {
+                        logInLink.href = dashUrl;
+                        logInLink.textContent = 'Go to Dashboard';
+                        logInLink.style.color = 'var(--white)';
+                        logInLink.style.fontWeight = '600';
+                    }
+                    if (regLocumLink) {
+                        regLocumLink.href = dashUrl;
+                        regLocumLink.textContent = 'Open ' + (session.role === 'locum' ? 'Locum' : 'Practice') + ' Portal';
+                    }
+                    if (regPracticeLink) {
+                        regPracticeLink.href = '#';
+                        regPracticeLink.textContent = 'Log out';
+                        regPracticeLink.onclick = function(e) { e.preventDefault(); localStorage.removeItem('gprn_session'); window.location.reload(); };
+                    }
+                }
+            } catch (e) { /* fail silently — stay logged-out appearance */ }
+        })();
+    </script>
 
     <!-- Mobile Menu -->
     <div class="nav-mobile-menu">
