@@ -1419,47 +1419,96 @@
                 var session = JSON.parse(raw);
                 if (!session || !session.role) return;
 
-                var dashUrl = session.role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html';
+                var isAdmin = session.is_admin === true;
+                var dashUrl = isAdmin
+                    ? 'admin-approvals.html'
+                    : (session.role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html');
                 var displayName = session.firstName || (session.name ? session.name.split(' ')[0] : 'Account');
                 var initials = (session.name || displayName).split(' ').map(function(p){ return p.charAt(0); }).join('').slice(0, 2).toUpperCase();
 
                 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
-                // Desktop nav
-                var navAuth = document.querySelector('.nav-auth');
-                if (navAuth) {
-                    navAuth.innerHTML =
-                        '<div class="nav-user">' +
-                            '<a href="' + dashUrl + '" class="nav-user-link" title="Go to your dashboard">' +
-                                '<span class="nav-user-avatar">' + escapeHtml(initials) + '</span>' +
-                                '<span class="nav-user-name">' + escapeHtml(displayName) + '</span>' +
-                            '</a>' +
-                            '<button type="button" class="nav-user-logout" onclick="localStorage.removeItem(\'gprn_session\'); window.location.reload();">Log out</button>' +
-                        '</div>';
+                // Live admin check — session may have been cached before bootstrap_admin ran.
+                // Hit Supabase REST directly and, if the server says we're admin, re-render the pill.
+                function syncAdminFromServer() {
+                    if (!session.access_token || !session.supabase_user_id) return;
+                    var SUPABASE_URL = 'https://fysilmypgpewbzyxkymx.supabase.co';
+                    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5c2lsbXlwZ3Bld2J6eXhreW14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzODQwNjYsImV4cCI6MjA5MDk2MDA2Nn0.BEgSiUO_RWvk0ixZSORuKFqwMG6nYNGsCqWCftukBnE';
+                    try {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('GET', SUPABASE_URL + '/rest/v1/profiles?id=eq.' + encodeURIComponent(session.supabase_user_id) + '&select=is_admin', true);
+                        xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+                        xhr.setRequestHeader('Authorization', 'Bearer ' + session.access_token);
+                        xhr.onload = function() {
+                            if (xhr.status !== 200) return;
+                            try {
+                                var rows = JSON.parse(xhr.responseText);
+                                if (!Array.isArray(rows) || !rows.length) return;
+                                var serverIsAdmin = rows[0].is_admin === true;
+                                if (serverIsAdmin && !isAdmin) {
+                                    // Promote the cached session and re-render
+                                    session.is_admin = true;
+                                    localStorage.setItem('gprn_session', JSON.stringify(session));
+                                    isAdmin = true;
+                                    dashUrl = 'admin-approvals.html';
+                                    renderPill();
+                                } else if (!serverIsAdmin && isAdmin) {
+                                    session.is_admin = false;
+                                    localStorage.setItem('gprn_session', JSON.stringify(session));
+                                }
+                            } catch (e) {}
+                        };
+                        xhr.send();
+                    } catch (e) {}
                 }
 
-                // Mobile menu
-                var mobileMenu = document.querySelector('.nav-mobile-menu');
-                if (mobileMenu) {
-                    var logInLink = mobileMenu.querySelector('a[href="login.html"]');
-                    var regLocumLink = mobileMenu.querySelector('a[href="register-locum.html"]');
-                    var regPracticeLink = mobileMenu.querySelector('a[href="register-practice.html"]');
-                    if (logInLink) {
-                        logInLink.href = dashUrl;
-                        logInLink.textContent = 'Go to Dashboard';
-                        logInLink.style.color = 'var(--white)';
-                        logInLink.style.fontWeight = '600';
+                function renderPill() {
+                    // Desktop nav
+                    var navAuth = document.querySelector('.nav-auth');
+                    if (navAuth) {
+                        var linkLabel = isAdmin ? ('Admin · ' + displayName) : displayName;
+                        var linkTitle = isAdmin ? 'Go to admin panel' : 'Go to your dashboard';
+                        navAuth.innerHTML =
+                            '<div class="nav-user">' +
+                                '<a href="' + dashUrl + '" class="nav-user-link" title="' + linkTitle + '">' +
+                                    '<span class="nav-user-avatar">' + escapeHtml(initials) + '</span>' +
+                                    '<span class="nav-user-name">' + escapeHtml(linkLabel) + '</span>' +
+                                '</a>' +
+                                '<button type="button" class="nav-user-logout" onclick="localStorage.removeItem(\'gprn_session\'); window.location.reload();">Log out</button>' +
+                            '</div>';
                     }
-                    if (regLocumLink) {
-                        regLocumLink.href = dashUrl;
-                        regLocumLink.textContent = 'Open ' + (session.role === 'locum' ? 'Locum' : 'Practice') + ' Portal';
-                    }
-                    if (regPracticeLink) {
-                        regPracticeLink.href = '#';
-                        regPracticeLink.textContent = 'Log out';
-                        regPracticeLink.onclick = function(e) { e.preventDefault(); localStorage.removeItem('gprn_session'); window.location.reload(); };
+
+                    // Mobile menu
+                    var mobileMenu = document.querySelector('.nav-mobile-menu');
+                    if (mobileMenu) {
+                        var logInLink = mobileMenu.querySelector('a[href="login.html"], a[data-session-link="login"]');
+                        var regLocumLink = mobileMenu.querySelector('a[href="register-locum.html"], a[data-session-link="register-locum"]');
+                        var regPracticeLink = mobileMenu.querySelector('a[href="register-practice.html"], a[data-session-link="register-practice"]');
+                        if (logInLink) {
+                            logInLink.href = dashUrl;
+                            logInLink.setAttribute('data-session-link', 'login');
+                            logInLink.textContent = isAdmin ? 'Go to Admin Panel' : 'Go to Dashboard';
+                            logInLink.style.color = 'var(--white)';
+                            logInLink.style.fontWeight = '600';
+                        }
+                        if (regLocumLink) {
+                            regLocumLink.href = dashUrl;
+                            regLocumLink.setAttribute('data-session-link', 'register-locum');
+                            regLocumLink.textContent = isAdmin
+                                ? 'Open Admin Panel'
+                                : ('Open ' + (session.role === 'locum' ? 'Locum' : 'Practice') + ' Portal');
+                        }
+                        if (regPracticeLink) {
+                            regPracticeLink.href = '#';
+                            regPracticeLink.setAttribute('data-session-link', 'register-practice');
+                            regPracticeLink.textContent = 'Log out';
+                            regPracticeLink.onclick = function(e) { e.preventDefault(); localStorage.removeItem('gprn_session'); window.location.reload(); };
+                        }
                     }
                 }
+
+                renderPill();
+                syncAdminFromServer();
             } catch (e) { /* fail silently — stay logged-out appearance */ }
         })();
     </script>

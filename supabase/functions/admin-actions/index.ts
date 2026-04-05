@@ -67,9 +67,15 @@ interface ProfileRow {
 }
 
 async function getCallerUserId(accessToken: string): Promise<string | null> {
+  // Verify the JWT by calling /auth/v1/user with the caller's token.
+  // We use the service role key as the apikey (it's always auto-injected,
+  // unlike SUPABASE_ANON_KEY which may not be available in dashboard-deployed
+  // functions). Supabase's auth endpoint validates the JWT signature against
+  // the project secret and returns the authenticated user's id, so this
+  // is a full cryptographic verification — not a bare JWT decode.
   const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: {
-      "apikey": SUPABASE_ANON_KEY,
+      "apikey": SUPABASE_SERVICE_ROLE_KEY,
       "Authorization": `Bearer ${accessToken}`,
     },
   });
