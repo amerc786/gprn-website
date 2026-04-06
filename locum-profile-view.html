@@ -378,33 +378,48 @@
                         </div>
 
                         <!-- Rates -->
-                        <div class="content-card">
-                            <div class="content-card-header">
-                                <h2>Rates</h2>
-                            </div>
-                            <div class="content-card-body">
-                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-                                    <span style="font-size: 0.88rem; color: var(--dark-600);">AM Session</span>
-                                    <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.am)}</strong>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-                                    <span style="font-size: 0.88rem; color: var(--dark-600);">PM Session</span>
-                                    <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.pm)}</strong>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-                                    <span style="font-size: 0.88rem; color: var(--dark-600);">Full Day</span>
-                                    <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.fullDay)}</strong>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-                                    <span style="font-size: 0.88rem; color: var(--dark-600);">On-Call</span>
-                                    <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(locum.rates.onCall)}/hr</strong>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; padding: 8px 0;">
-                                    <span style="font-size: 0.88rem; color: var(--dark-600);">Housecall</span>
-                                    <strong style="font-size: 0.88rem; color: var(--dark);">${locum.rates.housecall > 0 ? formatCurrency(locum.rates.housecall) : 'Included'}</strong>
-                                </div>
-                            </div>
-                        </div>
+                        ${(() => {
+                            const eff = getEffectiveRates(locum, session.id);
+                            if (!eff) return `
+                                <div class="content-card">
+                                    <div class="content-card-header"><h2>Rates</h2></div>
+                                    <div class="content-card-body">
+                                        <p style="font-size: 0.88rem; color: var(--text-secondary); text-align: center; padding: 20px 0;">This locum has not set rates for your practice or region.</p>
+                                    </div>
+                                </div>`;
+                            const r = eff.rates;
+                            const sourceLabel = eff.source === 'practice' ? 'Rate set for your practice' : eff.source === 'region' ? 'Rate set for your region' : 'Default rate';
+                            const sourceColor = eff.source === 'practice' ? 'var(--primary)' : eff.source === 'region' ? 'var(--info)' : 'var(--text-tertiary)';
+                            return `
+                                <div class="content-card">
+                                    <div class="content-card-header">
+                                        <h2>Rates</h2>
+                                        <span style="font-size: 0.75rem; color: ${sourceColor}; font-weight: 600;">${sourceLabel}</span>
+                                    </div>
+                                    <div class="content-card-body">
+                                        ${r.am ? `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                            <span style="font-size: 0.88rem; color: var(--dark-600);">AM Session</span>
+                                            <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(r.am)}</strong>
+                                        </div>` : ''}
+                                        ${r.pm ? `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                            <span style="font-size: 0.88rem; color: var(--dark-600);">PM Session</span>
+                                            <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(r.pm)}</strong>
+                                        </div>` : ''}
+                                        ${r.fullDay ? `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                            <span style="font-size: 0.88rem; color: var(--dark-600);">Full Day</span>
+                                            <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(r.fullDay)}</strong>
+                                        </div>` : ''}
+                                        ${r.onCall ? `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                                            <span style="font-size: 0.88rem; color: var(--dark-600);">On-Call</span>
+                                            <strong style="font-size: 0.88rem; color: var(--dark);">${formatCurrency(r.onCall)}/hr</strong>
+                                        </div>` : ''}
+                                        <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                                            <span style="font-size: 0.88rem; color: var(--dark-600);">Housecall</span>
+                                            <strong style="font-size: 0.88rem; color: var(--dark);">${r.housecall > 0 ? formatCurrency(r.housecall) : 'Included'}</strong>
+                                        </div>
+                                    </div>
+                                </div>`;
+                        })()}
 
                         <!-- Availability Overview (next 14 days) -->
                         <div class="content-card" style="margin-top: 24px;">

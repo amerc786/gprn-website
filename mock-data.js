@@ -40,6 +40,7 @@ const MOCK_DATA = {
                 onCall: 50,
                 housecall: 0
             },
+            regionRates: {},
             practiceRates: {}
         },
         {
@@ -79,6 +80,7 @@ const MOCK_DATA = {
                 onCall: 60,
                 housecall: 15
             },
+            regionRates: {},
             practiceRates: {}
         },
         {
@@ -118,6 +120,7 @@ const MOCK_DATA = {
                 onCall: 40,
                 housecall: 0
             },
+            regionRates: {},
             practiceRates: {}
         },
         {
@@ -157,6 +160,7 @@ const MOCK_DATA = {
                 onCall: 55,
                 housecall: 10
             },
+            regionRates: {},
             practiceRates: {}
         },
         {
@@ -196,6 +200,7 @@ const MOCK_DATA = {
                 onCall: 45,
                 housecall: 0
             },
+            regionRates: {},
             practiceRates: {}
         },
         {
@@ -235,6 +240,7 @@ const MOCK_DATA = {
                 onCall: 60,
                 housecall: 12
             },
+            regionRates: {},
             practiceRates: {}
         },
         {
@@ -274,6 +280,7 @@ const MOCK_DATA = {
                 onCall: 35,
                 housecall: 0
             },
+            regionRates: {},
             practiceRates: {}
         },
         {
@@ -313,6 +320,7 @@ const MOCK_DATA = {
                 onCall: 70,
                 housecall: 20
             },
+            regionRates: {},
             practiceRates: {}
         }
     ],
@@ -697,7 +705,7 @@ const MOCK_DATA = {
 };
 
 // Initialize mock data
-var GPRN_DATA_VERSION = '4.0';
+var GPRN_DATA_VERSION = '4.1';
 
 function initMockData() {
     var storedVersion = localStorage.getItem('gprn_data_version');

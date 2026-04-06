@@ -39,121 +39,250 @@
 <body class="app-layout">
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
-<script src="supabase-client.js"></script>
+    <script src="supabase-client.js"></script>
     <script src="components.js"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
         const pageContent = initAppLayout('locum', 'rates', 'My Rates');
 
+        const ALL_HEALTH_BOARDS = [
+            'Aneurin Bevan', 'Betsi Cadwaladr', 'Cardiff and Vale',
+            'Cwm Taf Morgannwg', 'Hywel Dda', 'Powys', 'Swansea Bay'
+        ];
+
+        // Active tab: 'default', 'region', 'practice'
+        let activeTab = 'default';
+
         function renderRates() {
             const user = Auth.getCurrentUser();
             const rates = user.rates || {};
+            const regionRates = user.regionRates || {};
             const practiceRates = user.practiceRates || {};
-            const practiceRateKeys = Object.keys(practiceRates);
+            const data = getMockData();
 
             pageContent.innerHTML = `
-                <!-- Default Rates -->
-                <div class="content-card">
-                    <div class="content-card-header"><h2>Default Rates</h2></div>
-                    <div class="content-card-body">
-                        <form id="ratesForm" onsubmit="saveRates(event)">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">AM Session</label>
-                                    <div style="position: relative;">
-                                        <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
-                                        <input type="number" class="form-input" id="rateAm" value="${rates.am || ''}" step="1" min="0" style="padding-left: 30px;">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">PM Session</label>
-                                    <div style="position: relative;">
-                                        <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
-                                        <input type="number" class="form-input" id="ratePm" value="${rates.pm || ''}" step="1" min="0" style="padding-left: 30px;">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Full Day</label>
-                                    <div style="position: relative;">
-                                        <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
-                                        <input type="number" class="form-input" id="rateFullDay" value="${rates.fullDay || ''}" step="1" min="0" style="padding-left: 30px;">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">On-Call Supplement</label>
-                                    <div style="position: relative;">
-                                        <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
-                                        <input type="number" class="form-input" id="rateOnCall" value="${rates.onCall || ''}" step="1" min="0" style="padding-left: 30px;">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Fee per Housecall</label>
-                                    <div style="position: relative;">
-                                        <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
-                                        <input type="number" class="form-input" id="rateHousecall" value="${rates.housecall || ''}" step="1" min="0" style="padding-left: 30px;">
-                                    </div>
-                                </div>
-                                <div></div>
-                            </div>
-                            <p class="form-hint" style="margin-bottom: 20px;">These are your published rates that practices see when viewing your profile. Practices may suggest different rates when sending you invitations.</p>
-                            <button type="submit" class="btn btn-primary">Save Rates</button>
-                        </form>
-                    </div>
+                <div style="margin-bottom: 24px;">
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Set your session rates. Practices see the most specific rate: practice rate first, then region rate, then your default.</p>
                 </div>
 
-                <!-- Practice-Specific Rates -->
-                <div class="content-card">
-                    <div class="content-card-header">
-                        <h2>Practice-Specific Rates</h2>
-                        <button class="btn btn-small btn-secondary" onclick="openAddPracticeRate()">${getIcon('plus-circle')} Add Practice Rate</button>
-                    </div>
-                    <div class="content-card-body">
-                        ${practiceRateKeys.length > 0 ? `
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Practice</th>
-                                        <th>AM</th>
-                                        <th>PM</th>
-                                        <th>Full Day</th>
-                                        <th>On-Call</th>
-                                        <th>Housecall</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${practiceRateKeys.map(key => {
-                                        const pr = practiceRates[key];
-                                        const data = getMockData();
-                                        const practice = data.practices.find(p => p.id === key);
-                                        return `<tr>
-                                            <td style="font-weight: 600;">${practice ? practice.practiceName : key}</td>
-                                            <td>${formatCurrency(pr.am)}</td>
-                                            <td>${formatCurrency(pr.pm)}</td>
-                                            <td>${formatCurrency(pr.fullDay)}</td>
-                                            <td>${formatCurrency(pr.onCall)}</td>
-                                            <td>${formatCurrency(pr.housecall)}</td>
-                                            <td><button class="btn btn-small btn-ghost" onclick="removePracticeRate('${key}')">Remove</button></td>
-                                        </tr>`;
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        ` : `
-                            <div class="empty-state" style="padding: 40px 20px;">
-                                <div class="empty-state-icon">${getIcon('pound')}</div>
-                                <h3>No practice-specific rates set</h3>
-                                <p>Add custom rates for specific practices if your rates differ from your defaults.</p>
-                            </div>
-                        `}
+                <!-- Tab Navigation -->
+                <div style="display: flex; gap: 4px; margin-bottom: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 4px;">
+                    <button class="rate-tab ${activeTab === 'default' ? 'active' : ''}" onclick="activeTab='default'; renderRates();">
+                        ${getIcon('currency-gbp')} Default Rates
+                    </button>
+                    <button class="rate-tab ${activeTab === 'region' ? 'active' : ''}" onclick="activeTab='region'; renderRates();">
+                        ${getIcon('map-pin')} By Region
+                        ${Object.keys(regionRates).length > 0 ? '<span class="rate-tab-badge">' + Object.keys(regionRates).length + '</span>' : ''}
+                    </button>
+                    <button class="rate-tab ${activeTab === 'practice' ? 'active' : ''}" onclick="activeTab='practice'; renderRates();">
+                        ${getIcon('buildings')} By Practice
+                        ${Object.keys(practiceRates).length > 0 ? '<span class="rate-tab-badge">' + Object.keys(practiceRates).length + '</span>' : ''}
+                    </button>
+                </div>
+
+                <!-- Tab Content -->
+                <div id="tabContent"></div>
+
+                <!-- Rate Priority Info -->
+                <div class="content-card" style="margin-top: 24px; border-left: 3px solid var(--primary);">
+                    <div class="content-card-body" style="padding: 16px 20px;">
+                        <div style="font-weight: 700; margin-bottom: 8px; font-size: 0.9rem;">${getIcon('info')} How rate priority works</div>
+                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-secondary);">
+                            <span style="background: var(--primary); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">1</span>
+                            <span>Practice-specific rate (highest priority)</span>
+                            <span style="color: var(--text-tertiary);">&rarr;</span>
+                            <span style="background: var(--primary); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">2</span>
+                            <span>Region rate</span>
+                            <span style="color: var(--text-tertiary);">&rarr;</span>
+                            <span style="background: var(--primary); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">3</span>
+                            <span>Default rate</span>
+                        </div>
                     </div>
                 </div>
             `;
+
+            const tabContent = document.getElementById('tabContent');
+
+            if (activeTab === 'default') {
+                tabContent.innerHTML = renderDefaultTab(rates);
+            } else if (activeTab === 'region') {
+                tabContent.innerHTML = renderRegionTab(regionRates, rates);
+            } else {
+                tabContent.innerHTML = renderPracticeTab(practiceRates, data, rates);
+            }
         }
+
+        function renderDefaultTab(rates) {
+            return `
+            <div class="content-card">
+                <div class="content-card-header"><h2>Default Rates</h2></div>
+                <div class="content-card-body">
+                    <form id="ratesForm" onsubmit="saveRates(event)">
+                        <p class="form-hint" style="margin-bottom: 20px;">Your base rates visible to all practices unless overridden by a region or practice-specific rate.</p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">AM Session</label>
+                                <div style="position: relative;">
+                                    <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
+                                    <input type="number" class="form-input" id="rateAm" value="${rates.am || ''}" step="1" min="0" style="padding-left: 30px;">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">PM Session</label>
+                                <div style="position: relative;">
+                                    <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
+                                    <input type="number" class="form-input" id="ratePm" value="${rates.pm || ''}" step="1" min="0" style="padding-left: 30px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Full Day</label>
+                                <div style="position: relative;">
+                                    <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
+                                    <input type="number" class="form-input" id="rateFullDay" value="${rates.fullDay || ''}" step="1" min="0" style="padding-left: 30px;">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">On-Call Supplement</label>
+                                <div style="position: relative;">
+                                    <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
+                                    <input type="number" class="form-input" id="rateOnCall" value="${rates.onCall || ''}" step="1" min="0" style="padding-left: 30px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Fee per Housecall</label>
+                                <div style="position: relative;">
+                                    <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--dark-600);">&pound;</span>
+                                    <input type="number" class="form-input" id="rateHousecall" value="${rates.housecall != null ? rates.housecall : ''}" step="1" min="0" style="padding-left: 30px;">
+                                </div>
+                                <span class="form-hint">Set to 0 if housecalls are included</span>
+                            </div>
+                            <div></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">${getIcon('floppy-disk')} Save Default Rates</button>
+                    </form>
+                </div>
+            </div>`;
+        }
+
+        function renderRegionTab(regionRates, defaults) {
+            const userHBs = Auth.getCurrentUser().healthBoards || [];
+
+            let regionRows = ALL_HEALTH_BOARDS.map(hb => {
+                const rr = regionRates[hb];
+                const isUserRegion = userHBs.includes(hb);
+                if (rr) {
+                    return `
+                    <div class="rate-region-row" style="${isUserRegion ? 'border-left: 3px solid var(--primary);' : ''}">
+                        <div class="rate-region-name">
+                            <strong>${hb}</strong>
+                            ${isUserRegion ? '<span class="badge badge-success" style="font-size: 0.7rem; margin-left: 6px;">Your region</span>' : ''}
+                        </div>
+                        <div class="rate-region-values">
+                            <span class="rate-chip">AM <strong>${formatCurrency(rr.am)}</strong></span>
+                            <span class="rate-chip">PM <strong>${formatCurrency(rr.pm)}</strong></span>
+                            <span class="rate-chip">Full <strong>${formatCurrency(rr.fullDay)}</strong></span>
+                            <span class="rate-chip">On-Call <strong>${formatCurrency(rr.onCall)}</strong></span>
+                            <span class="rate-chip">HC <strong>${rr.housecall > 0 ? formatCurrency(rr.housecall) : 'Incl'}</strong></span>
+                        </div>
+                        <div class="rate-region-actions">
+                            <button class="btn btn-small btn-ghost" onclick="editRegionRate('${hb}')">${getIcon('pencil-simple')} Edit</button>
+                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="removeRegionRate('${hb}')">${getIcon('trash')} Remove</button>
+                        </div>
+                    </div>`;
+                } else {
+                    return `
+                    <div class="rate-region-row rate-region-unset" style="${isUserRegion ? 'border-left: 3px solid var(--primary);' : ''}">
+                        <div class="rate-region-name">
+                            <strong>${hb}</strong>
+                            ${isUserRegion ? '<span class="badge badge-success" style="font-size: 0.7rem; margin-left: 6px;">Your region</span>' : ''}
+                        </div>
+                        <div class="rate-region-values">
+                            <span style="font-size: 0.85rem; color: var(--text-tertiary);">Using default rates</span>
+                        </div>
+                        <div class="rate-region-actions">
+                            <button class="btn btn-small btn-secondary" onclick="editRegionRate('${hb}')">${getIcon('plus-circle')} Set Rate</button>
+                        </div>
+                    </div>`;
+                }
+            }).join('');
+
+            return `
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h2>${getIcon('map-pin')} Region Rates</h2>
+                </div>
+                <div class="content-card-body" style="padding: 0;">
+                    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                        <p class="form-hint" style="margin: 0;">Set different rates for each Welsh health board region. If not set, your default rates apply.</p>
+                    </div>
+                    <div class="rate-region-list">
+                        ${regionRows}
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderPracticeTab(practiceRates, data, defaults) {
+            const practiceKeys = Object.keys(practiceRates);
+
+            let practiceRows = '';
+            if (practiceKeys.length > 0) {
+                practiceRows = practiceKeys.map(key => {
+                    const pr = practiceRates[key];
+                    const practice = data.practices.find(p => p.id === key);
+                    const pName = practice ? practice.practiceName : key;
+                    const pRegion = practice ? practice.healthBoard : '';
+                    return `
+                    <div class="rate-region-row">
+                        <div class="rate-region-name">
+                            <strong>${pName}</strong>
+                            ${pRegion ? '<span style="font-size: 0.78rem; color: var(--text-tertiary); display: block;">' + pRegion + '</span>' : ''}
+                        </div>
+                        <div class="rate-region-values">
+                            <span class="rate-chip">AM <strong>${formatCurrency(pr.am)}</strong></span>
+                            <span class="rate-chip">PM <strong>${formatCurrency(pr.pm)}</strong></span>
+                            <span class="rate-chip">Full <strong>${formatCurrency(pr.fullDay)}</strong></span>
+                            <span class="rate-chip">On-Call <strong>${formatCurrency(pr.onCall)}</strong></span>
+                            <span class="rate-chip">HC <strong>${pr.housecall > 0 ? formatCurrency(pr.housecall) : 'Incl'}</strong></span>
+                        </div>
+                        <div class="rate-region-actions">
+                            <button class="btn btn-small btn-ghost" onclick="editPracticeRate('${key}')">${getIcon('pencil-simple')} Edit</button>
+                            <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="removePracticeRate('${key}')">${getIcon('trash')} Remove</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            return `
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h2>${getIcon('buildings')} Practice-Specific Rates</h2>
+                    <button class="btn btn-small btn-secondary" onclick="openAddPracticeRate()">${getIcon('plus-circle')} Add Practice</button>
+                </div>
+                <div class="content-card-body" style="padding: 0;">
+                    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                        <p class="form-hint" style="margin: 0;">Set custom rates for individual practices. These take highest priority over region and default rates.</p>
+                    </div>
+                    ${practiceKeys.length > 0 ? `
+                        <div class="rate-region-list">${practiceRows}</div>
+                    ` : `
+                        <div class="empty-state" style="padding: 40px 20px;">
+                            <div class="empty-state-icon">${getIcon('buildings')}</div>
+                            <h3>No practice-specific rates</h3>
+                            <p>Add custom rates for practices where your rates differ from your default or region rates.</p>
+                            <button class="btn btn-secondary" onclick="openAddPracticeRate()" style="margin-top: 12px;">${getIcon('plus-circle')} Add Practice Rate</button>
+                        </div>
+                    `}
+                </div>
+            </div>`;
+        }
+
+        // --- Save / Edit Handlers ---
 
         function saveRates(e) {
             e.preventDefault();
@@ -172,19 +301,97 @@
                 return;
             }
             if (am === 0 && pm === 0 && fullDay === 0) {
-                Toast.show('Please set at least one rate.', 'warning');
+                Toast.show('Please set at least one session rate.', 'warning');
                 return;
             }
 
             user.rates = { am, pm, fullDay, onCall, housecall };
-
             saveMockData(data);
-            Toast.show('Rates saved successfully', 'success');
+            Toast.show('Default rates saved', 'success');
+        }
+
+        function editRegionRate(hb) {
+            const user = Auth.getCurrentUser();
+            const rr = (user.regionRates || {})[hb] || user.rates || {};
+
+            Modal.show({
+                title: 'Set Rates for ' + hb,
+                size: 'medium',
+                body: `
+                    <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 16px;">These rates will apply to all practices within <strong>${hb}</strong> health board unless overridden by a practice-specific rate.</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">AM Session (&pound;)</label>
+                            <input type="number" class="form-input" id="rrAm" value="${rr.am || ''}" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">PM Session (&pound;)</label>
+                            <input type="number" class="form-input" id="rrPm" value="${rr.pm || ''}" min="0">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Full Day (&pound;)</label>
+                            <input type="number" class="form-input" id="rrFullDay" value="${rr.fullDay || ''}" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">On-Call (&pound;)</label>
+                            <input type="number" class="form-input" id="rrOnCall" value="${rr.onCall || ''}" min="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Housecall (&pound;)</label>
+                        <input type="number" class="form-input" id="rrHousecall" value="${rr.housecall != null ? rr.housecall : ''}" min="0">
+                        <span class="form-hint">Set to 0 if housecalls are included</span>
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" onclick="saveRegionRate('${hb}')">Save Region Rate</button>
+                `
+            });
+        }
+
+        function saveRegionRate(hb) {
+            const am = parseInt(document.getElementById('rrAm').value) || 0;
+            const pm = parseInt(document.getElementById('rrPm').value) || 0;
+            const fullDay = parseInt(document.getElementById('rrFullDay').value) || 0;
+            const onCall = parseInt(document.getElementById('rrOnCall').value) || 0;
+            const housecall = parseInt(document.getElementById('rrHousecall').value) || 0;
+
+            if (am === 0 && pm === 0 && fullDay === 0) {
+                Toast.show('Please set at least one session rate.', 'warning');
+                return;
+            }
+
+            const data = getMockData();
+            const session = Auth.getSession();
+            const user = data.locums.find(l => l.id === session.id);
+            if (!user.regionRates) user.regionRates = {};
+            user.regionRates[hb] = { am, pm, fullDay, onCall, housecall };
+            saveMockData(data);
+            Modal.close();
+            Toast.show('Rate for ' + hb + ' saved', 'success');
+            renderRates();
+        }
+
+        function removeRegionRate(hb) {
+            const data = getMockData();
+            const session = Auth.getSession();
+            const user = data.locums.find(l => l.id === session.id);
+            if (user.regionRates) delete user.regionRates[hb];
+            saveMockData(data);
+            Toast.show('Region rate removed', 'success');
+            renderRates();
         }
 
         function openAddPracticeRate() {
             const data = getMockData();
-            const practices = data.practices;
+            const user = Auth.getCurrentUser();
+            const existing = Object.keys(user.practiceRates || {});
+            const available = data.practices.filter(p => !existing.includes(p.id));
+            const defaults = user.rates || {};
+
             Modal.show({
                 title: 'Add Practice-Specific Rate',
                 size: 'medium',
@@ -193,43 +400,86 @@
                         <label class="form-label">Practice</label>
                         <select class="form-select" id="prPractice">
                             <option value="">Select a practice...</option>
-                            ${practices.map(p => `<option value="${p.id}">${p.practiceName} - ${p.healthBoard}</option>`).join('')}
+                            ${available.map(p => `<option value="${p.id}">${p.practiceName} — ${p.healthBoard}</option>`).join('')}
                         </select>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">AM Session (&pound;)</label>
-                            <input type="number" class="form-input" id="prAm" value="${Auth.getCurrentUser().rates.am}" min="0">
+                            <input type="number" class="form-input" id="prAm" value="${defaults.am || ''}" min="0">
                         </div>
                         <div class="form-group">
                             <label class="form-label">PM Session (&pound;)</label>
-                            <input type="number" class="form-input" id="prPm" value="${Auth.getCurrentUser().rates.pm}" min="0">
+                            <input type="number" class="form-input" id="prPm" value="${defaults.pm || ''}" min="0">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Full Day (&pound;)</label>
-                            <input type="number" class="form-input" id="prFullDay" value="${Auth.getCurrentUser().rates.fullDay}" min="0">
+                            <input type="number" class="form-input" id="prFullDay" value="${defaults.fullDay || ''}" min="0">
                         </div>
                         <div class="form-group">
                             <label class="form-label">On-Call (&pound;)</label>
-                            <input type="number" class="form-input" id="prOnCall" value="${Auth.getCurrentUser().rates.onCall}" min="0">
+                            <input type="number" class="form-input" id="prOnCall" value="${defaults.onCall || ''}" min="0">
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Housecall (&pound;)</label>
-                        <input type="number" class="form-input" id="prHousecall" value="${Auth.getCurrentUser().rates.housecall}" min="0">
+                        <input type="number" class="form-input" id="prHousecall" value="${defaults.housecall != null ? defaults.housecall : ''}" min="0">
                     </div>
                 `,
                 footer: `
                     <button class="btn btn-ghost" data-modal-close>Cancel</button>
-                    <button class="btn btn-primary" onclick="savePracticeRate()">Save</button>
+                    <button class="btn btn-primary" onclick="savePracticeRate()">Save Practice Rate</button>
                 `
             });
         }
 
-        function savePracticeRate() {
-            const practiceId = document.getElementById('prPractice').value;
+        function editPracticeRate(practiceId) {
+            const data = getMockData();
+            const user = Auth.getCurrentUser();
+            const pr = (user.practiceRates || {})[practiceId] || user.rates || {};
+            const practice = data.practices.find(p => p.id === practiceId);
+            const pName = practice ? practice.practiceName : practiceId;
+
+            Modal.show({
+                title: 'Edit Rate for ' + pName,
+                size: 'medium',
+                body: `
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">AM Session (&pound;)</label>
+                            <input type="number" class="form-input" id="prAm" value="${pr.am || ''}" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">PM Session (&pound;)</label>
+                            <input type="number" class="form-input" id="prPm" value="${pr.pm || ''}" min="0">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Full Day (&pound;)</label>
+                            <input type="number" class="form-input" id="prFullDay" value="${pr.fullDay || ''}" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">On-Call (&pound;)</label>
+                            <input type="number" class="form-input" id="prOnCall" value="${pr.onCall || ''}" min="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Housecall (&pound;)</label>
+                        <input type="number" class="form-input" id="prHousecall" value="${pr.housecall != null ? pr.housecall : ''}" min="0">
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" onclick="savePracticeRate('${practiceId}')">Save</button>
+                `
+            });
+        }
+
+        function savePracticeRate(existingId) {
+            const practiceId = existingId || (document.getElementById('prPractice') ? document.getElementById('prPractice').value : '');
             if (!practiceId) {
                 Toast.show('Please select a practice', 'error');
                 return;
@@ -250,7 +500,7 @@
 
             saveMockData(data);
             Modal.close();
-            Toast.show('Practice rate added', 'success');
+            Toast.show('Practice rate saved', 'success');
             renderRates();
         }
 
@@ -266,5 +516,76 @@
 
         renderRates();
     </script>
+
+    <style>
+        .rate-tab {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+        .rate-tab:hover { background: var(--bg-main); }
+        .rate-tab.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .rate-tab-badge {
+            background: rgba(255,255,255,0.25);
+            color: inherit;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 10px;
+        }
+        .rate-tab.active .rate-tab-badge { background: rgba(255,255,255,0.3); }
+        .rate-tab:not(.active) .rate-tab-badge { background: var(--primary); color: white; }
+
+        .rate-region-list { display: flex; flex-direction: column; }
+        .rate-region-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.1s;
+        }
+        .rate-region-row:last-child { border-bottom: none; }
+        .rate-region-row:hover { background: var(--bg-main); }
+        .rate-region-unset { opacity: 0.7; }
+        .rate-region-unset:hover { opacity: 1; }
+        .rate-region-name { min-width: 180px; flex-shrink: 0; }
+        .rate-region-values { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+        .rate-region-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+        .rate-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 3px 10px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+        .rate-chip strong { color: var(--dark); }
+
+        @media (max-width: 768px) {
+            .rate-region-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .rate-region-name { min-width: auto; }
+            .rate-tab { font-size: 0.8rem; padding: 8px 10px; }
+        }
+    </style>
 </body>
 </html>

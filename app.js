@@ -457,6 +457,32 @@ function formatCurrency(amount) {
     return '£ ' + Number(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
+// ---- Resolve effective rates for a locum given a practice context ----
+// Priority: practiceRates[practiceId] > regionRates[practice.healthBoard] > rates (default)
+// Returns { rates, source } where source is 'practice', 'region', or 'default', or null if no rates set
+function getEffectiveRates(locum, practiceId) {
+    if (!locum || !locum.rates) return null;
+    // 1. Practice-specific rate
+    if (practiceId && locum.practiceRates && locum.practiceRates[practiceId]) {
+        var pr = locum.practiceRates[practiceId];
+        if (pr.am || pr.pm || pr.fullDay) return { rates: pr, source: 'practice' };
+    }
+    // 2. Region rate based on practice's health board
+    if (practiceId && locum.regionRates) {
+        var data = getMockData();
+        var practice = data.practices.find(function(p) { return p.id === practiceId; });
+        if (practice && practice.healthBoard && locum.regionRates[practice.healthBoard]) {
+            var rr = locum.regionRates[practice.healthBoard];
+            if (rr.am || rr.pm || rr.fullDay) return { rates: rr, source: 'region' };
+        }
+    }
+    // 3. Default rates
+    if (locum.rates.am || locum.rates.pm || locum.rates.fullDay) {
+        return { rates: locum.rates, source: 'default' };
+    }
+    return null;
+}
+
 // ---- Initials from name ----
 function getInitials(name) {
     return name.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().substring(0, 2);

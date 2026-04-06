@@ -414,8 +414,10 @@
                     case 'rating':
                         return (FeedbackManager.getAverageRating(b.id) || 0) - (FeedbackManager.getAverageRating(a.id) || 0);
                     case 'rate':
-                        const rateA = a.rates ? (a.rates.fullDay || a.rates.am || 0) : 0;
-                        const rateB = b.rates ? (b.rates.fullDay || b.rates.am || 0) : 0;
+                        const effA = getEffectiveRates(a, session.id);
+                        const effB = getEffectiveRates(b, session.id);
+                        const rateA = effA ? (effA.rates.fullDay || effA.rates.am || 0) : 0;
+                        const rateB = effB ? (effB.rates.fullDay || effB.rates.am || 0) : 0;
                         return rateA - rateB;
                     default: return 0;
                 }
@@ -464,10 +466,11 @@
 
                 const reliabilityColor = loc.bookingReliability >= 95 ? 'text-emerald-600' : (loc.bookingReliability >= 85 ? 'text-amber-600' : 'text-rose-600');
 
-                // Rate display
+                // Rate display — uses practice > region > default priority
                 let rateDisplay = '';
                 let rateLabel = '';
-                const rates = loc.rates || {};
+                const eff = getEffectiveRates(loc, session.id);
+                const rates = eff ? eff.rates : {};
                 if (selectedNeed) {
                     const rate = selectedNeed.sessionType === 'AM' ? rates.am : selectedNeed.sessionType === 'PM' ? rates.pm : rates.fullDay;
                     if (rate) { rateDisplay = formatCurrency(rate); rateLabel = selectedNeed.sessionType; }
@@ -609,7 +612,8 @@
             }
 
             const locum = currentData.locums.find(l => l.id === locumId);
-            const locumRates = locum ? locum.rates || {} : {};
+            const effRates = getEffectiveRates(locum, session.id);
+            const locumRates = effRates ? effRates.rates : {};
             const preSelected = selectedNeedId || openNeeds[0].id;
 
             const needOptions = openNeeds.map(n => {
