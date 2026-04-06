@@ -1572,6 +1572,8 @@ body.gprn-app .content-card-header h2 {
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--gray-200);
     transition: transform 0.2s, box-shadow 0.2s;
+    min-height: 90px;
+    overflow: hidden;
 }
 .dash-stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
 
@@ -1588,11 +1590,19 @@ body.gprn-app .content-card-header h2 {
 .dash-stat-value {
     display: block;
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 36px;
+    font-size: 1.65rem;
     font-weight: 800;
     color: var(--dark);
     line-height: 1.1;
     letter-spacing: -0.025em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.dash-stat-info {
+    min-width: 0;
+    flex: 1;
 }
 
 .dash-stat-label {
@@ -2354,14 +2364,14 @@ body.gprn-app .content-card-header h2 {
 /* ===== INVOICE PRINT STYLES ===== */
 .invoice-page { max-width: 800px; margin: 0 auto; }
 .invoice-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
-.invoice-title { font-family: 'Syne', 'Plus Jakarta Sans', sans-serif; font-size: 2rem; font-weight: 800; color: var(--dark); }
+.invoice-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2rem; font-weight: 800; color: var(--dark); }
 .invoice-meta { text-align: right; }
 .invoice-meta p { font-size: 0.88rem; color: var(--dark-600); margin-bottom: 4px; }
 .invoice-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 32px; }
 .invoice-party h4 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-400); margin-bottom: 8px; }
 .invoice-party p { font-size: 0.9rem; color: var(--dark-700); margin-bottom: 2px; }
 .invoice-total-row { display: flex; justify-content: flex-end; padding: 16px; }
-.invoice-total { font-family: 'Syne', 'Plus Jakarta Sans', sans-serif; font-size: 1.6rem; font-weight: 800; }
+.invoice-total { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.6rem; font-weight: 800; }
 
 @media print {
     .sidebar, .top-header, .no-print { display: none !important; }
