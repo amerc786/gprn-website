@@ -1552,6 +1552,16 @@ button:focus-visible, a:focus-visible, .btn:focus-visible {
 /* ===== Dashboard Stat Cards ===== */
 .dash-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 32px; }
 
+/* Portal pages: match practice font (Plus Jakarta Sans everywhere) */
+body.gprn-app h1, body.gprn-app h2, body.gprn-app h3, body.gprn-app h4,
+body.pm-dashboard h1, body.pm-dashboard h2, body.pm-dashboard h3, body.pm-dashboard h4 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+body.gprn-app .page-title,
+body.gprn-app .content-card-header h2 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
 .dash-stat-card {
     background: var(--white);
     border-radius: var(--radius);
@@ -2541,4 +2551,324 @@ button:focus-visible, a:focus-visible, .btn:focus-visible {
     .footer-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* ===== DARK MODE ===== */
+html.dark {
+    --dark: #F1F5F9;
+    --dark-800: #CBD5E1;
+    --dark-700: #94A3B8;
+    --dark-600: #94A3B8;
+    --gray-400: #64748B;
+    --gray-300: #475569;
+    --gray-200: #334155;
+    --gray-100: #1E293B;
+    --gray-50: #141C2F;
+    --white: #141C2F;
+    --border-soft: #1E293B;
+    --divider-subtle: #1E293B;
+    --navy: #F1F5F9;
+}
+html.dark body,
+html.dark body.gprn-app,
+html.dark body.pm-dashboard {
+    background: #0B0F19 !important;
+    color: #E2E8F0 !important;
+}
+
+/* Sidebar */
+html.dark aside,
+html.dark #appSidebar,
+html.dark #pmSidebar {
+    background: #141C2F !important;
+    border-color: #1E293B !important;
+}
+html.dark aside a,
+html.dark aside button,
+html.dark aside p {
+    color: #94A3B8 !important;
+}
+html.dark aside a:hover,
+html.dark aside button:hover {
+    background: rgba(255,255,255,0.05) !important;
+    color: #E2E8F0 !important;
+}
+html.dark aside .sidebar-active,
+html.dark aside .sidebar-active-bar,
+html.dark aside [class*="bg-slate-50"][class*="text-navy"] {
+    background: rgba(255,255,255,0.08) !important;
+    color: #FFFFFF !important;
+}
+html.dark aside .sidebar-active::before,
+html.dark aside .sidebar-active-bar::before {
+    background: #059669 !important;
+}
+html.dark .logo-text,
+html.dark .logo-prn {
+    color: #FFFFFF !important;
+}
+
+/* Header */
+html.dark header {
+    background: rgba(11, 15, 25, 0.85) !important;
+    backdrop-filter: blur(20px) !important;
+}
+html.dark header input {
+    background: #1E293B !important;
+    border-color: #334155 !important;
+    color: #E2E8F0 !important;
+}
+html.dark header input::placeholder {
+    color: #64748B !important;
+}
+
+/* Main content area */
+html.dark main,
+html.dark .flex-1.overflow-y-auto {
+    background: #0B0F19 !important;
+}
+
+/* Cards */
+html.dark .content-card,
+html.dark .dash-stat-card,
+html.dark [class*="bg-white"],
+html.dark .bg-white {
+    background: #141C2F !important;
+    border-color: #1E293B !important;
+    color: #E2E8F0 !important;
+}
+html.dark [class*="rounded-2xl"][class*="border"][class*="bg-white"],
+html.dark [class*="rounded-xl"][class*="border"][class*="bg-white"],
+html.dark [class*="rounded-2xl"][class*="shadow"] {
+    background: #141C2F !important;
+    border-color: #1E293B !important;
+}
+
+/* Surface background */
+html.dark .bg-surface,
+html.dark .bg-\\[\\#F8F9FA\\],
+html.dark [class*="bg-surface"] {
+    background: #0B0F19 !important;
+}
+html.dark .bg-slate-50,
+html.dark [class*="bg-slate-50"] {
+    background: rgba(255,255,255,0.04) !important;
+}
+html.dark .bg-slate-100 {
+    background: rgba(255,255,255,0.06) !important;
+}
+
+/* Text colors */
+html.dark .text-navy,
+html.dark [class*="text-navy"],
+html.dark .text-\\[\\#0B0F19\\],
+html.dark h1, html.dark h2, html.dark h3, html.dark h4 {
+    color: #F1F5F9 !important;
+}
+html.dark .text-slate-800,
+html.dark [class*="text-slate-800"] {
+    color: #E2E8F0 !important;
+}
+html.dark .text-slate-600,
+html.dark [class*="text-slate-600"] {
+    color: #94A3B8 !important;
+}
+html.dark .text-slate-500,
+html.dark [class*="text-slate-500"] {
+    color: #94A3B8 !important;
+}
+html.dark .text-slate-400,
+html.dark [class*="text-slate-400"] {
+    color: #64748B !important;
+}
+html.dark .dash-stat-value {
+    color: #F1F5F9 !important;
+}
+html.dark .dash-stat-label {
+    color: #94A3B8 !important;
+}
+html.dark strong, html.dark b {
+    color: #F1F5F9 !important;
+}
+
+/* Borders */
+html.dark .border-slate-200,
+html.dark [class*="border-slate-200"] {
+    border-color: #1E293B !important;
+}
+html.dark .border-slate-100,
+html.dark [class*="border-slate-100"] {
+    border-color: rgba(255,255,255,0.06) !important;
+}
+html.dark .border-b,
+html.dark .border-r,
+html.dark .border-t {
+    border-color: #1E293B !important;
+}
+
+/* Dropdown menu */
+html.dark #profileDropMenu {
+    background: #1E293B !important;
+    border-color: #334155 !important;
+}
+html.dark #profileDropMenu a,
+html.dark #profileDropMenu button {
+    color: #CBD5E1 !important;
+}
+html.dark #profileDropMenu a:hover,
+html.dark #profileDropMenu button:hover {
+    background: rgba(255,255,255,0.06) !important;
+    color: #F1F5F9 !important;
+}
+html.dark #profileDropMenu .text-red-500 {
+    color: #F87171 !important;
+}
+html.dark #profileDropMenu .border-slate-100 {
+    border-color: #334155 !important;
+}
+html.dark #profileDropMenu [class*="text-navy"],
+html.dark #profileDropMenu .text-\\[13px\\].font-bold {
+    color: #F1F5F9 !important;
+}
+
+/* Forms */
+html.dark .form-input,
+html.dark .form-select,
+html.dark textarea {
+    background: #1E293B !important;
+    border-color: #334155 !important;
+    color: #E2E8F0 !important;
+}
+
+/* Badges */
+html.dark .badge {
+    opacity: 0.9;
+}
+
+/* Bar charts */
+html.dark .bar-chart-label,
+html.dark .bar-chart-value {
+    color: #94A3B8 !important;
+}
+
+/* Calendar */
+html.dark .calendar-day-cell {
+    background: #141C2F !important;
+    border-color: #1E293B !important;
+    color: #CBD5E1 !important;
+}
+
+/* Modals */
+html.dark .modal-content,
+html.dark [class*="modal"] > div {
+    background: #1E293B !important;
+    color: #E2E8F0 !important;
+}
+
+/* Scrollbar */
+html.dark .custom-scroll::-webkit-scrollbar-thumb {
+    background: #334155 !important;
+}
+html.dark .custom-scroll:hover::-webkit-scrollbar-thumb {
+    background: #475569 !important;
+}
+
+/* Practice dashboard Tailwind overrides */
+html.dark [class*="dashed"][class*="border"] {
+    border-color: #334155 !important;
+}
+
+/* Empty states */
+html.dark .empty-state-title,
+html.dark [class*="font-extrabold"][class*="text-navy"] {
+    color: #F1F5F9 !important;
+}
+
+/* Shift cards */
+html.dark .shift-card-full {
+    background: #1E293B !important;
+    border-color: #334155 !important;
+}
+
+/* Links */
+html.dark a.btn-ghost {
+    color: #94A3B8 !important;
+}
+html.dark a.btn-ghost:hover {
+    color: #059669 !important;
+}
+
+/* Thread items in messages */
+html.dark .thread-item:hover:not(.active) {
+    background: rgba(255,255,255,0.04) !important;
+}
+html.dark .thread-item.active {
+    background: rgba(255,255,255,0.08) !important;
+}
+
+/* Mobile sidebar backdrop */
+html.dark #sidebarBackdrop {
+    background: rgba(0,0,0,0.6) !important;
+}
+
+/* Practice page form elements */
+html.dark .ps-label {
+    color: #94A3B8 !important;
+}
+html.dark .ps-input,
+html.dark .ps-select,
+html.dark .ps-textarea {
+    background: #1E293B !important;
+    border-color: #334155 !important;
+    color: #E2E8F0 !important;
+}
+html.dark .ps-input:focus,
+html.dark .ps-select:focus,
+html.dark .ps-textarea:focus {
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.05) !important;
+}
+html.dark .ps-hint {
+    color: #64748B !important;
+}
+html.dark .ps-toggle {
+    background: #334155 !important;
+}
+html.dark .ps-toggle.active {
+    background: #059669 !important;
+}
+
+/* System messages in chat */
+html.dark .system-msg {
+    background: rgba(5, 150, 105, 0.15) !important;
+    border-color: rgba(5, 150, 105, 0.3) !important;
+}
+
+/* All paragraph, span, div text inside dark mode */
+html.dark p,
+html.dark span:not(.badge):not([class*="bg-"]):not([class*="text-white"]):not([class*="text-red"]):not([class*="text-green"]):not([class*="text-brand"]):not([class*="text-rose"]):not([class*="text-emerald"]) {
+    color: inherit;
+}
+
+/* Tailwind text-[#101524] and text-[#0B0F19] in dark mode */
+html.dark .text-\\[\\#101524\\] {
+    color: #F1F5F9 !important;
+}
+
+/* Practice page background-navy buttons in dark mode */
+html.dark .bg-navy,
+html.dark [class*="bg-navy"]:not(aside):not([id*="Sidebar"]) {
+    background: #334155 !important;
+}
+html.dark .bg-navy:hover {
+    background: #475569 !important;
+}
+
+/* Ensure all inline var(--dark) text is readable */
+html.dark [style*="color: var(--dark)"],
+html.dark [style*="color:var(--dark)"] {
+    color: #F1F5F9 !important;
+}
+html.dark [style*="color: var(--dark-600)"],
+html.dark [style*="color:var(--dark-600)"] {
+    color: #94A3B8 !important;
 }

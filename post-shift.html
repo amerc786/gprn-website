@@ -133,7 +133,7 @@
                     <span class="text-white font-black text-[24px] leading-none tracking-tight pt-[2px]">G</span>
                 </div>
                 <div class="flex items-baseline pt-1">
-                    <span class="text-[#101524] font-black text-[32px] leading-[0.8] tracking-[-0.05em]">PRN</span>
+                    <span class="logo-prn text-[#101524] font-black text-[32px] leading-[0.8] tracking-[-0.05em]">PRN</span>
                     <div class="w-[9px] h-[9px] bg-[#0F8B5A] ml-[4px] mb-[3px]"></div>
                 </div>
             </a>
@@ -543,7 +543,7 @@
             Toast.show(sessionWord + ' created successfully!', 'success');
 
             const repeatMsg = totalSessions > 1
-                ? `<p style="font-size: 0.9rem; color: #64748B; margin-top: 8px;">${totalSessions} sessions created (original + ${repeatWeeks} weekly repeats).</p>`
+                ? `<p style="font-size: 0.9rem; color: var(--dark-600); margin-top: 8px;">${totalSessions} sessions created (original + ${repeatWeeks} weekly repeats).</p>`
                 : '';
             const templateMsg = document.getElementById('saveAsTemplate').checked
                 ? `<p style="font-size: 0.9rem; color: #059669; margin-top: 8px;">Template saved for future use.</p>`
@@ -551,7 +551,7 @@
 
             Modal.show({
                 title: sessionWord + ' Created',
-                body: `<p style="font-size: 0.95rem; color: #64748B; margin-bottom: 8px;">Your session need for <strong>${DateUtils.format(date, 'full')}</strong> (${sessionType}) has been created.</p><p style="font-size: 0.9rem; color: #64748B;">Now head to <strong>Find Locums</strong> to send invitations to available locums.</p>${repeatMsg}${templateMsg}`,
+                body: `<p style="font-size: 0.95rem; color: var(--dark-600); margin-bottom: 8px;">Your session need for <strong>${DateUtils.format(date, 'full')}</strong> (${sessionType}) has been created.</p><p style="font-size: 0.9rem; color: var(--dark-600);">Now head to <strong>Find Locums</strong> to send invitations to available locums.</p>${repeatMsg}${templateMsg}`,
                 footer: `
                     <button class="btn btn-secondary" onclick="Modal.close(); document.getElementById('postShiftForm').reset(); document.getElementById('repeatOptions').style.display='none'; document.getElementById('templateNameGroup').style.display='none'; document.getElementById('housecallsToggle').classList.remove('active'); document.getElementById('housecallsLabel').textContent='No';">Create Another</button>
                     <a href="find-locums.html" class="btn btn-primary">Find Locums</a>

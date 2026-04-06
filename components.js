@@ -85,7 +85,7 @@ function renderSidebar(role, activePage) {
                     <span class="text-white font-black text-[24px] leading-none tracking-tight pt-[2px]">G</span>
                 </div>
                 <div class="flex items-baseline pt-1">
-                    <span class="text-[#101524] font-black text-[32px] leading-[0.8] tracking-[-0.05em]">PRN</span>
+                    <span class="logo-prn text-[#101524] font-black text-[32px] leading-[0.8] tracking-[-0.05em]">PRN</span>
                     <div class="w-[9px] h-[9px] bg-[#0F8B5A] ml-[4px] mb-[3px]"></div>
                 </div>
             </a>
@@ -167,14 +167,6 @@ function renderProfileDropdown(initials, displayName, settingsHref) {
 function toggleDarkMode() {
     const isDark = document.documentElement.classList.toggle('dark');
     localStorage.setItem('gprn_dark_mode', isDark ? 'true' : 'false');
-    // Update body background
-    if (isDark) {
-        document.body.style.background = '#0B0F19';
-        document.body.style.color = '#E2E8F0';
-    } else {
-        document.body.style.background = '';
-        document.body.style.color = '';
-    }
     // Update toggle visual
     const toggle = document.getElementById('darkModeToggle');
     if (toggle) {
@@ -196,8 +188,6 @@ document.addEventListener('click', function(e) {
 // Apply saved dark mode on load
 if (localStorage.getItem('gprn_dark_mode') === 'true') {
     document.documentElement.classList.add('dark');
-    document.body.style.background = '#0B0F19';
-    document.body.style.color = '#E2E8F0';
 }
 
 function renderTopHeader(title, breadcrumbs) {

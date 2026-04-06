@@ -120,7 +120,7 @@
         const unreadMsgCount = MessageManager.getUnreadCount(session.id);
 
         pageContent.innerHTML = `
-            <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 44px; font-weight: 800; color: #0B0F19; margin-bottom: 24px; letter-spacing: -0.025em; line-height: 1.1;">${greeting}</h2>
+            <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 44px; font-weight: 800; color: var(--dark); margin-bottom: 24px; letter-spacing: -0.025em; line-height: 1.1;">${greeting}</h2>
 
             ${docWarnings.length > 0 ? `
             <div style="margin-bottom: 20px;">
