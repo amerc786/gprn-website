@@ -460,6 +460,15 @@
                     if (acceptedOffer.status === 'accepted') {
                         info += '<div style="margin-top: 8px;"><button class="btn btn-primary btn-small" onclick="Modal.close(this.closest(\'.modal-overlay\')); confirmOfferBooking(\'' + acceptedOffer.id + '\')">Confirm Booking</button></div>';
                     }
+                    if (acceptedOffer.status === 'completed') {
+                        var hasReported = FeedbackManager.hasReviewed(session.id, acceptedOffer.id);
+                        if (hasReported) {
+                            info += '<div style="margin-top: 8px;"><span class="badge badge-info" style="font-size: 0.75rem;">Issue reported</span></div>';
+                        } else {
+                            info += '<div style="margin-top: 8px;"><a href="leave-feedback.html?offerId=' + acceptedOffer.id + '" class="btn btn-small btn-danger btn-ghost" onclick="Modal.close(this.closest(\'.modal-overlay\'))">Report Issue</a>'
+                                + '<span style="font-size: 0.75rem; color: var(--dark-600); margin-left: 8px;">No issues? No action needed.</span></div>';
+                        }
+                    }
                     info += '</div>';
                 }
             }

@@ -817,10 +817,10 @@ const Booking = {
             if (!existingInvoice) {
                 InvoiceManager.generateFromOffer(data, offer);
             }
-            this.addNotification(data, offer.locumId, 'leave_feedback', 'Leave Feedback',
-                `Your session at ${offer.practiceName} is complete. Please leave feedback.`);
-            this.addNotification(data, offer.practiceId, 'leave_feedback', 'Leave Feedback',
-                `Please rate the locum who worked on ${DateUtils.format(offer.sessionDate, 'medium')}.`);
+            this.addNotification(data, offer.locumId, 'leave_feedback', 'Rate This Practice',
+                `Your session at ${offer.practiceName} is complete. Please leave a rating.`);
+            this.addNotification(data, offer.practiceId, 'leave_feedback', 'Shift Completed',
+                `The shift on ${DateUtils.format(offer.sessionDate, 'medium')} is complete. Report any issues if applicable.`);
         } else {
             offer.status = 'no_show';
             offer.noShowDate = DateUtils.toISO(new Date());
@@ -1650,6 +1650,94 @@ const FeedbackManager = {
         const data = getMockData();
         if (!data.feedback) return false;
         return data.feedback.some(f => f.fromId === fromId && f.offerId === offerId);
+    },
+
+    // GP rates a practice (single 1-5 star + comment up to 200 chars)
+    ratePractice(locumId, practiceId, offerId, stars, comment) {
+        if (typeof stars !== 'number' || stars < 1 || stars > 5) {
+            return { error: 'invalid_rating', message: 'Rating must be between 1 and 5.' };
+        }
+        if (comment && comment.length > 200) {
+            return { error: 'comment_too_long', message: 'Comment must be 200 characters or less.' };
+        }
+        const data = getMockData();
+        if (!data.feedback) data.feedback = [];
+        const offer = data.offers ? data.offers.find(o => o.id === offerId) : null;
+        data.feedback.push({
+            id: 'fb-' + Date.now(),
+            fromId: locumId,
+            toId: practiceId,
+            offerId,
+            ratings: { overall: stars },
+            comment: comment || '',
+            fromRole: 'locum',
+            type: 'practice_rating',
+            locumName: offer ? offer.locumName : '',
+            timestamp: new Date().toISOString()
+        });
+        saveMockData(data);
+        return true;
+    },
+
+    // Practice reports a locum issue (no-show or late cancellation only)
+    reportLocumIssue(practiceId, locumId, offerId, issueType) {
+        if (!['no_show', 'late_cancellation'].includes(issueType)) {
+            return { error: 'invalid_issue', message: 'Issue must be no_show or late_cancellation.' };
+        }
+        const data = getMockData();
+        const offer = data.offers ? data.offers.find(o => o.id === offerId) : null;
+        if (!offer || offer.status !== 'completed') {
+            return { error: 'invalid_offer', message: 'Can only report issues on completed shifts.' };
+        }
+        // Late cancellation must be within 24 hours of the shift
+        if (issueType === 'late_cancellation') {
+            const shiftDate = new Date(offer.sessionDate || offer.shiftDate);
+            const hoursSince = (new Date() - shiftDate) / (1000 * 60 * 60);
+            if (hoursSince > 24) {
+                return { error: 'too_late', message: 'Late cancellation can only be reported within 24 hours of the shift.' };
+            }
+        }
+        // Apply reliability penalty
+        const locum = data.locums ? data.locums.find(l => l.id === locumId) : null;
+        if (locum) {
+            const penalty = issueType === 'no_show' ? 10 : 5;
+            locum.bookingReliability = Math.max(0, (locum.bookingReliability || 100) - penalty);
+        }
+        // Record the issue as feedback
+        if (!data.feedback) data.feedback = [];
+        data.feedback.push({
+            id: 'fb-' + Date.now(),
+            fromId: practiceId,
+            toId: locumId,
+            offerId,
+            ratings: {},
+            comment: '',
+            fromRole: 'practice',
+            type: issueType,
+            timestamp: new Date().toISOString()
+        });
+        // Notify locum
+        const issueLabel = issueType === 'no_show' ? 'No-Show' : 'Late Cancellation';
+        const penaltyPts = issueType === 'no_show' ? 10 : 5;
+        Booking.addNotification(data, locumId, issueType, issueLabel + ' Reported',
+            `${offer.practiceName} has reported a ${issueLabel.toLowerCase()} for your shift on ${DateUtils.format(offer.sessionDate, 'medium')}. Your reliability score has been reduced by ${penaltyPts} points.`);
+        saveMockData(data);
+        return true;
+    },
+
+    // Get practice ratings (from GPs only)
+    getPracticeRatings(practiceId) {
+        const data = getMockData();
+        if (!data.feedback) return [];
+        return data.feedback.filter(f => f.toId === practiceId && f.type === 'practice_rating')
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    },
+
+    getPracticeAverageRating(practiceId) {
+        const ratings = this.getPracticeRatings(practiceId);
+        if (ratings.length === 0) return null;
+        const total = ratings.reduce((s, r) => s + (r.ratings.overall || 0), 0);
+        return (total / ratings.length).toFixed(1);
     }
 };
 

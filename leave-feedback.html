@@ -62,11 +62,9 @@
             throw new Error('Offer not found');
         }
 
-        // Determine who we are giving feedback about
         const isLocumReviewing = role === 'locum';
         const targetId = isLocumReviewing ? offer.practiceId : offer.locumId;
 
-        // Get target name
         let targetName = '';
         if (isLocumReviewing) {
             const practice = data.practices.find(p => p.id === offer.practiceId);
@@ -76,57 +74,84 @@
             targetName = locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown Locum';
         }
 
-        // Categories based on role
-        const categories = isLocumReviewing
-            ? ['Organisation', 'Support Staff', 'Facilities', 'Would Work Again']
-            : ['Punctuality', 'Clinical Skills', 'Communication', 'Would Book Again'];
-
-        // Check if already reviewed
         const alreadyReviewed = FeedbackManager.hasReviewed(session.id, offerId);
+        let starRating = 0;
 
-        // Track star ratings
-        const ratings = {};
-        categories.forEach(c => { ratings[c] = 0; });
-
-        function renderStarsInput(category) {
+        function renderStarsInput() {
             let stars = '';
             for (let i = 1; i <= 5; i++) {
-                const fill = i <= (ratings[category] || 0) ? '#14B8A6' : '#E2E8F0';
-                stars += `<svg onclick="setRating('${category}', ${i})" width="28" height="28" viewBox="0 0 24 24" fill="${fill}" stroke="${fill}" stroke-width="1" style="cursor:pointer;transition:transform 0.1s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+                const fill = i <= starRating ? '#059669' : '#E2E8F0';
+                stars += `<svg onclick="setRating(${i})" width="36" height="36" viewBox="0 0 24 24" fill="${fill}" stroke="${fill}" stroke-width="1" style="cursor:pointer;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
             }
-            return `<span class="rating-stars">${stars}</span>`;
+            return `<div style="display: flex; gap: 4px; align-items: center;">${stars}</div>`;
         }
 
-        function setRating(category, value) {
-            ratings[category] = value;
+        function setRating(value) {
+            starRating = value;
             render();
         }
 
-        function submitFeedback() {
-            // Validate all categories have ratings
-            const unrated = categories.filter(c => ratings[c] === 0);
-            if (unrated.length > 0) {
-                Toast.show('Please rate all categories before submitting.', 'warning');
+        // GP submits practice rating
+        function submitPracticeRating() {
+            if (starRating === 0) {
+                Toast.show('Please select a star rating.', 'warning');
                 return;
             }
-
             const comment = document.getElementById('feedbackComment').value.trim();
-            const ratingsObj = {};
-            categories.forEach(c => { ratingsObj[c] = ratings[c]; });
-
-            FeedbackManager.submit(session.id, targetId, offerId, ratingsObj, comment, role);
-            Toast.show('Feedback submitted successfully. Thank you!', 'success');
-
-            setTimeout(() => {
-                window.location.href = role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html';
-            }, 1500);
+            if (comment.length > 200) {
+                Toast.show('Feedback must be 200 characters or less.', 'warning');
+                return;
+            }
+            const result = FeedbackManager.ratePractice(session.id, targetId, offerId, starRating, comment);
+            if (result.error) {
+                Toast.show(result.message, 'error');
+                return;
+            }
+            Toast.show('Rating submitted. Thank you!', 'success');
+            setTimeout(() => { window.location.href = 'my-offers.html'; }, 1200);
         }
 
+        // Practice reports locum issue
+        function reportIssue(issueType) {
+            Modal.show({
+                title: issueType === 'no_show' ? 'Report No-Show' : 'Report Late Cancellation',
+                size: 'small',
+                body: `<p style="color: var(--dark-600); line-height: 1.6;">
+                    ${issueType === 'no_show'
+                        ? `Are you sure you want to report <strong>${targetName}</strong> as a no-show for this shift? This will reduce their reliability score by <strong>10 points</strong>.`
+                        : `Are you sure you want to report <strong>${targetName}</strong> for a late cancellation? This will reduce their reliability score by <strong>5 points</strong>.`
+                    }</p>`,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-danger" id="confirmReport">Confirm Report</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#confirmReport').addEventListener('click', () => {
+                        const result = FeedbackManager.reportLocumIssue(session.id, targetId, offerId, issueType);
+                        Modal.close(overlay);
+                        if (result.error) {
+                            Toast.show(result.message, 'error');
+                            return;
+                        }
+                        Toast.show('Issue reported. The locum has been notified.', 'success');
+                        setTimeout(() => { window.location.href = 'practice-dashboard.html'; }, 1200);
+                    });
+                }
+            });
+        }
+
+        // Check if late cancellation is still allowed (within 24hrs of shift)
+        const shiftDate = new Date(offer.sessionDate || offer.shiftDate);
+        const hoursSinceShift = (new Date() - shiftDate) / (1000 * 60 * 60);
+        const canReportLateCancellation = hoursSinceShift <= 24;
+
         function render() {
+            const backUrl = isLocumReviewing ? 'my-offers.html' : 'practice-dashboard.html';
+
             if (alreadyReviewed) {
                 pageContent.innerHTML = `
-                    <a href="${role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html'}" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
-                        ${getIcon('arrow-left')} Back to Dashboard
+                    <a href="${backUrl}" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
+                        ${getIcon('arrow-left')} Back
                     </a>
                     <div class="content-card">
                         <div class="content-card-body" style="text-align: center; padding: 60px 20px;">
@@ -141,27 +166,16 @@
             }
 
             const commentVal = document.getElementById('feedbackComment') ? document.getElementById('feedbackComment').value : '';
+            const charCount = commentVal.length;
 
-            pageContent.innerHTML = `
-                <a href="${role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html'}" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
-                    ${getIcon('arrow-left')} Back to Dashboard
-                </a>
-
-                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">
-                    Leave Feedback
-                </h1>
-
-                <!-- Shift Info -->
+            // Shift details section (shared)
+            const shiftInfoHtml = `
                 <div class="content-card" style="margin-bottom: 24px;">
-                    <div class="content-card-header">
-                        <h2>Shift Details</h2>
-                    </div>
+                    <div class="content-card-header"><h2>Shift Details</h2></div>
                     <div class="content-card-body">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                             <div>
-                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">
-                                    ${isLocumReviewing ? 'Practice' : 'Locum'}
-                                </span>
+                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">${isLocumReviewing ? 'Practice' : 'Locum'}</span>
                                 <p style="font-size: 0.95rem; font-weight: 600; color: var(--dark); margin-top: 4px;">${targetName}</p>
                             </div>
                             <div>
@@ -178,36 +192,70 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>`;
 
-                <!-- Rating Form -->
-                <div class="content-card" style="margin-bottom: 24px;">
-                    <div class="content-card-header">
-                        <h2>Rate ${targetName}</h2>
-                    </div>
-                    <div class="content-card-body">
-                        <div class="rating-categories">
-                            ${categories.map(cat => `
-                                <div class="rating-category">
-                                    <span class="rating-category-label">${cat}</span>
-                                    <div class="rating-input">
-                                        ${renderStarsInput(cat)}
-                                    </div>
+            if (isLocumReviewing) {
+                // GP rates practice: single star rating + 200 char comment
+                pageContent.innerHTML = `
+                    <a href="${backUrl}" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
+                        ${getIcon('arrow-left')} Back to My Bookings
+                    </a>
+                    <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">Rate Practice</h1>
+                    ${shiftInfoHtml}
+                    <div class="content-card" style="margin-bottom: 24px;">
+                        <div class="content-card-header"><h2>Rate ${targetName}</h2></div>
+                        <div class="content-card-body">
+                            <div style="margin-bottom: 20px;">
+                                <label class="form-label" style="margin-bottom: 8px;">Overall Rating</label>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    ${renderStarsInput()}
+                                    <span style="font-size: 1.1rem; font-weight: 700; color: var(--dark);">${starRating > 0 ? starRating + '/5' : ''}</span>
                                 </div>
-                            `).join('')}
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Feedback (Optional, max 200 characters)</label>
+                                <textarea id="feedbackComment" class="form-input" rows="3" style="resize: vertical;" maxlength="200" placeholder="Share your experience at this practice..." oninput="document.getElementById('charCounter').textContent = this.value.length + '/200'">${commentVal}</textarea>
+                                <span id="charCounter" style="font-size: 0.78rem; color: ${charCount > 180 ? 'var(--danger)' : 'var(--dark-600)'}; float: right; margin-top: 4px;">${charCount}/200</span>
+                            </div>
+                            <button class="btn btn-primary btn-large" onclick="submitPracticeRating()" style="width: 100%; justify-content: center; margin-top: 12px;">
+                                Submit Rating
+                            </button>
                         </div>
+                    </div>`;
+            } else {
+                // Practice reports locum issue: no-show or late cancellation only
+                pageContent.innerHTML = `
+                    <a href="${backUrl}" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
+                        ${getIcon('arrow-left')} Back to Dashboard
+                    </a>
+                    <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">Report Issue</h1>
+                    ${shiftInfoHtml}
+                    <div class="content-card" style="margin-bottom: 24px;">
+                        <div class="content-card-header"><h2>Report an Issue with ${targetName}</h2></div>
+                        <div class="content-card-body">
+                            <p style="color: var(--dark-600); margin-bottom: 20px; line-height: 1.6;">
+                                If there were no issues with this shift, no action is needed — the locum's reliability score will remain unaffected.
+                                Only report genuine issues below.
+                            </p>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <button class="btn btn-danger btn-large" onclick="reportIssue('no_show')" style="width: 100%; justify-content: center;">
+                                    ${getIcon('warning-circle')} Report No-Show
+                                </button>
+                                <p style="font-size: 0.82rem; color: var(--dark-600); margin-top: -4px; padding-left: 4px;">The locum did not attend the shift. Reliability score will be reduced by 10 points.</p>
 
-                        <div class="form-group" style="margin-top: 20px;">
-                            <label class="form-label">Comments (Optional)</label>
-                            <textarea id="feedbackComment" class="form-input" rows="4" style="resize: vertical;" placeholder="Share your experience...">${commentVal}</textarea>
+                                <button class="btn btn-warning btn-large" onclick="reportIssue('late_cancellation')" style="width: 100%; justify-content: center; ${canReportLateCancellation ? '' : 'opacity: 0.4; pointer-events: none;'}" ${canReportLateCancellation ? '' : 'disabled'}>
+                                    ${getIcon('clock')} Report Late Cancellation
+                                </button>
+                                <p style="font-size: 0.82rem; color: var(--dark-600); margin-top: -4px; padding-left: 4px;">
+                                    ${canReportLateCancellation
+                                        ? 'The locum cancelled at short notice. Reliability score will be reduced by 5 points. Must be reported within 24 hours of the shift.'
+                                        : 'Late cancellation can no longer be reported — more than 24 hours have passed since this shift.'
+                                    }
+                                </p>
+                            </div>
                         </div>
-
-                        <button class="btn btn-primary btn-large" onclick="submitFeedback()" style="width: 100%; justify-content: center; margin-top: 8px;">
-                            Submit Feedback
-                        </button>
-                    </div>
-                </div>
-            `;
+                    </div>`;
+            }
         }
 
         render();

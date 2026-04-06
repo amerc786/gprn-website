@@ -81,8 +81,8 @@
                     actionsHtml = `
                         <div class="offer-actions">
                             ${hasReviewed
-                                ? '<span class="badge badge-info" style="font-size: 0.82rem; padding: 6px 12px;">Feedback submitted</span>'
-                                : `<a href="leave-feedback.html?offerId=${offer.id}" class="btn btn-small btn-primary">Leave Feedback</a>`
+                                ? '<span class="badge badge-info" style="font-size: 0.82rem; padding: 6px 12px;">Practice rated</span>'
+                                : `<a href="leave-feedback.html?offerId=${offer.id}" class="btn btn-small btn-primary">Rate Practice</a>`
                             }
                         </div>`;
                     break;
@@ -110,11 +110,26 @@
                     break;
             }
 
+            // Practice rating display
+            let practiceRatingHtml = '';
+            {
+                const avgRating = FeedbackManager.getPracticeAverageRating(offer.practiceId);
+                if (avgRating) {
+                    const fullStars = Math.floor(avgRating);
+                    let starsHtml = '';
+                    for (let s = 0; s < 5; s++) {
+                        starsHtml += `<svg width="14" height="14" viewBox="0 0 24 24" fill="${s < fullStars ? '#059669' : '#E2E8F0'}" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+                    }
+                    practiceRatingHtml = `<span style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer;" onclick="showPracticeRatings('${offer.practiceId}', '${offer.practiceName.replace(/'/g, "\\'")}')">${starsHtml} <span style="font-size: 0.78rem; color: var(--dark-600);">${avgRating}</span></span>`;
+                }
+            }
+
             return `
             <div class="offer-card" data-offer-id="${offer.id}">
                 <div class="offer-card-header">
                     <div>
                         <h3 class="offer-card-title">${offer.practiceName}</h3>
+                        ${practiceRatingHtml ? `<div style="margin-top: 2px;">${practiceRatingHtml}</div>` : ''}
                         <p class="offer-card-location">${offer.healthBoard}</p>
                     </div>
                     <span class="badge ${getStatusBadge(offer.status)}">${getStatusLabel(offer.status)}</span>
@@ -132,6 +147,48 @@
                 </div>
                 ${actionsHtml}
             </div>`;
+        }
+
+        function showPracticeRatings(practiceId, practiceName) {
+            const ratings = FeedbackManager.getPracticeRatings(practiceId);
+            const avg = FeedbackManager.getPracticeAverageRating(practiceId);
+            let starsHtml = '';
+            const fullStars = avg ? Math.floor(avg) : 0;
+            for (let s = 0; s < 5; s++) {
+                starsHtml += `<svg width="22" height="22" viewBox="0 0 24 24" fill="${s < fullStars ? '#059669' : '#E2E8F0'}" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+            }
+            const reviewsHtml = ratings.length > 0 ? ratings.map(r => {
+                let rStars = '';
+                const rFull = r.ratings.overall || 0;
+                for (let s = 0; s < 5; s++) {
+                    rStars += `<svg width="14" height="14" viewBox="0 0 24 24" fill="${s < rFull ? '#059669' : '#E2E8F0'}" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+                }
+                const mockData = getMockData();
+                const locum = mockData.locums ? mockData.locums.find(l => l.id === r.fromId) : null;
+                const reviewerName = locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : (r.locumName || 'GP');
+                return `<div style="padding: 12px; background: var(--gray-50); border-radius: 8px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-weight: 600; font-size: 0.88rem; color: var(--dark);">${reviewerName}</span>
+                        <span style="font-size: 0.75rem; color: var(--dark-600);">${DateUtils.format(r.timestamp, 'medium')}</span>
+                    </div>
+                    <div style="display: flex; gap: 2px; margin-bottom: 4px;">${rStars}</div>
+                    ${r.comment ? `<p style="font-size: 0.85rem; color: var(--dark-700); margin-top: 4px;">${sanitizeHTML(r.comment)}</p>` : ''}
+                </div>`;
+            }).join('') : '<p style="color: var(--dark-600); text-align: center; padding: 20px;">No reviews yet.</p>';
+
+            Modal.show({
+                title: practiceName + ' — Ratings',
+                size: 'medium',
+                body: `
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: center; gap: 4px; margin-bottom: 4px;">${starsHtml}</div>
+                        <span style="font-size: 1.4rem; font-weight: 700; color: var(--dark);">${avg || '-'}</span>
+                        <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 4px;">(${ratings.length} review${ratings.length !== 1 ? 's' : ''})</span>
+                    </div>
+                    <div>${reviewsHtml}</div>
+                `,
+                footer: '<button class="btn btn-ghost" data-modal-close>Close</button>'
+            });
         }
 
         function renderBookings() {
