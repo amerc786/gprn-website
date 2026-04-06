@@ -521,6 +521,8 @@
             if (need.status === 'open') {
                 footerBtns = '<button class="btn btn-small" style="background:var(--danger);color:white;border-color:var(--danger);margin-right:auto;" id="cancelNeedBtn">Cancel Session</button>'
                     + '<a href="find-locums.html?needId=' + need.id + '" class="btn btn-primary btn-small">Find Locum</a>';
+            } else if (need.status === 'filled') {
+                footerBtns = '<button class="btn btn-small" style="background:var(--danger);color:white;border-color:var(--danger);margin-right:auto;" id="cancelNeedBtn">Cancel Shift</button>';
             }
             footerBtns += '<button class="btn btn-ghost" data-modal-close>Close</button>';
 
@@ -620,10 +622,21 @@
         }
 
         function confirmCancelNeed(needId) {
+            var currentData = getMockData();
+            var bookedOffers = currentData.offers.filter(function(o) { return o.sessionNeedId === needId && ['accepted', 'confirmed'].includes(o.status); });
+            var hasBooking = bookedOffers.length > 0;
+            var bookedLocumName = '';
+            if (hasBooking) {
+                var loc = currentData.locums.find(function(l) { return l.id === bookedOffers[0].locumId; });
+                bookedLocumName = loc ? loc.title + ' ' + loc.firstName + ' ' + loc.lastName : 'the booked locum';
+            }
+            var bodyMsg = hasBooking
+                ? '<div style="padding:8px 0;"><p style="font-size:0.95rem;color:var(--dark-600);margin-bottom:12px;">This shift is currently booked with <strong>' + bookedLocumName + '</strong>. Are you sure you want to cancel?</p><p style="font-size:0.88rem;color:var(--danger);">The locum will be notified via notifications and messages that this shift has been cancelled.</p></div>'
+                : '<div style="padding:8px 0;"><p style="font-size:0.95rem;color:var(--dark-600);margin-bottom:12px;">Are you sure you want to cancel this session?</p><p style="font-size:0.88rem;color:var(--danger);">All pending offers will be withdrawn and locums notified.</p></div>';
             Modal.show({
-                title: 'Cancel Session',
-                body: '<div style="padding:8px 0;"><p style="font-size:0.95rem;color:var(--dark-600);margin-bottom:12px;">Are you sure you want to cancel this session need?</p><p style="font-size:0.88rem;color:var(--danger);">All pending offers will be withdrawn and locums notified.</p></div>',
-                footer: '<button class="btn btn-ghost" data-modal-close>Keep Session</button><button class="btn btn-small" style="background:var(--danger);color:white;border-color:var(--danger);" id="confirmCancelBtn">Cancel Session</button>',
+                title: hasBooking ? 'Cancel Booked Shift' : 'Cancel Session',
+                body: bodyMsg,
+                footer: '<button class="btn btn-ghost" data-modal-close>Keep ' + (hasBooking ? 'Shift' : 'Session') + '</button><button class="btn btn-small" style="background:var(--danger);color:white;border-color:var(--danger);" id="confirmCancelBtn">Cancel ' + (hasBooking ? 'Shift' : 'Session') + '</button>',
                 onOpen: function(overlay) {
                     overlay.querySelector('#confirmCancelBtn').addEventListener('click', function() {
                         var result = Booking.deleteSessionNeed(needId);
@@ -632,7 +645,7 @@
                             Toast.show(result.message || 'Unable to cancel this session.', 'error');
                             return;
                         }
-                        Toast.show('Session cancelled. All locums have been notified.', 'success');
+                        Toast.show(hasBooking ? 'Shift cancelled. The locum has been notified.' : 'Session cancelled. All locums have been notified.', 'success');
                         setTimeout(function() { renderTable(); }, 300);
                     });
                 }

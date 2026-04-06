@@ -824,8 +824,7 @@ const Booking = {
         } else {
             offer.status = 'no_show';
             offer.noShowDate = DateUtils.toISO(new Date());
-            const locum = data.locums.find(l => l.id === offer.locumId);
-            if (locum) locum.bookingReliability = Math.max(0, locum.bookingReliability - 10);
+            this.applyReliabilityPenalty(data, offer.locumId, 10);
             this.addNotification(data, offer.locumId, 'no_show', 'No Show Recorded',
                 `A no show was recorded at ${offer.practiceName} on ${DateUtils.format(offer.sessionDate, 'full')}. Your reliability score has been reduced by 10 points.`);
         }
@@ -854,8 +853,7 @@ const Booking = {
         }
         // Late cancellation penalty for locum
         if (cancelledBy === 'locum' && offer.lateCancellation) {
-            const locum = data.locums.find(l => l.id === offer.locumId);
-            if (locum) locum.bookingReliability = Math.max(0, locum.bookingReliability - 5);
+            this.applyReliabilityPenalty(data, offer.locumId, 5);
             this.addNotification(data, offer.locumId, 'late_cancellation', 'Late Cancellation Penalty',
                 `Your cancellation at ${offer.practiceName} on ${DateUtils.format(offer.sessionDate, 'full')} was within 48 hours. Your reliability score has been reduced by 5 points.`);
         }
@@ -909,11 +907,33 @@ const Booking = {
         if (!data.sessionNeeds) return { error: 'not_found', message: 'Session need not found' };
         const need = data.sessionNeeds.find(n => n.id === needId);
         if (!need) return { error: 'not_found', message: 'Session need not found' };
-        // Check for accepted/confirmed offers
-        const activeOffers = data.offers.filter(o => o.sessionNeedId === needId && ['accepted', 'confirmed'].includes(o.status));
-        if (activeOffers.length > 0) {
-            return { error: 'has_active_bookings', message: 'This session has confirmed bookings. Please cancel the booking first.' };
-        }
+        const dateStr = DateUtils.format(need.date, 'full');
+        // Cancel any accepted/confirmed bookings and notify locums
+        data.offers.filter(o => o.sessionNeedId === needId && ['accepted', 'confirmed'].includes(o.status))
+            .forEach(o => {
+                o.status = 'cancelled';
+                o.cancelledBy = 'practice';
+                o.cancelledDate = DateUtils.toISO(new Date());
+                // Re-open session need handled below (set to cancelled)
+                this.addNotification(data, o.locumId, 'cancellation', 'Shift Cancelled',
+                    `${need.practiceName} has cancelled the ${need.sessionType} session on ${dateStr}. We apologise for the inconvenience.`);
+                // Send a system message so the GP sees it in their messages
+                const threadId = MessageManager._findActiveThread(data, need.practiceId, o.locumId) || ('thread-' + Date.now() + Math.random().toString(36).substr(2, 5));
+                if (!data.messages) data.messages = [];
+                data.messages.push({
+                    id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+                    threadId,
+                    fromId: need.practiceId,
+                    toId: o.locumId,
+                    subject: '',
+                    body: `⚠️ Shift Cancelled — The ${need.sessionType} session on ${dateStr} has been cancelled by ${need.practiceName}.`,
+                    shiftId: null,
+                    timestamp: new Date().toISOString(),
+                    read: false,
+                    _deletedFor: [],
+                    _system: true
+                });
+            });
         // Withdraw all pending/sent offers
         data.offers.filter(o => o.sessionNeedId === needId && ['sent', 'viewed', 'negotiating'].includes(o.status))
             .forEach(o => {
@@ -921,7 +941,7 @@ const Booking = {
                 o.autoWithdrawn = true;
                 o.withdrawnDate = DateUtils.toISO(new Date());
                 this.addNotification(data, o.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
-                    `The session at ${need.practiceName} on ${DateUtils.format(need.date, 'full')} has been cancelled.`);
+                    `The session at ${need.practiceName} on ${dateStr} has been cancelled.`);
             });
         need.status = 'cancelled';
         saveMockData(data);
@@ -979,6 +999,28 @@ const Booking = {
             date: new Date().toISOString(),
             read: false
         });
+    },
+
+    // Apply a weighted reliability penalty based on total shifts completed
+    // A GP with many completed shifts absorbs penalties better than a new GP
+    // penalty: raw points (10 for no-show, 5 for late cancellation)
+    applyReliabilityPenalty(data, locumId, penalty) {
+        const locum = data.locums ? data.locums.find(l => l.id === locumId) : null;
+        if (!locum) return;
+        const totalShifts = locum.totalShifts || 1;
+        // Formula: drop = penalty / (totalShifts + penalty) * 100
+        // Examples with no-show (penalty=10):
+        //   156 shifts → 10/166*100 = ~6% → capped at 2% = high 90s
+        //   50 shifts  → 10/60*100  = ~17% → capped at 5%
+        //   10 shifts  → 10/20*100  = ~50% → capped at 10%
+        // Cap: max drop is penalty itself, min drop is 1%
+        const rawDrop = (penalty / (totalShifts + penalty)) * 100;
+        // Scale down: GPs with 50+ shifts get gentler drops
+        const scaledDrop = totalShifts >= 50 ? Math.min(rawDrop, penalty * 0.2)
+                         : totalShifts >= 20 ? Math.min(rawDrop, penalty * 0.5)
+                         : Math.min(rawDrop, penalty);
+        const actualDrop = Math.max(1, Math.round(scaledDrop));
+        locum.bookingReliability = Math.max(0, Math.round((locum.bookingReliability || 100) - actualDrop));
     }
 };
 
@@ -1697,12 +1739,9 @@ const FeedbackManager = {
                 return { error: 'too_late', message: 'Late cancellation can only be reported within 24 hours of the shift.' };
             }
         }
-        // Apply reliability penalty
-        const locum = data.locums ? data.locums.find(l => l.id === locumId) : null;
-        if (locum) {
-            const penalty = issueType === 'no_show' ? 10 : 5;
-            locum.bookingReliability = Math.max(0, (locum.bookingReliability || 100) - penalty);
-        }
+        // Apply weighted reliability penalty
+        const penalty = issueType === 'no_show' ? 10 : 5;
+        Booking.applyReliabilityPenalty(data, locumId, penalty);
         // Record the issue as feedback
         if (!data.feedback) data.feedback = [];
         data.feedback.push({

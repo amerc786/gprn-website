@@ -378,7 +378,7 @@
                             ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No notifications.</p>'
                             : notifications.slice(0, 6).map(n => {
                                 const dotColor = n.type === 'offer_accepted' || n.type === 'booking_confirmed' || n.type === 'payment_received' || n.type === 'payment_confirmed' || n.type === 'revision_approved' ? 'var(--success)' :
-                                    n.type === 'shift_cancelled' || n.type === 'no_show' || n.type === 'offer_withdrawn' || n.type === 'invoice_disputed' || n.type === 'revision_rejected' ? 'var(--danger)' :
+                                    n.type === 'shift_cancelled' || n.type === 'cancellation' || n.type === 'no_show' || n.type === 'offer_withdrawn' || n.type === 'invoice_disputed' || n.type === 'revision_rejected' ? 'var(--danger)' :
                                     n.type === 'invoice_overdue' || n.type === 'payment_reminder' ? 'var(--danger)' :
                                     n.type === 'payment_awaiting_confirmation' ? 'var(--warning)' :
                                     n.type === 'new_offer' || n.type === 'offer_received' ? 'var(--primary)' :
