@@ -454,7 +454,7 @@
                     info += '<div style="padding: 12px; background: rgba(34, 197, 94,0.06); border-radius: 8px; border: 1px solid rgba(34, 197, 94,0.15); margin-bottom: 16px;">'
                         + '<div style="display: flex; align-items: center; gap: 10px;">'
                         + '<div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.7rem;">' + getInitials(loc.firstName + ' ' + loc.lastName) + '</div>'
-                        + '<div><strong style="color: var(--dark);">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</strong>'
+                        + '<div><a href="locum-profile-view.html?id=' + loc.id + '" style="color: var(--dark); font-weight: 700; text-decoration: none;" onmouseover="this.style.color=\'var(--primary)\';this.style.textDecoration=\'underline\'" onmouseout="this.style.color=\'var(--dark)\';this.style.textDecoration=\'none\'">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</a>'
                         + '<div style="font-size: 0.8rem; color: var(--dark-600);"><span class="badge ' + getStatusBadge(acceptedOffer.status) + '" style="font-size: 0.7rem;">' + getStatusLabel(acceptedOffer.status) + '</span> &bull; Rate: ' + formatCurrency(rate) + '</div>'
                         + '</div></div>';
                     if (acceptedOffer.status === 'accepted') {
@@ -486,7 +486,7 @@
                     info += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gray-50); border-radius: 8px; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">'
                         + '<div style="display: flex; align-items: center; gap: 12px;">'
                         + '<div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.7rem;">' + getInitials(loc.firstName + ' ' + loc.lastName) + '</div>'
-                        + '<div><strong style="font-size: 0.88rem; color: var(--dark);">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</strong>'
+                        + '<div><a href="locum-profile-view.html?id=' + loc.id + '" style="font-size: 0.88rem; font-weight: 700; color: var(--dark); text-decoration: none;" onmouseover="this.style.color=\'var(--primary)\';this.style.textDecoration=\'underline\'" onmouseout="this.style.color=\'var(--dark)\';this.style.textDecoration=\'none\'">' + loc.title + ' ' + loc.firstName + ' ' + loc.lastName + '</a>'
                         + '<div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">'
                         + '<span class="badge ' + getStatusBadge(offer.status) + '" style="font-size:0.7rem;">' + getStatusLabel(offer.status) + '</span>'
                         + '<span style="font-size: 0.8rem; color: var(--dark-600);">Rate: ' + formatCurrency(rate) + '</span>'

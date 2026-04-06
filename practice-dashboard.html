@@ -738,7 +738,8 @@
                             const loc = freshData.locums.find(l => l.id === offer.locumId);
                             const locName = loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown';
                             const rate = offer.agreedRate || offer.proposedRate || 0;
-                            details = `<div style="margin-top: 8px; padding: 10px; background: rgba(34, 197, 94,0.08); border-radius: var(--radius); font-size: 0.85rem;">${getIcon('user')} <strong>${escapeHtml(locName)}</strong> &bull; ${formatCurrency(rate)}/session</div>`;
+                            const locLink = loc ? `<a href="locum-profile-view.html?id=${loc.id}" style="font-weight: 700; color: var(--dark); text-decoration: none;" onmouseover="this.style.color='var(--primary)';this.style.textDecoration='underline'" onmouseout="this.style.color='var(--dark)';this.style.textDecoration='none'">${escapeHtml(locName)}</a>` : `<strong>${escapeHtml(locName)}</strong>`;
+                            details = `<div style="margin-top: 8px; padding: 10px; background: rgba(34, 197, 94,0.08); border-radius: var(--radius); font-size: 0.85rem;">${getIcon('user')} ${locLink} &bull; ${formatCurrency(rate)}/session</div>`;
                         }
                     } else if (shift.status === 'open') {
                         statusBadge = '<span class="badge badge-warning">Open</span>';
@@ -876,7 +877,7 @@
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <div class="header-avatar" style="width: 36px; height: 36px; font-size: 0.75rem;">${getInitials(locName)}</div>
                                     <div>
-                                        <strong style="font-size: 0.9rem;">${escapeHtml(locName)}</strong>
+                                        <a href="locum-profile-view.html?id=${o.locumId}" style="font-size: 0.9rem; font-weight: 700; color: var(--dark); text-decoration: none;" onmouseover="this.style.color='var(--primary)';this.style.textDecoration='underline'" onmouseout="this.style.color='var(--dark)';this.style.textDecoration='none'">${escapeHtml(locName)}</a>
                                         <div style="font-size: 0.82rem; color: var(--dark-600);">${DateUtils.format(o.sessionDate || o.shiftDate, 'medium')} &bull; ${escapeHtml(o.sessionType)} &bull; ${formatCurrency(rate)}</div>
                                     </div>
                                 </div>

@@ -242,12 +242,15 @@
         let sortBy = 'reliability';
         let openDropdown = null;
         let showPreferredOnly = false;
+        let currentPage = 0;
+        const pageSize = 10;
 
         const urlParams = new URLSearchParams(window.location.search);
         let selectedNeedId = urlParams.get('needId') || '';
         let nameSearch = urlParams.get('q') || '';
         let hbFilter = '';
         let csFilter = '';
+        let availFilter = ''; // '', 'available', 'not_indicated'
 
         function getHealthBoards() {
             return [...new Set(data.locums.flatMap(l => l.healthBoards))].sort();
@@ -344,7 +347,15 @@
             render();
         }
 
-        // ===== RENDER LOCUM CARDS =====
+        function changePage(delta) {
+            currentPage += delta;
+            renderLocumsGrid();
+            // Scroll to top of list
+            const list = document.getElementById('locumsGrid');
+            if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // ===== RENDER LOCUM LIST =====
         function renderLocums() {
             const currentData = getMockData();
             let selectedNeed = null;
@@ -379,6 +390,9 @@
                     );
                     l._canInvite = l._avail && !l._booked && !l._existingOffer;
                 });
+                // Availability filter
+                if (availFilter === 'available') locums = locums.filter(l => l._canInvite);
+                if (availFilter === 'not_indicated') locums = locums.filter(l => !l._avail && !l._booked && !l._existingOffer);
             }
 
             // Sort
@@ -421,11 +435,12 @@
             if (locums.length === 0) {
                 const msg = showPreferredOnly
                     ? 'No preferred locums found. Mark locums as preferred from their profile or the actions menu.'
-                    : nameSearch || hbFilter || csFilter
+                    : nameSearch || hbFilter || csFilter || availFilter
                         ? 'No locums match your current filters. Try broadening your search.'
                         : 'No locums available.';
+                currentPage = 0;
                 return `
-                    <div class="col-span-full bg-white border border-slate-200 rounded-2xl shadow-subtle p-12 flex flex-col items-center justify-center text-center">
+                    <div class="bg-white border border-slate-200 rounded-2xl shadow-subtle p-12 flex flex-col items-center justify-center text-center">
                         <div class="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
                             <i class="ph ph-users text-3xl text-slate-400"></i>
                         </div>
@@ -434,7 +449,14 @@
                     </div>`;
             }
 
-            return locums.map(loc => {
+            // Pagination
+            const totalPages = Math.ceil(locums.length / pageSize);
+            if (currentPage >= totalPages) currentPage = totalPages - 1;
+            if (currentPage < 0) currentPage = 0;
+            const start = currentPage * pageSize;
+            const pageLocums = locums.slice(start, start + pageSize);
+
+            let html = pageLocums.map(loc => {
                 const isPreferred = BarredList.isPreferred(session.id, loc.id);
                 const avgRating = FeedbackManager.getAverageRating(loc.id);
                 const locName = `${loc.title} ${loc.firstName} ${loc.lastName}`;
@@ -443,106 +465,133 @@
                 const reliabilityColor = loc.bookingReliability >= 95 ? 'text-emerald-600' : (loc.bookingReliability >= 85 ? 'text-amber-600' : 'text-rose-600');
 
                 // Rate display
-                let rateHtml = '';
+                let rateDisplay = '';
+                let rateLabel = '';
                 const rates = loc.rates || {};
                 if (selectedNeed) {
                     const rate = selectedNeed.sessionType === 'AM' ? rates.am : selectedNeed.sessionType === 'PM' ? rates.pm : rates.fullDay;
-                    if (rate) rateHtml = `<div class="text-right"><div class="text-[15px] font-extrabold text-navy">${formatCurrency(rate)}</div><div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">${selectedNeed.sessionType}</div></div>`;
+                    if (rate) { rateDisplay = formatCurrency(rate); rateLabel = selectedNeed.sessionType; }
                 } else {
                     const rate = rates.fullDay || rates.am || null;
-                    const label = rates.fullDay ? 'Full day' : rates.am ? 'AM' : '';
-                    if (rate) rateHtml = `<div class="text-right"><div class="text-[15px] font-extrabold text-navy">${formatCurrency(rate)}</div><div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">${label}</div></div>`;
+                    rateLabel = rates.fullDay ? 'Full day' : rates.am ? 'AM' : '';
+                    if (rate) rateDisplay = formatCurrency(rate);
                 }
 
                 // Availability badge
-                let availHtml = '';
+                let availBadge = '';
                 if (selectedNeed) {
                     if (loc._canInvite) {
-                        availHtml = `<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2.5 py-1 rounded-full"><i class="ph ph-check-circle"></i> Available</span>`;
+                        availBadge = `<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2 py-0.5 rounded-full"><i class="ph ph-check-circle"></i> Available</span>`;
                     } else if (loc._existingOffer) {
-                        availHtml = `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full"><i class="ph ph-paper-plane-tilt"></i> Offer sent</span>`;
+                        availBadge = `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[11px] font-bold px-2 py-0.5 rounded-full"><i class="ph ph-paper-plane-tilt"></i> Offer sent</span>`;
                     } else if (loc._booked) {
-                        availHtml = `<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[11px] font-bold px-2.5 py-1 rounded-full">Booked</span>`;
+                        availBadge = `<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[11px] font-bold px-2 py-0.5 rounded-full">Booked</span>`;
                     } else {
-                        availHtml = `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-[11px] font-bold px-2.5 py-1 rounded-full" title="This GP has not set their availability for this date">Not indicated</span>`;
+                        availBadge = `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-[11px] font-bold px-2 py-0.5 rounded-full">Not indicated</span>`;
                     }
                 }
 
                 // Primary action
-                let primaryBtn = '';
+                let actionBtn = '';
                 if (selectedNeed && loc._existingOffer) {
-                    primaryBtn = `<button class="bg-slate-100 text-slate-400 px-4 py-2 rounded-full text-[13px] font-bold cursor-not-allowed" disabled><i class="ph ph-check"></i> Sent</button>`;
+                    actionBtn = `<button class="bg-slate-100 text-slate-400 px-3 py-1.5 rounded-full text-[12px] font-bold cursor-not-allowed" disabled><i class="ph ph-check"></i> Sent</button>`;
                 } else {
-                    primaryBtn = `<button onclick="sendOfferToLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')" class="bg-navy text-white px-4 py-2 rounded-full text-[13px] font-bold hover:bg-slate-800 transition-colors">Send Offer</button>`;
+                    actionBtn = `<button onclick="event.stopPropagation(); sendOfferToLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')" class="bg-navy text-white px-3 py-1.5 rounded-full text-[12px] font-bold hover:bg-slate-800 transition-colors">Send Offer</button>`;
                 }
 
                 // Star rating
-                const starRatingHtml = avgRating
-                    ? `<div class="flex items-center gap-1"><i class="ph-fill ph-star text-amber-400 text-[13px]"></i><span class="text-[12px] font-bold text-navy">${avgRating}</span></div>`
-                    : `<div class="flex items-center gap-1"><i class="ph ph-star text-slate-300 text-[13px]"></i><span class="text-[12px] font-bold text-slate-400">New</span></div>`;
+                const starHtml = avgRating
+                    ? `<i class="ph-fill ph-star text-amber-400 text-[12px]"></i> <span class="text-[12px] font-bold text-navy">${avgRating}</span>`
+                    : `<i class="ph ph-star text-slate-300 text-[12px]"></i> <span class="text-[12px] font-bold text-slate-400">New</span>`;
+
+                // Systems badges (compact)
+                const systemsHtml = loc.computerSystems.slice(0, 2).map(cs =>
+                    `<span class="bg-slate-50 border border-slate-200 text-slate-500 text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase">${cs}</span>`
+                ).join('') + (loc.computerSystems.length > 2 ? `<span class="text-[10px] text-slate-400 font-bold">+${loc.computerSystems.length - 2}</span>` : '');
+
+                // Dropdown menu
+                const dropdownHtml = isOpen ? `
+                    <div class="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-card z-30 min-w-[180px] overflow-hidden">
+                        ${isPreferred
+                            ? `<button onclick="removePreferred('${loc.id}')" class="block w-full text-left px-4 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50">Remove Preferred</button>`
+                            : `<button onclick="markPreferred('${loc.id}')" class="block w-full text-left px-4 py-2.5 text-[13px] font-semibold text-emerald-600 hover:bg-emerald-50">Mark as Preferred</button>`
+                        }
+                        <button onclick="barLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')" class="block w-full text-left px-4 py-2.5 text-[13px] font-semibold text-rose-600 hover:bg-rose-50 border-t border-slate-100">Block Locum</button>
+                    </div>` : '';
 
                 return `
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-subtle hover:shadow-card transition-shadow p-5 flex flex-col gap-4 animate-item">
-                    <!-- Top: Avatar + Name + Actions menu -->
-                    <div class="flex items-start gap-3">
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-navy to-slate-700 text-white flex items-center justify-center font-extrabold text-[14px] shrink-0">
+                <div class="bg-white rounded-xl border border-slate-200 shadow-subtle hover:shadow-card hover:border-slate-300 transition-all px-5 py-4 cursor-pointer" onclick="window.location.href='locum-profile-view.html?id=${loc.id}'">
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <!-- Avatar -->
+                        <div class="w-11 h-11 rounded-full bg-gradient-to-br from-navy to-slate-700 text-white flex items-center justify-center font-extrabold text-[13px] shrink-0">
                             ${getInitials(loc.firstName + ' ' + loc.lastName)}
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <p class="text-[15px] font-extrabold text-navy truncate">${locName}</p>
-                                ${isPreferred ? '<i class="ph-fill ph-star text-emerald-500 text-[13px]" title="Preferred"></i>' : ''}
+                        <!-- Name & info -->
+                        <div class="flex-1 min-w-[180px]">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[15px] font-extrabold text-navy">${locName}</span>
+                                ${isPreferred ? '<i class="ph-fill ph-star text-emerald-500 text-[12px]" title="Preferred"></i>' : ''}
+                                ${availBadge}
                             </div>
-                            <p class="text-[12px] text-slate-500 font-medium mt-0.5">
-                                <i class="ph ph-clock"></i> ${loc.responseTime || 'Responds fast'}
-                            </p>
+                            <div class="flex items-center gap-3 mt-1 text-[12px] text-slate-500 font-medium">
+                                <span><i class="ph ph-clock"></i> ${loc.responseTime || 'Responds fast'}</span>
+                                <span class="flex items-center gap-0.5">${systemsHtml}</span>
+                            </div>
                         </div>
-                        <div class="relative shrink-0">
-                            <button onclick="toggleDropdown('${loc.id}', event)" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-navy transition-colors">
-                                <i class="ph-bold ph-dots-three-vertical"></i>
-                            </button>
-                            ${isOpen ? `
-                            <div class="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-card z-30 min-w-[180px] overflow-hidden">
-                                ${isPreferred
-                                    ? `<button onclick="removePreferred('${loc.id}')" class="block w-full text-left px-4 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50">Remove Preferred</button>`
-                                    : `<button onclick="markPreferred('${loc.id}')" class="block w-full text-left px-4 py-2.5 text-[13px] font-semibold text-emerald-600 hover:bg-emerald-50">Mark as Preferred</button>`
-                                }
-                                <button onclick="barLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')" class="block w-full text-left px-4 py-2.5 text-[13px] font-semibold text-rose-600 hover:bg-rose-50 border-t border-slate-100">Block Locum</button>
+                        <!-- Stats -->
+                        <div class="flex items-center gap-5 shrink-0">
+                            <div class="text-center">
+                                <div class="text-[14px] font-extrabold ${reliabilityColor}">${loc.bookingReliability}%</div>
+                                <div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Reliability</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-[14px] font-extrabold text-navy">${loc.totalShifts}</div>
+                                <div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Sessions</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="flex items-center gap-0.5 justify-center">${starHtml}</div>
+                                <div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Rating</div>
+                            </div>
+                            ${rateDisplay ? `
+                            <div class="text-center">
+                                <div class="text-[14px] font-extrabold text-navy">${rateDisplay}</div>
+                                <div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">${rateLabel}</div>
                             </div>` : ''}
                         </div>
-                    </div>
-
-                    ${availHtml ? `<div>${availHtml}</div>` : ''}
-
-                    <!-- Stats row -->
-                    <div class="grid grid-cols-3 gap-2 py-3 border-y border-slate-100">
-                        <div class="text-center">
-                            <div class="text-[16px] font-extrabold ${reliabilityColor}">${loc.bookingReliability}%</div>
-                            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Reliability</div>
+                        <!-- Actions -->
+                        <div class="flex items-center gap-2 shrink-0" onclick="event.stopPropagation();">
+                            ${actionBtn}
+                            <div class="relative">
+                                <button onclick="toggleDropdown('${loc.id}', event)" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-navy transition-colors">
+                                    <i class="ph-bold ph-dots-three-vertical"></i>
+                                </button>
+                                ${dropdownHtml}
+                            </div>
                         </div>
-                        <div class="text-center border-x border-slate-100">
-                            <div class="text-[16px] font-extrabold text-navy">${loc.totalShifts}</div>
-                            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Sessions</div>
-                        </div>
-                        <div class="text-center flex flex-col items-center justify-center">
-                            ${starRatingHtml}
-                            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mt-0.5">Rating</div>
-                        </div>
-                    </div>
-
-                    <!-- Computer systems -->
-                    <div class="flex flex-wrap gap-1.5">
-                        ${loc.computerSystems.slice(0, 3).map(cs => `<span class="bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">${cs}</span>`).join('')}
-                        ${rateHtml ? `<div class="ml-auto">${rateHtml}</div>` : ''}
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="flex items-center gap-2 mt-auto">
-                        <a href="locum-profile-view.html?id=${loc.id}" class="flex-1 text-center text-navy bg-white border border-slate-200 px-4 py-2 rounded-full text-[13px] font-bold hover:bg-slate-50 transition-colors">Profile</a>
-                        <div class="flex-1 flex justify-end">${primaryBtn}</div>
                     </div>
                 </div>`;
             }).join('');
+
+            // Pagination bar
+            if (totalPages > 1) {
+                const showStart = start + 1;
+                const showEnd = Math.min(start + pageSize, locums.length);
+                html += `
+                <div class="flex items-center justify-between bg-white border border-slate-200 rounded-xl shadow-subtle px-5 py-3 mt-2">
+                    <span class="text-[13px] font-semibold text-slate-500">Showing ${showStart}–${showEnd} of ${locums.length} locums</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="changePage(-1)" class="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-navy transition-colors ${currentPage === 0 ? 'opacity-40 pointer-events-none' : ''}" ${currentPage === 0 ? 'disabled' : ''}>
+                            <i class="ph-bold ph-caret-left text-sm"></i>
+                        </button>
+                        <span class="text-[13px] font-bold text-navy px-2">${currentPage + 1} / ${totalPages}</span>
+                        <button onclick="changePage(1)" class="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-navy transition-colors ${currentPage >= totalPages - 1 ? 'opacity-40 pointer-events-none' : ''}" ${currentPage >= totalPages - 1 ? 'disabled' : ''}>
+                            <i class="ph-bold ph-caret-right text-sm"></i>
+                        </button>
+                    </div>
+                </div>`;
+            }
+
+            return html;
         }
 
         // ===== OFFER MODAL =====
@@ -670,7 +719,7 @@
                     </div>
                     <div class="flex-1 min-w-[240px]">
                         <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Filter by open session</label>
-                        <select id="filterNeed" onchange="selectedNeedId = this.value; render();" class="w-full bg-slate-50 border border-slate-200 rounded-full px-4 py-2 text-[13px] font-semibold text-navy focus:outline-none focus:ring-2 focus:ring-navy/10">
+                        <select id="filterNeed" onchange="selectedNeedId = this.value; availFilter = ''; currentPage = 0; render();" class="w-full bg-slate-50 border border-slate-200 rounded-full px-4 py-2 text-[13px] font-semibold text-navy focus:outline-none focus:ring-2 focus:ring-navy/10">
                             <option value="">All locums (no date filter)</option>
                             ${openNeeds.map(n => `<option value="${n.id}" ${selectedNeedId === n.id ? 'selected' : ''}>${DateUtils.format(n.date, 'medium')} — ${n.sessionType} (${n.startTime}–${n.endTime})</option>`).join('')}
                         </select>
@@ -693,13 +742,13 @@
                 <div class="flex flex-col gap-4 animate-item">
                     <div class="relative">
                         <i class="ph ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-                        <input type="text" id="searchName" value="${nameSearch.replace(/"/g, '&quot;')}" oninput="nameSearch = this.value; renderLocumsGrid();" placeholder="Search by locum name..." class="w-full bg-white border border-slate-200 rounded-full py-3 pl-12 pr-5 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
+                        <input type="text" id="searchName" value="${nameSearch.replace(/"/g, '&quot;')}" oninput="nameSearch = this.value; currentPage = 0; renderLocumsGrid();" placeholder="Search by locum name..." class="w-full bg-white border border-slate-200 rounded-full py-3 pl-12 pr-5 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
                     </div>
 
                     <div class="flex items-center gap-2 flex-wrap">
                         <!-- Computer system chip (select) -->
                         <div class="relative">
-                            <select id="filterCS" onchange="csFilter = this.value; render();" class="appearance-none ${csFilter ? 'chip-active' : ''} bg-white border border-slate-200 rounded-full pl-4 pr-9 py-1.5 text-[13px] font-bold text-slate-600 cursor-pointer hover:border-slate-300 transition-colors focus:outline-none">
+                            <select id="filterCS" onchange="csFilter = this.value; currentPage = 0; render();" class="appearance-none ${csFilter ? 'chip-active' : ''} bg-white border border-slate-200 rounded-full pl-4 pr-9 py-1.5 text-[13px] font-bold text-slate-600 cursor-pointer hover:border-slate-300 transition-colors focus:outline-none">
                                 <option value="">Computer System</option>
                                 ${computerSystems.map(cs => `<option value="${cs}" ${csFilter === cs ? 'selected' : ''}>${cs}</option>`).join('')}
                             </select>
@@ -708,12 +757,23 @@
 
                         <!-- Health board chip -->
                         <div class="relative">
-                            <select id="filterHB" onchange="hbFilter = this.value; render();" class="appearance-none ${hbFilter ? 'chip-active' : ''} bg-white border border-slate-200 rounded-full pl-4 pr-9 py-1.5 text-[13px] font-bold text-slate-600 cursor-pointer hover:border-slate-300 transition-colors focus:outline-none">
+                            <select id="filterHB" onchange="hbFilter = this.value; currentPage = 0; render();" class="appearance-none ${hbFilter ? 'chip-active' : ''} bg-white border border-slate-200 rounded-full pl-4 pr-9 py-1.5 text-[13px] font-bold text-slate-600 cursor-pointer hover:border-slate-300 transition-colors focus:outline-none">
                                 <option value="">Health Board</option>
                                 ${healthBoards.map(hb => `<option value="${hb}" ${hbFilter === hb ? 'selected' : ''}>${hb}</option>`).join('')}
                             </select>
                             <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] pointer-events-none ${hbFilter ? 'text-white' : 'text-slate-400'}"></i>
                         </div>
+
+                        <!-- Availability filter (only when session selected) -->
+                        ${selectedNeed ? `
+                        <div class="relative">
+                            <select id="filterAvail" onchange="availFilter = this.value; currentPage = 0; render();" class="appearance-none ${availFilter ? 'chip-active' : ''} bg-white border border-slate-200 rounded-full pl-4 pr-9 py-1.5 text-[13px] font-bold text-slate-600 cursor-pointer hover:border-slate-300 transition-colors focus:outline-none">
+                                <option value="">Availability</option>
+                                <option value="available" ${availFilter === 'available' ? 'selected' : ''}>Available only</option>
+                                <option value="not_indicated" ${availFilter === 'not_indicated' ? 'selected' : ''}>Not indicated</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] pointer-events-none ${availFilter ? 'text-white' : 'text-slate-400'}"></i>
+                        </div>` : ''}
 
                         <!-- Sort chip -->
                         <div class="relative">
@@ -735,8 +795,8 @@
                     </div>
                 </div>
 
-                <!-- LOCUM GRID -->
-                <div id="locumsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                <!-- LOCUM LIST -->
+                <div id="locumsGrid" class="flex flex-col gap-3">
                     ${renderLocums()}
                 </div>
             `;
