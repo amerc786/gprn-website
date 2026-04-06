@@ -90,9 +90,9 @@
 <body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
 
     <script src="mock-data.js"></script>
-    <script src="app.js?v=20260406"></script>
-    <script src="supabase-client.js?v=20260406"></script>
-    <script src="supabase-tables.js?v=20260406"></script>
+    <script src="app.js?v=20260406b"></script>
+    <script src="supabase-client.js?v=20260406b"></script>
+    <script src="supabase-tables.js?v=20260406b"></script>
     <script src="components.js"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
@@ -626,7 +626,8 @@
                 return;
             }
 
-            const locum = currentData.locums.find(l => l.id === locumId);
+            var locum = currentData.locums.find(l => l.id === locumId);
+            if (!locum) locum = _getLocumsList().find(l => l.id === locumId);
             const effRates = getEffectiveRates(locum, session.id);
             const locumRates = effRates ? effRates.rates : {};
             const preSelected = selectedNeedId || openNeeds[0].id;
@@ -648,6 +649,11 @@
                         <select class="form-select" id="offerNeedSelect" onchange="updateOfferRate()">
                             ${needOptions}
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Offered Rate (£)</label>
+                        <input type="number" class="form-input" id="offerRate" min="1" step="1" value="${defaultRate || ''}" placeholder="Enter rate...">
+                        <span id="offerRateHint" style="font-size:0.8rem; color:var(--dark-400); margin-top:4px; display:block;">${defaultRate ? 'Locum\'s published rate: ' + formatCurrency(defaultRate) : 'No published rate available'}</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Message (optional)</label>

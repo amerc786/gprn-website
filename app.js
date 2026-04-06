@@ -578,7 +578,10 @@ const Booking = {
         if (!session || session.role !== 'practice') return { error: 'not_authorized', message: 'Only practices can send offers' };
         const practice = data.practices.find(p => p.id === session.id);
         if (!practice) return { error: 'not_found', message: 'Practice not found' };
-        const locum = data.locums.find(l => l.id === locumId);
+        var locum = data.locums.find(l => l.id === locumId);
+        if (!locum && window.SupabaseClient && window.SupabaseClient.getApprovedLocums) {
+            locum = window.SupabaseClient.getApprovedLocums().find(l => l.id === locumId);
+        }
         if (!locum) return { error: 'locum_not_found', message: 'Locum not found' };
         if (BarredList.isBarred(session.id, locumId)) {
             return { error: 'barred', message: 'This locum is on your blocked list' };

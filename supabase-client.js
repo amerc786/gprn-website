@@ -175,7 +175,7 @@
         _cache = data;
         _lastFetchAt = Date.now();
         try { localStorage.setItem('gprn_data', JSON.stringify(data)); } catch(e) {}
-        if (_getAccessToken()) _writeBlobAsync(data);
+        if (_getAccessToken()) _writeBlobSync(data);
     };
 
     // ============================================================
