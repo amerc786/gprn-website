@@ -90,9 +90,9 @@
 <body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
 
     <script src="mock-data.js"></script>
-    <script src="app.js"></script>
-    <script src="supabase-client.js"></script>
-    <script src="supabase-tables.js"></script>
+    <script src="app.js?v=20260406"></script>
+    <script src="supabase-client.js?v=20260406"></script>
+    <script src="supabase-tables.js?v=20260406"></script>
     <script src="components.js"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
@@ -256,7 +256,7 @@
         function _getLocumsList() {
             if (window.SupabaseClient && window.SupabaseClient.getApprovedLocums) {
                 var approved = window.SupabaseClient.getApprovedLocums();
-                if (approved !== null) return approved;
+                return Array.isArray(approved) ? approved : [];
             }
             return data.locums;
         }
@@ -371,11 +371,11 @@
                 selectedNeed = currentData.sessionNeeds.find(n => n.id === selectedNeedId);
             }
 
-            // Use approved locums from Supabase profiles when available
+            // Use approved locums from Supabase profiles — never show mock data on live site
             let locums;
             if (window.SupabaseClient && window.SupabaseClient.getApprovedLocums) {
                 const approved = window.SupabaseClient.getApprovedLocums();
-                locums = approved !== null ? approved : [...currentData.locums];
+                locums = Array.isArray(approved) ? approved : [];
             } else {
                 locums = [...currentData.locums];
             }
