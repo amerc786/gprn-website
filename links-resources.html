@@ -87,9 +87,229 @@
                 ${linkCard('https://pthb.nhs.wales', 'activity', 'Powys THB', 'Powys Teaching Health Board covering Mid Wales.')}
                 ${linkCard('https://sbuhb.nhs.wales', 'activity', 'Swansea Bay UHB', 'Swansea Bay University Health Board covering Swansea and Neath Port Talbot.')}
             </div>
+        </div>
+
+        <!-- Wales-Wide Emergency & Key Numbers -->
+        <div id="referral-pathways" class="content-card" style="margin-top: 24px; border-left: 3px solid var(--primary);">
+            <div class="content-card-header">
+                <h2>${getIcon('phone')} Wales-Wide Emergency & Key Numbers</h2>
+            </div>
+            <div class="content-card-body" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;">
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
+                    <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('phone')} NHS 111 Wales</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Non-emergency medical advice, out-of-hours GP access</div>
+                    <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">111</div>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
+                    <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('heartbeat')} Mental Health Crisis Line (C.A.L.L.)</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Community Advice & Listening Line — 24/7 mental health support</div>
+                    <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">0800 132 737</div>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
+                    <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('shield')} Wales Safeguarding</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">National safeguarding helpline for adults and children</div>
+                    <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">0808 100 2500</div>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
+                    <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('warning')} National Poisons Information Service</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">NPIS — poisoning/overdose advice for healthcare professionals</div>
+                    <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">0344 892 0111</div>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
+                    <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('users')} Social Services (Wales)</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Dewis Cymru — directory of social services and wellbeing resources</div>
+                    <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">dewis.wales</div>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
+                    <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('first-aid')} Welsh Ambulance Service</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Emergency ambulance, NEPTS, clinical contact</div>
+                    <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">999 / 0345 602 0100</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Referral Pathways by Health Board -->
+        <div class="content-card" style="margin-top: 24px;">
+            <div class="content-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>${getIcon('map-pin')} Referral Pathways by Health Board</h2>
+            </div>
+            <div class="content-card-body">
+                <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9rem;">Key referral contacts for each Welsh health board. Select a health board to view its referral numbers and pathways.</p>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;" id="hbTabs">
+                    <button class="btn btn-small hb-tab active" onclick="showHB('abuhb', event)">Aneurin Bevan</button>
+                    <button class="btn btn-small btn-ghost hb-tab" onclick="showHB('bcuhb', event)">Betsi Cadwaladr</button>
+                    <button class="btn btn-small btn-ghost hb-tab" onclick="showHB('cavuhb', event)">Cardiff & Vale</button>
+                    <button class="btn btn-small btn-ghost hb-tab" onclick="showHB('ctmuhb', event)">Cwm Taf Morgannwg</button>
+                    <button class="btn btn-small btn-ghost hb-tab" onclick="showHB('hduhb', event)">Hywel Dda</button>
+                    <button class="btn btn-small btn-ghost hb-tab" onclick="showHB('pthb', event)">Powys</button>
+                    <button class="btn btn-small btn-ghost hb-tab" onclick="showHB('sbuhb', event)">Swansea Bay</button>
+                </div>
+
+                <div id="hbContent"></div>
+            </div>
         </div>`;
 
+        const hbData = {
+            abuhb: {
+                name: 'Aneurin Bevan University Health Board',
+                area: 'Blaenau Gwent, Caerphilly, Monmouthshire, Newport, Torfaen',
+                contacts: [
+                    { cat: 'District Nursing', number: '01633 234 234', note: 'Single point of access for community nursing referrals' },
+                    { cat: 'Community Mental Health Team', number: '01633 436 013', note: 'Adult CMHT — GP referral for non-urgent mental health' },
+                    { cat: 'Crisis Resolution Home Treatment', number: '01633 436 060', note: '24/7 mental health crisis team' },
+                    { cat: 'Palliative Care / Macmillan', number: '01633 234 672', note: 'Specialist palliative care advice and referrals' },
+                    { cat: 'Safeguarding (Adults)', number: '01633 431 636', note: 'ABUHB adult safeguarding team' },
+                    { cat: 'Safeguarding (Children)', number: '01633 431 636', note: 'ABUHB child protection team' },
+                    { cat: 'Rapid Response / Frailty', number: '01633 238 974', note: '@home service — urgent community response' },
+                    { cat: 'Musculoskeletal (MSK)', number: '01495 765 065', note: 'ABUHB MSK physiotherapy triage service' },
+                    { cat: 'Diabetes & Endocrinology', number: '01633 234 928', note: 'Specialist diabetes referral and advice line' },
+                    { cat: 'Pharmacy Advice', number: '01633 238 131', note: 'Medicines information for healthcare professionals' },
+                ]
+            },
+            bcuhb: {
+                name: 'Betsi Cadwaladr University Health Board',
+                area: 'Anglesey, Gwynedd, Conwy, Denbighshire, Flintshire, Wrexham',
+                contacts: [
+                    { cat: 'District Nursing', number: '03000 851 631', note: 'Single point of access — community nursing' },
+                    { cat: 'Community Mental Health Team', number: '03000 853 400', note: 'Adult CMHT referral line' },
+                    { cat: 'Crisis Resolution Home Treatment', number: '0300 085 0000', note: '24/7 mental health crisis assessment' },
+                    { cat: 'Palliative Care', number: '01745 443 743', note: 'St Kentigern Hospice / palliative advice' },
+                    { cat: 'Safeguarding', number: '03000 851 111', note: 'BCUHB safeguarding referral hub' },
+                    { cat: 'Rapid Response / Community Resource Team', number: '03000 853 500', note: 'Urgent community response' },
+                    { cat: 'Musculoskeletal (MSK)', number: '03000 850 047', note: 'MSK Clinical Assessment & Triage' },
+                    { cat: 'Diabetes & Endocrinology', number: '01978 727 025', note: 'Wrexham Maelor diabetes team' },
+                    { cat: 'Pharmacy Advice', number: '01248 384 795', note: 'Medicines information — Bangor' },
+                    { cat: 'Paediatric Advice', number: '01978 727 515', note: 'Paediatric assessment unit — Wrexham' },
+                ]
+            },
+            cavuhb: {
+                name: 'Cardiff and Vale University Health Board',
+                area: 'Cardiff, Vale of Glamorgan',
+                contacts: [
+                    { cat: 'District Nursing', number: '029 2033 6565', note: 'Community nursing single point of access' },
+                    { cat: 'Community Mental Health Team', number: '029 2033 6789', note: 'Adult CMHT referrals' },
+                    { cat: 'Crisis Resolution Home Treatment', number: '029 2074 4744', note: '24/7 mental health crisis team — all ages' },
+                    { cat: 'Palliative Care', number: '029 2042 6987', note: 'Marie Curie / specialist palliative advice' },
+                    { cat: 'Safeguarding (Adults)', number: '029 2053 6490', note: 'CAVUHB adult safeguarding' },
+                    { cat: 'Safeguarding (Children)', number: '029 2053 6490', note: 'Child protection referrals' },
+                    { cat: 'Acute GP Unit / Same Day Emergency', number: '029 2074 7747', note: 'Same-day emergency care access' },
+                    { cat: 'Musculoskeletal (MSK)', number: '029 2071 6938', note: 'MSK physiotherapy triage' },
+                    { cat: 'Diabetes & Endocrinology', number: '029 2074 3439', note: 'Diabetes specialist nurse referral' },
+                    { cat: 'Pharmacy Advice', number: '029 2074 2979', note: 'UHW medicines information' },
+                ]
+            },
+            ctmuhb: {
+                name: 'Cwm Taf Morgannwg University Health Board',
+                area: 'Bridgend, Merthyr Tydfil, Rhondda Cynon Taf',
+                contacts: [
+                    { cat: 'District Nursing', number: '01443 443 443', note: 'Community nursing referrals — single point of access' },
+                    { cat: 'Community Mental Health Team', number: '01443 443 555', note: 'Adult CMHT referral line' },
+                    { cat: 'Crisis Resolution Home Treatment', number: '01443 443 663', note: '24/7 crisis team' },
+                    { cat: 'Palliative Care', number: '01656 752 752', note: 'Specialist palliative care — Princess of Wales Hospital' },
+                    { cat: 'Safeguarding', number: '01443 443 665', note: 'CTMUHB safeguarding referrals' },
+                    { cat: 'Rapid Response / Frailty', number: '01443 443 320', note: 'Acute clinical response team' },
+                    { cat: 'Musculoskeletal (MSK)', number: '01443 443 518', note: 'MSK triage and physiotherapy' },
+                    { cat: 'Diabetes & Endocrinology', number: '01685 721 721 ext 6257', note: 'Prince Charles Hospital diabetes team' },
+                    { cat: 'Pharmacy Advice', number: '01443 443 047', note: 'Medicines information service' },
+                    { cat: 'Paediatric Advice', number: '01685 721 721 ext 6124', note: 'Paediatric assessment unit' },
+                ]
+            },
+            hduhb: {
+                name: 'Hywel Dda University Health Board',
+                area: 'Carmarthenshire, Ceredigion, Pembrokeshire',
+                contacts: [
+                    { cat: 'District Nursing', number: '0300 333 2222', note: 'Single point of contact — community nursing' },
+                    { cat: 'Community Mental Health Team', number: '0300 333 2206', note: 'Adult CMHT referral' },
+                    { cat: 'Crisis Resolution Home Treatment', number: '0300 333 2222', note: '24/7 mental health crisis team' },
+                    { cat: 'Palliative Care', number: '01267 227 066', note: 'Ty Bryngwyn Hospice / palliative care advice' },
+                    { cat: 'Safeguarding', number: '0300 333 2222', note: 'HDUHB safeguarding single point of contact' },
+                    { cat: 'Rapid Response', number: '0300 333 2222', note: 'Urgent community response — Delta Wellbeing' },
+                    { cat: 'Musculoskeletal (MSK)', number: '0300 333 2555', note: 'MSK clinical assessment service' },
+                    { cat: 'Diabetes & Endocrinology', number: '01267 227 472', note: 'Glangwili diabetes team' },
+                    { cat: 'Pharmacy Advice', number: '01267 227 513', note: 'Medicines information — Glangwili' },
+                    { cat: 'Paediatric Advice', number: '01267 227 060', note: 'Paediatric assessment unit — Glangwili' },
+                ]
+            },
+            pthb: {
+                name: 'Powys Teaching Health Board',
+                area: 'Powys (Mid Wales)',
+                contacts: [
+                    { cat: 'District Nursing', number: '01874 622 443', note: 'Community nursing referrals — Brecon War Memorial' },
+                    { cat: 'Community Mental Health Team', number: '01686 617 242', note: 'Adult CMHT — Newtown' },
+                    { cat: 'Crisis Resolution', number: '0800 132 737', note: 'Via C.A.L.L. helpline — Powys does not have a local crisis team' },
+                    { cat: 'Palliative Care', number: '01686 617 201', note: 'Specialist palliative care coordinator' },
+                    { cat: 'Safeguarding', number: '01597 827 666', note: 'PTHB safeguarding team — Llandrindod Wells' },
+                    { cat: 'Rapid Response', number: '01874 622 443', note: 'Community urgent response' },
+                    { cat: 'Musculoskeletal (MSK)', number: '01686 617 338', note: 'MSK physiotherapy referrals' },
+                    { cat: 'Diabetes & Endocrinology', number: '01874 622 443 ext 217', note: 'Diabetes specialist nurse' },
+                    { cat: 'Pharmacy Advice', number: '01874 622 443 ext 231', note: 'Medicines advice' },
+                    { cat: 'Paediatric Advice', number: '01874 622 443', note: 'Community paediatrics — referral via admin' },
+                ]
+            },
+            sbuhb: {
+                name: 'Swansea Bay University Health Board',
+                area: 'Swansea, Neath Port Talbot',
+                contacts: [
+                    { cat: 'District Nursing', number: '01639 862 000', note: 'Community nursing — single point of access' },
+                    { cat: 'Community Mental Health Team', number: '01792 517 800', note: 'Adult CMHT referral — Swansea' },
+                    { cat: 'Crisis Resolution Home Treatment', number: '01639 862 860', note: '24/7 crisis resolution team' },
+                    { cat: 'Palliative Care', number: '01639 862 172', note: 'Specialist palliative care team — Neath Port Talbot Hospital' },
+                    { cat: 'Safeguarding (Adults)', number: '01792 601 700', note: 'SBUHB adult safeguarding' },
+                    { cat: 'Safeguarding (Children)', number: '01792 601 700', note: 'SBUHB child protection' },
+                    { cat: 'Acute GP Unit', number: '01792 703 666', note: 'Morriston Hospital same-day emergency care' },
+                    { cat: 'Musculoskeletal (MSK)', number: '01639 862 142', note: 'MSK triage and physiotherapy' },
+                    { cat: 'Diabetes & Endocrinology', number: '01792 703 791', note: 'Morriston diabetes team' },
+                    { cat: 'Pharmacy Advice', number: '01792 703 114', note: 'Medicines information — Morriston' },
+                ]
+            }
+        };
+
+        function showHB(id, evt) {
+            const hb = hbData[id];
+            if (!hb) return;
+
+            // Update tab styles
+            document.querySelectorAll('.hb-tab').forEach(t => {
+                t.className = 'btn btn-small btn-ghost hb-tab';
+            });
+            const clickedBtn = (evt && evt.target) || document.querySelector('.hb-tab');
+            if (clickedBtn) clickedBtn.className = 'btn btn-small hb-tab active';
+
+            let rows = hb.contacts.map(c => `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 10px 12px; font-weight: 600; white-space: nowrap; vertical-align: top;">${c.cat}</td>
+                    <td style="padding: 10px 12px; font-weight: 700; color: var(--primary); white-space: nowrap; vertical-align: top;">${c.number}</td>
+                    <td style="padding: 10px 12px; font-size: 0.85rem; color: var(--text-secondary); vertical-align: top;">${c.note}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('hbContent').innerHTML = `
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+                    <div style="background: var(--primary); color: white; padding: 14px 18px;">
+                        <div style="font-weight: 700; font-size: 1.05rem;">${hb.name}</div>
+                        <div style="font-size: 0.85rem; opacity: 0.85; margin-top: 2px;">Covering: ${hb.area}</div>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--border); background: var(--bg-main);">
+                                    <th style="padding: 10px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Service</th>
+                                    <th style="padding: 10px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Contact</th>
+                                    <th style="padding: 10px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
         pageContent.innerHTML = html;
+
+        // Show first health board by default
+        showHB('abuhb');
     </script>
 </body>
 </html>
