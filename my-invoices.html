@@ -107,6 +107,8 @@
 
         // Support URL param to pre-filter (e.g. ?status=overdue from dashboard)
         let filterStatus = new URLSearchParams(window.location.search).get('status') || '';
+        let currentPage = 0;
+        const pageSize = 5;
 
         function getFilteredInvoices() {
             let filtered = InvoiceManager.getForLocum(session.id);
@@ -240,8 +242,17 @@
             }
         }
 
+        function changePage(delta) {
+            const filtered = getFilteredInvoices();
+            const totalPages = Math.ceil(filtered.length / pageSize);
+            currentPage = Math.max(0, Math.min(currentPage + delta, totalPages - 1));
+            render();
+        }
+
         function render() {
+            const oldFilter = filterStatus;
             filterStatus = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : filterStatus;
+            if (filterStatus !== oldFilter) currentPage = 0;
             const allInvoices = InvoiceManager.getForLocum(session.id);
             const filtered = getFilteredInvoices();
 
@@ -300,6 +311,13 @@
                                 <p>${filterStatus ? 'No invoices match the selected filter. Try changing the status filter above.' : 'Invoices will appear here once your sessions are completed.'}</p>
                             </div>
                         ` : `
+                        ${(() => {
+                            const totalPages = Math.ceil(filtered.length / pageSize);
+                            if (currentPage >= totalPages) currentPage = Math.max(0, totalPages - 1);
+                            const pageItems = filtered.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+                            const start = currentPage * pageSize + 1;
+                            const end = Math.min((currentPage + 1) * pageSize, filtered.length);
+                            return `
                         <table class="data-table">
                             <thead>
                                 <tr>
@@ -314,7 +332,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${filtered.map(inv => `
+                                ${pageItems.map(inv => `
                                     <tr>
                                         <td><strong style="color: var(--dark);">${inv.invoiceNumber}</strong></td>
                                         <td>${DateUtils.format(inv.generatedDate, 'short')}</td>
@@ -348,6 +366,14 @@
                                 `).join('')}
                             </tbody>
                         </table>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-top: 1px solid var(--gray-100);">
+                            <span style="font-size: 0.85rem; color: var(--dark-600);">Showing ${start}–${end} of ${filtered.length} invoices</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-ghost btn-small" onclick="changePage(-1)" ${currentPage === 0 ? 'disabled style="opacity:0.4; cursor:default;"' : ''}>${getIcon('caret-left')} Previous</button>
+                                <button class="btn btn-ghost btn-small" onclick="changePage(1)" ${currentPage >= totalPages - 1 ? 'disabled style="opacity:0.4; cursor:default;"' : ''}>Next ${getIcon('caret-right')}</button>
+                            </div>
+                        </div>`;
+                        })()}
                         `}
                     </div>
                 </div>
