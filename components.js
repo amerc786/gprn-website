@@ -133,6 +133,73 @@ function renderSidebar(role, activePage) {
 }
 
 // ---- Top Header Bar ----
+function renderProfileDropdown(initials, displayName, settingsHref) {
+    return `
+        <div class="relative" id="profileDropdownWrap">
+            <button onclick="document.getElementById('profileDropMenu').classList.toggle('hidden')" class="bg-[#0B0F19] rounded-full p-1 pl-1.5 pr-4 flex items-center gap-2.5 hover:bg-slate-800 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0B0F19] group">
+                <div class="bg-[#059669] text-white w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold tracking-wider">${initials}</div>
+                <span class="text-white text-[13px] font-semibold pr-1">${displayName}</span>
+                <i class="ph-bold ph-caret-down text-slate-400 text-[10px] group-hover:text-white transition-colors"></i>
+            </button>
+            <div id="profileDropMenu" class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-slate-200 shadow-lg py-2 z-50" style="font-family:'Plus Jakarta Sans',sans-serif;">
+                <div class="px-4 py-3 border-b border-slate-100">
+                    <div class="text-[13px] font-bold text-[#0B0F19]">${displayName}</div>
+                    <div class="text-[11px] text-slate-400">Signed in</div>
+                </div>
+                <a href="${settingsHref}" class="flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-[#0B0F19] transition-colors">
+                    <i class="ph ph-gear text-base"></i> Settings
+                </a>
+                <button onclick="toggleDarkMode()" class="w-full flex items-center justify-between px-4 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-[#0B0F19] transition-colors cursor-pointer">
+                    <span class="flex items-center gap-3"><i class="ph ph-moon text-base"></i> Dark Mode</span>
+                    <div id="darkModeToggle" class="w-9 h-5 rounded-full ${document.documentElement.classList?.contains?.('dark') ? 'bg-[#059669]' : 'bg-slate-300'} relative transition-colors">
+                        <div class="absolute top-0.5 ${document.documentElement.classList?.contains?.('dark') ? 'left-[18px]' : 'left-0.5'} w-4 h-4 bg-white rounded-full shadow transition-all"></div>
+                    </div>
+                </button>
+                <div class="border-t border-slate-100 mt-1 pt-1">
+                    <button onclick="Auth.logout()" class="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-red-500 hover:bg-red-50 transition-colors cursor-pointer text-left">
+                        <i class="ph ph-sign-out text-base"></i> Log Out
+                    </button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function toggleDarkMode() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('gprn_dark_mode', isDark ? 'true' : 'false');
+    // Update body background
+    if (isDark) {
+        document.body.style.background = '#0B0F19';
+        document.body.style.color = '#E2E8F0';
+    } else {
+        document.body.style.background = '';
+        document.body.style.color = '';
+    }
+    // Update toggle visual
+    const toggle = document.getElementById('darkModeToggle');
+    if (toggle) {
+        toggle.className = toggle.className.replace(/bg-\[#059669\]|bg-slate-300/, isDark ? 'bg-[#059669]' : 'bg-slate-300');
+        const dot = toggle.querySelector('div');
+        if (dot) dot.className = dot.className.replace(/left-\[18px\]|left-0\.5/, isDark ? 'left-[18px]' : 'left-0.5');
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('profileDropMenu');
+    const wrap = document.getElementById('profileDropdownWrap');
+    if (menu && wrap && !wrap.contains(e.target)) {
+        menu.classList.add('hidden');
+    }
+});
+
+// Apply saved dark mode on load
+if (localStorage.getItem('gprn_dark_mode') === 'true') {
+    document.documentElement.classList.add('dark');
+    document.body.style.background = '#0B0F19';
+    document.body.style.color = '#E2E8F0';
+}
+
 function renderTopHeader(title, breadcrumbs) {
     const session = Auth.getSession();
     const settingsHref = session.role === 'locum' ? 'my-settings.html' : 'practice-settings.html';
@@ -161,11 +228,7 @@ function renderTopHeader(title, breadcrumbs) {
             </div>
         </div>
         <div class="flex items-center gap-3 lg:gap-5 shrink-0">
-            <button onclick="window.location.href='${settingsHref}'" class="bg-[#0B0F19] rounded-full p-1 pl-1.5 pr-4 flex items-center gap-2.5 hover:bg-slate-800 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0B0F19] group">
-                <div class="bg-[#059669] text-white w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold tracking-wider">${initials}</div>
-                <span class="text-white text-[13px] font-semibold pr-1">${displayName}</span>
-                <i class="ph-bold ph-caret-down text-slate-400 text-[10px] group-hover:text-white transition-colors"></i>
-            </button>
+            ${renderProfileDropdown(initials, displayName, settingsHref)}
         </div>
     </header>`;
 }
