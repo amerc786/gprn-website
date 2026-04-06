@@ -372,22 +372,16 @@
                     Toast.show('Please enter a valid email address.', 'warning');
                     return;
                 }
-                fetch('/api/auth/forgot-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: resetEmail })
-                }).then(function(r) { return r.json(); }).then(function(result) {
-                    if (result.success) {
-                        Toast.show('Password reset link sent to ' + resetEmail + '. Check your email.', 'success');
-                        if (result.token) {
-                            Toast.show('Demo: Reset token is ' + result.token, 'info', 8000);
-                        }
-                        forgotForm.style.display = 'none';
-                        resetEmailInput.value = '';
-                    } else {
-                        Toast.show(result.error || 'Failed to send reset email', 'error');
-                    }
-                }).catch(function() {
+
+                sendResetBtn.disabled = true;
+                sendResetBtn.textContent = 'Sending...';
+
+                // Use Supabase auth recovery endpoint
+                var SUPA_URL = window.SupabaseClient ? window.SupabaseClient.url : null;
+                var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5c2lsbXlwZ3Bld2J6eXhreW14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzODQwNjYsImV4cCI6MjA5MDk2MDA2Nn0.BEgSiUO_RWvk0ixZSORuKFqwMG6nYNGsCqWCftukBnE';
+
+                if (!SUPA_URL) {
+                    // Fallback for local dev
                     if (typeof PasswordReset !== 'undefined') {
                         var r = PasswordReset.request(resetEmail);
                         if (r.success) {
@@ -398,6 +392,31 @@
                             Toast.show('No account found with that email address.', 'error');
                         }
                     }
+                    sendResetBtn.disabled = false;
+                    sendResetBtn.textContent = 'Send reset link';
+                    return;
+                }
+
+                // Send Supabase password reset email
+                fetch(SUPA_URL + '/auth/v1/recover', {
+                    method: 'POST',
+                    headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: resetEmail })
+                }).then(function(res) {
+                    if (res.ok || res.status === 200) {
+                        Toast.show('If an account exists with that email, a password reset link has been sent. Please check your inbox.', 'success');
+                        forgotForm.style.display = 'none';
+                        resetEmailInput.value = '';
+                    } else {
+                        return res.json().then(function(body) {
+                            Toast.show(body.msg || body.error || 'Something went wrong. Please try again.', 'error');
+                        });
+                    }
+                }).catch(function() {
+                    Toast.show('Unable to process request. Please check your connection and try again.', 'error');
+                }).finally(function() {
+                    sendResetBtn.disabled = false;
+                    sendResetBtn.textContent = 'Send reset link';
                 });
             });
 
