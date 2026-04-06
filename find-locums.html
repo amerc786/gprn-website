@@ -253,11 +253,18 @@
         let csFilter = '';
         let availFilter = ''; // '', 'available', 'not_indicated'
 
+        function _getLocumsList() {
+            if (window.SupabaseClient && window.SupabaseClient.getApprovedLocums) {
+                var approved = window.SupabaseClient.getApprovedLocums();
+                if (approved !== null) return approved;
+            }
+            return data.locums;
+        }
         function getHealthBoards() {
-            return [...new Set(data.locums.flatMap(l => l.healthBoards))].sort();
+            return [...new Set(_getLocumsList().flatMap(l => (l.healthBoards || [])))].sort();
         }
         function getComputerSystems() {
-            return [...new Set(data.locums.flatMap(l => l.computerSystems))].sort();
+            return [...new Set(_getLocumsList().flatMap(l => (l.computerSystems || [])))].sort();
         }
         function getOpenSessionNeeds() {
             const d = getMockData();
@@ -364,7 +371,14 @@
                 selectedNeed = currentData.sessionNeeds.find(n => n.id === selectedNeedId);
             }
 
-            let locums = [...currentData.locums];
+            // Use approved locums from Supabase profiles when available
+            let locums;
+            if (window.SupabaseClient && window.SupabaseClient.getApprovedLocums) {
+                const approved = window.SupabaseClient.getApprovedLocums();
+                locums = approved !== null ? approved : [...currentData.locums];
+            } else {
+                locums = [...currentData.locums];
+            }
 
             // Filter out blocked
             locums = locums.filter(l => !BarredList.isBarred(session.id, l.id));
@@ -700,7 +714,7 @@
         function render() {
             const currentData = getMockData();
             const openNeeds = getOpenSessionNeeds();
-            const preferredCount = currentData.locums.filter(l => BarredList.isPreferred(session.id, l.id)).length;
+            const preferredCount = _getLocumsList().filter(l => BarredList.isPreferred(session.id, l.id)).length;
             const healthBoards = getHealthBoards();
             const computerSystems = getComputerSystems();
 

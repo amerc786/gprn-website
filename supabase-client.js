@@ -621,11 +621,33 @@
     // ============================================================
     // Debug handle
     // ============================================================
+    // ============================================================
+    // Fetch approved locum profiles from the profiles table
+    // Returns array of locum objects (profile_data enriched with id/email)
+    // Falls back to blob locums if profiles table is unavailable
+    // ============================================================
+    function _fetchApprovedLocums() {
+        if (!_getAccessToken()) return null; // not authenticated, caller should use blob
+        var res = _syncRequest('GET',
+            '/rest/v1/profiles?role=eq.locum&approval_status=eq.approved&is_admin=eq.false&select=id,email,profile_data');
+        if (res.status === 200 && Array.isArray(res.body)) {
+            return res.body.map(function(row) {
+                var pd = row.profile_data || {};
+                pd.supabase_id = row.id;
+                if (!pd.email) pd.email = row.email;
+                return pd;
+            });
+        }
+        console.warn('[Supabase] fetch approved locums failed', res.status, res.body);
+        return null; // fallback
+    }
+
     window.SupabaseClient = {
         url: SUPABASE_URL,
         refresh: function() { _cache = null; _lastFetchAt = 0; return window.getMockData(); },
         forceWrite: function(data) { _writeBlobAsync(data); },
-        getCurrentProfile: function() { _profileCache = null; return _fetchCurrentProfile(); }
+        getCurrentProfile: function() { _profileCache = null; return _fetchCurrentProfile(); },
+        getApprovedLocums: _fetchApprovedLocums
     };
 
     // ============================================================
