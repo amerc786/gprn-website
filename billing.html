@@ -313,6 +313,7 @@
                             <select id="filterInvStatus" onchange="applyBillingFilter()" class="bg-slate-50 border border-slate-200 rounded-full px-4 py-2 text-[13px] font-semibold text-navy focus:outline-none focus:ring-2 focus:ring-slate-200">
                                 <option value="">All Statuses</option>
                                 <option value="paid">Paid</option>
+                                <option value="paid_pending">Awaiting Confirmation</option>
                                 <option value="pending">Pending</option>
                                 <option value="overdue">Overdue</option>
                                 <option value="disputed">Disputed</option>
@@ -392,6 +393,9 @@
             if (status === 'revised') {
                 return '<span class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-amber-200"><span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>Under Review</span>';
             }
+            if (status === 'paid_pending') {
+                return '<span class="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-blue-200"><span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>Awaiting Confirmation</span>';
+            }
             return '<span class="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-slate-200">' + label + '</span>';
         }
 
@@ -431,8 +435,8 @@
                         }
                         if (!inv2) return;
 
-                        inv2.status = 'paid';
-                        inv2.paidDate = new Date().toISOString().split('T')[0];
+                        inv2.status = 'paid_pending';
+                        inv2.practiceMarkedPaidDate = new Date().toISOString().split('T')[0];
                         inv2.paymentReference = paymentRef;
 
                         if (!d2.auditLog) d2.auditLog = [];
@@ -444,12 +448,52 @@
                             by: session.id
                         });
 
+                        // Send notification to locum to confirm receipt
+                        if (!d2.messages) d2.messages = [];
+                        var locumId = inv2.locumId;
+                        var practiceId = inv2.practiceId;
+                        var threadId = null;
+                        if (d2.messages && d2.messages.length > 0) {
+                            for (var k = d2.messages.length - 1; k >= 0; k--) {
+                                var msg = d2.messages[k];
+                                if ((msg.fromId === practiceId && msg.toId === locumId) || (msg.fromId === locumId && msg.toId === practiceId)) {
+                                    threadId = msg.threadId;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!threadId) threadId = 'thread-' + Date.now();
+                        d2.messages.push({
+                            id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+                            threadId: threadId,
+                            fromId: practiceId,
+                            toId: locumId,
+                            subject: '',
+                            body: inv2.practiceName + ' has marked invoice ' + inv2.invoiceNumber + ' (' + formatCurrency(inv2.total) + ') as paid (Ref: ' + paymentRef + '). Please confirm you have received the payment.',
+                            shiftId: null,
+                            timestamp: new Date().toISOString(),
+                            read: false,
+                            _deletedFor: [],
+                            _system: true,
+                            _invoiceId: inv2.id
+                        });
+                        if (!d2.notifications) d2.notifications = [];
+                        d2.notifications.push({
+                            id: 'notif-' + Date.now() + Math.random().toString(36).substr(2, 5),
+                            userId: locumId,
+                            type: 'payment_awaiting_confirmation',
+                            title: 'Payment Awaiting Confirmation',
+                            message: inv2.practiceName + ' has marked invoice ' + inv2.invoiceNumber + ' (' + formatCurrency(inv2.total) + ') as paid. Please confirm receipt.',
+                            date: new Date().toISOString(),
+                            read: false
+                        });
+
                         localStorage.setItem('gprn_data', JSON.stringify(d2));
                         Modal.close(overlay);
 
                         renderBillingTable();
                         updateBillingSummary();
-                        Toast.show('Invoice marked as paid. Payment reference: ' + paymentRef, 'success');
+                        Toast.show('Invoice marked as paid. Locum will be asked to confirm receipt. Ref: ' + paymentRef, 'success');
                     });
                 }
             });

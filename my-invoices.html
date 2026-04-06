@@ -120,6 +120,7 @@
             const map = {
                 pending: 'badge-warning',
                 paid: 'badge-success',
+                paid_pending: 'badge-info',
                 overdue: 'badge-danger',
                 disputed: 'badge-info',
                 revised: 'badge-warning'
@@ -167,17 +168,17 @@
                 return d.getMonth() === m.month && d.getFullYear() === m.year;
             }).sort((a, b) => new Date(a.sessionDate || a.shiftDate) - new Date(b.sessionDate || b.shiftDate));
 
-            const paid = monthInvoices.filter(i => i.status === 'paid');
+            const paid = monthInvoices.filter(i => i.status === 'paid' || i.status === 'paid_pending');
             const pending = monthInvoices.filter(i => i.status === 'pending');
             const overdue = monthInvoices.filter(i => i.status === 'overdue');
             const disputed = monthInvoices.filter(i => i.status === 'disputed' || i.status === 'revised');
-            const totalEarned = paid.reduce((s, i) => s + i.total, 0);
-            const totalOutstanding = [...pending, ...overdue, ...disputed].reduce((s, i) => s + i.total, 0);
+            const totalEarned = monthInvoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0);
+            const totalOutstanding = [...pending, ...overdue, ...disputed, ...monthInvoices.filter(i => i.status === 'paid_pending')].reduce((s, i) => s + i.total, 0);
             const totalAll = monthInvoices.reduce((s, i) => s + i.total, 0);
 
             const statusBadge = (status) => {
-                const map = { paid: 'badge-success', pending: 'badge-warning', overdue: 'badge-danger', disputed: 'badge-info', revised: 'badge-warning' };
-                const label = status === 'revised' ? 'Under Review' : status.charAt(0).toUpperCase() + status.slice(1);
+                const map = { paid: 'badge-success', paid_pending: 'badge-info', pending: 'badge-warning', overdue: 'badge-danger', disputed: 'badge-info', revised: 'badge-warning' };
+                const label = status === 'revised' ? 'Under Review' : status === 'paid_pending' ? 'Awaiting Confirmation' : status.charAt(0).toUpperCase() + status.slice(1);
                 return '<span class="badge ' + (map[status] || 'badge-neutral') + '" style="font-size:0.75rem;">' + label + '</span>';
             };
 
@@ -283,6 +284,7 @@
                                     <option value="" ${filterStatus === '' ? 'selected' : ''}>All</option>
                                     <option value="pending" ${filterStatus === 'pending' ? 'selected' : ''}>Pending</option>
                                     <option value="paid" ${filterStatus === 'paid' ? 'selected' : ''}>Paid</option>
+                                    <option value="paid_pending" ${filterStatus === 'paid_pending' ? 'selected' : ''}>Awaiting Confirmation</option>
                                     <option value="overdue" ${filterStatus === 'overdue' ? 'selected' : ''}>Overdue</option>
                                     <option value="disputed" ${filterStatus === 'disputed' ? 'selected' : ''}>Disputed</option>
                                     <option value="revised" ${filterStatus === 'revised' ? 'selected' : ''}>Under Review</option>
@@ -320,12 +322,25 @@
                                         <td>${DateUtils.format(inv.shiftDate, 'medium')}</td>
                                         <td>${inv.sessionType}</td>
                                         <td><strong style="color: var(--dark);">${formatCurrency(inv.total)}</strong></td>
-                                        <td><span class="badge ${getInvoiceStatusBadge(inv.status)}">${inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}</span></td>
+                                        <td>${(() => {
+                                            const label = inv.status === 'paid_pending' ? 'Awaiting Confirmation' : inv.status === 'revised' ? 'Under Review' : inv.status.charAt(0).toUpperCase() + inv.status.slice(1);
+                                            const badgeClass = getInvoiceStatusBadge(inv.status);
+                                            if (inv.status === 'paid_pending') {
+                                                const daysSince = inv.practiceMarkedPaidDate ? Math.floor((new Date() - new Date(inv.practiceMarkedPaidDate)) / (1000*60*60*24)) : 0;
+                                                if (daysSince >= 14) {
+                                                    return '<span class="badge badge-danger" style="font-size:0.75rem;">Overdue - Confirm</span>';
+                                                }
+                                            }
+                                            return '<span class="badge ' + badgeClass + '">' + label + '</span>';
+                                        })()}</td>
                                         <td>
                                             <div style="display: flex; gap: 6px; align-items: center;">
                                                 <a href="invoice-view.html?id=${inv.id}" class="btn btn-ghost btn-small">View</a>
                                                 ${inv.status === 'pending' || inv.status === 'overdue' ? `
                                                     <button class="btn btn-small btn-warning" onclick="handleChasePayment('${inv.id}')">Send Payment Reminder</button>
+                                                ` : ''}
+                                                ${inv.status === 'paid_pending' ? `
+                                                    <button class="btn btn-small btn-primary" onclick="window.location.href='invoice-view.html?id=${inv.id}'">Confirm Payment</button>
                                                 ` : ''}
                                             </div>
                                         </td>

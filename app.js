@@ -1308,7 +1308,7 @@ const InvoiceManager = {
         const inv = data.invoices.find(i => i.id === invoiceId);
         if (!inv) return false;
         inv.status = status;
-        if (status === 'paid') inv.paidDate = DateUtils.toISO(new Date());
+        if (status === 'paid' && !inv.paidDate) inv.paidDate = DateUtils.toISO(new Date());
         if (status === 'disputed') inv.disputeReason = reason;
         saveMockData(data);
 
@@ -1319,23 +1319,44 @@ const InvoiceManager = {
             || ('thread-' + Date.now());
 
         if (status === 'paid') {
-            // Notify locum: payment received — send as system message + notification
+            // Direct paid (used by confirmPayment) — notify locum: payment confirmed
             data.messages.push({
                 id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
                 threadId,
-                fromId: inv.practiceId,
-                toId: inv.locumId,
+                fromId: inv.locumId,
+                toId: inv.practiceId,
                 subject: '',
-                body: `Payment confirmed for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}). Thank you.`,
+                body: `Payment for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) has been confirmed by the locum. This invoice is now complete.`,
                 shiftId: null,
                 timestamp: new Date().toISOString(),
                 read: false,
                 _deletedFor: [],
                 _system: true
             });
-            Booking.addNotification(data, inv.locumId, 'payment_received', 'Payment Received',
-                `${inv.practiceName} has paid invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}).`);
-            EmailManager.send(data, inv.locumId, 'Payment Received', `Payment of ${formatCurrency(inv.total)} for session on ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')} at ${inv.practiceName} has been received.`, 'payment_received');
+            Booking.addNotification(data, inv.practiceId, 'payment_confirmed', 'Payment Confirmed',
+                `${inv.locumName} has confirmed receipt of payment for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}).`);
+        }
+
+        if (status === 'paid_pending') {
+            // Practice says they've paid — locum must confirm receipt
+            inv.practiceMarkedPaidDate = DateUtils.toISO(new Date());
+            data.messages.push({
+                id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+                threadId,
+                fromId: inv.practiceId,
+                toId: inv.locumId,
+                subject: '',
+                body: `${inv.practiceName} has marked invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) as paid. Please confirm you have received the payment.`,
+                shiftId: null,
+                timestamp: new Date().toISOString(),
+                read: false,
+                _deletedFor: [],
+                _system: true,
+                _invoiceId: inv.id
+            });
+            Booking.addNotification(data, inv.locumId, 'payment_awaiting_confirmation', 'Payment Awaiting Confirmation',
+                `${inv.practiceName} has marked invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) as paid. Please confirm receipt.`);
+            EmailManager.send(data, inv.locumId, 'Confirm Payment Received: ' + inv.invoiceNumber, `${inv.practiceName} has marked invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} as paid. Please log in and confirm you have received the payment.`, 'payment_awaiting_confirmation');
         }
 
         if (status === 'disputed') {
@@ -1505,6 +1526,42 @@ const InvoiceManager = {
         // Email notification
         EmailManager.send(data, inv.practiceId, 'Payment Reminder: ' + inv.invoiceNumber,
             `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is overdue. Session: ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}, Locum: ${inv.locumName}. Please log in to review.`, 'payment_reminder');
+        saveMockData(data);
+        return true;
+    },
+
+    // GP confirms they received the payment — finalises invoice as paid
+    confirmPayment(invoiceId) {
+        const data = getMockData();
+        const inv = data.invoices.find(i => i.id === invoiceId);
+        if (!inv || inv.status !== 'paid_pending') return false;
+        inv.status = 'paid';
+        inv.paidDate = inv.practiceMarkedPaidDate || DateUtils.toISO(new Date());
+        inv.confirmedDate = DateUtils.toISO(new Date());
+        saveMockData(data);
+
+        // Notify practice via message and notification
+        if (!data.messages) data.messages = [];
+        const threadId = MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
+            || MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
+            || ('thread-' + Date.now());
+        data.messages.push({
+            id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+            threadId,
+            fromId: inv.locumId,
+            toId: inv.practiceId,
+            subject: '',
+            body: `Payment for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) has been confirmed. Thank you.`,
+            shiftId: null,
+            timestamp: new Date().toISOString(),
+            read: false,
+            _deletedFor: [],
+            _system: true
+        });
+        Booking.addNotification(data, inv.practiceId, 'payment_confirmed', 'Payment Confirmed',
+            `${inv.locumName} has confirmed receipt of payment for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}).`);
+        EmailManager.send(data, inv.practiceId, 'Payment Confirmed: ' + inv.invoiceNumber,
+            `${inv.locumName} has confirmed receipt of payment for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}). This invoice is now complete.`, 'payment_confirmed');
         saveMockData(data);
         return true;
     },

@@ -118,16 +118,16 @@
                 return d.getMonth() === m.month && d.getFullYear() === m.year;
             }).sort((a, b) => new Date(a.sessionDate || a.shiftDate) - new Date(b.sessionDate || b.shiftDate));
 
-            const paid = monthInvoices.filter(i => i.status === 'paid');
+            const paid = monthInvoices.filter(i => i.status === 'paid' || i.status === 'paid_pending');
             const pending = monthInvoices.filter(i => i.status === 'pending');
             const overdue = monthInvoices.filter(i => i.status === 'overdue');
             const disputed = monthInvoices.filter(i => i.status === 'disputed' || i.status === 'revised');
-            const totalEarned = paid.reduce((s, i) => s + i.total, 0);
-            const totalOutstanding = [...pending, ...overdue, ...disputed].reduce((s, i) => s + i.total, 0);
+            const totalEarned = monthInvoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0);
+            const totalOutstanding = [...pending, ...overdue, ...disputed, ...monthInvoices.filter(i => i.status === 'paid_pending')].reduce((s, i) => s + i.total, 0);
 
             const statusBadge = (status) => {
-                const map = { paid: 'badge-success', pending: 'badge-warning', overdue: 'badge-danger', disputed: 'badge-info', revised: 'badge-warning' };
-                const label = status === 'revised' ? 'Under Review' : status.charAt(0).toUpperCase() + status.slice(1);
+                const map = { paid: 'badge-success', paid_pending: 'badge-info', pending: 'badge-warning', overdue: 'badge-danger', disputed: 'badge-info', revised: 'badge-warning' };
+                const label = status === 'revised' ? 'Under Review' : status === 'paid_pending' ? 'Awaiting Confirmation' : status.charAt(0).toUpperCase() + status.slice(1);
                 return '<span class="badge ' + (map[status] || 'badge-neutral') + '" style="font-size:0.75rem;">' + label + '</span>';
             };
 
@@ -377,9 +377,10 @@
                         ${notifications.length === 0
                             ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No notifications.</p>'
                             : notifications.slice(0, 6).map(n => {
-                                const dotColor = n.type === 'offer_accepted' || n.type === 'booking_confirmed' || n.type === 'payment_received' || n.type === 'revision_approved' ? 'var(--success)' :
+                                const dotColor = n.type === 'offer_accepted' || n.type === 'booking_confirmed' || n.type === 'payment_received' || n.type === 'payment_confirmed' || n.type === 'revision_approved' ? 'var(--success)' :
                                     n.type === 'shift_cancelled' || n.type === 'no_show' || n.type === 'offer_withdrawn' || n.type === 'invoice_disputed' || n.type === 'revision_rejected' ? 'var(--danger)' :
                                     n.type === 'invoice_overdue' || n.type === 'payment_reminder' ? 'var(--danger)' :
+                                    n.type === 'payment_awaiting_confirmation' ? 'var(--warning)' :
                                     n.type === 'new_offer' || n.type === 'offer_received' ? 'var(--primary)' :
                                     n.type === 'counter_offer' ? 'var(--warning)' :
                                     'var(--coral)';

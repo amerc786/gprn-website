@@ -64,6 +64,7 @@
             const map = {
                 pending: 'badge-warning',
                 paid: 'badge-success',
+                paid_pending: 'badge-info',
                 overdue: 'badge-danger',
                 disputed: 'badge-info',
                 revised: 'badge-warning'
@@ -75,19 +76,47 @@
             Modal.show({
                 title: 'Confirm Payment',
                 size: 'small',
-                body: `<p style="color: var(--dark-600); line-height: 1.6;">Mark invoice <strong>${invoice.invoiceNumber}</strong> for <strong>${formatCurrency(invoice.total)}</strong> as paid? The locum will be notified.</p>`,
+                body: `<p style="color: var(--dark-600); line-height: 1.6;">Mark invoice <strong>${invoice.invoiceNumber}</strong> for <strong>${formatCurrency(invoice.total)}</strong> as paid? The locum will be notified and asked to confirm receipt.</p>`,
                 footer: `
                     <button class="btn btn-ghost" data-modal-close>Cancel</button>
                     <button class="btn btn-primary" id="confirmPaidBtn">Confirm Payment</button>
                 `,
                 onOpen(overlay) {
                     overlay.querySelector('#confirmPaidBtn').addEventListener('click', () => {
-                        if (InvoiceManager.updateStatus(invoiceId, 'paid')) {
+                        if (InvoiceManager.updateStatus(invoiceId, 'paid_pending')) {
+                            invoice.status = 'paid_pending';
+                            invoice.practiceMarkedPaidDate = new Date().toISOString().split('T')[0];
                             Modal.close(overlay);
-                            Toast.show('Invoice marked as paid. Locum has been notified.', 'success');
+                            Toast.show('Invoice marked as paid. Locum will be asked to confirm receipt.', 'success');
                             setTimeout(() => render(), 500);
                         } else {
                             Toast.show('Failed to update invoice. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function handleConfirmPayment() {
+            Modal.show({
+                title: 'Confirm Payment Received',
+                size: 'small',
+                body: `<p style="color: var(--dark-600); line-height: 1.6;">Confirm that you have received payment of <strong>${formatCurrency(invoice.total)}</strong> from <strong>${invoice.practiceName}</strong> for invoice <strong>${invoice.invoiceNumber}</strong>?</p>`,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" id="confirmReceiptBtn">Confirm Received</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#confirmReceiptBtn').addEventListener('click', () => {
+                        if (InvoiceManager.confirmPayment(invoiceId)) {
+                            invoice.status = 'paid';
+                            invoice.paidDate = invoice.practiceMarkedPaidDate || new Date().toISOString().split('T')[0];
+                            invoice.confirmedDate = new Date().toISOString().split('T')[0];
+                            Modal.close(overlay);
+                            Toast.show('Payment confirmed. Invoice is now complete.', 'success');
+                            setTimeout(() => render(), 500);
+                        } else {
+                            Toast.show('Failed to confirm payment. Please try again.', 'error');
                         }
                     });
                 }
@@ -275,7 +304,7 @@
             const locum = data.locums.find(l => l.id === invoice.locumId);
             const practice = data.practices.find(p => p.id === invoice.practiceId);
 
-            const statusLabel = invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
+            const statusLabel = invoice.status === 'paid_pending' ? 'Awaiting Confirmation' : invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
 
             // Build line items
             const lineItems = [];
@@ -311,6 +340,22 @@
             if (role === 'locum' && (invoice.status === 'pending' || invoice.status === 'overdue')) {
                 actionButtons = `
                     <button class="btn btn-warning" onclick="handleChasePayment()">Chase Payment</button>
+                `;
+            }
+            if (role === 'locum' && invoice.status === 'paid_pending') {
+                // Check if 14 days have passed since practice marked as paid
+                const daysSinceMarked = invoice.practiceMarkedPaidDate
+                    ? Math.floor((new Date() - new Date(invoice.practiceMarkedPaidDate)) / (1000 * 60 * 60 * 24))
+                    : 0;
+                const isOverdue = daysSinceMarked >= 14;
+                actionButtons = `
+                    <button class="btn btn-primary" onclick="handleConfirmPayment()">Confirm Payment Received</button>
+                    <a href="messages.html" class="btn btn-ghost">${getIcon('chat-circle')} Query with Practice</a>
+                `;
+            }
+            if (role === 'practice' && invoice.status === 'paid_pending') {
+                actionButtons = `
+                    <span style="color: var(--dark-600); font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">${getIcon('clock')} Awaiting locum confirmation</span>
                 `;
             }
             if (role === 'locum' && invoice.status === 'disputed') {
@@ -420,6 +465,24 @@
                                 ${role === 'practice' ? '<p style="margin-top: 8px; color: var(--dark-600); font-size: 0.85rem;">Please approve or reject this revised amount above.</p>' : '<p style="margin-top: 8px; color: var(--dark-600); font-size: 0.85rem;">Awaiting practice approval of the revised amount.</p>'}
                             </div>
                         ` : ''}
+
+                        ${invoice.status === 'paid_pending' ? (() => {
+                            const daysSinceMarked = invoice.practiceMarkedPaidDate
+                                ? Math.floor((new Date() - new Date(invoice.practiceMarkedPaidDate)) / (1000 * 60 * 60 * 24))
+                                : 0;
+                            const isOverdue = daysSinceMarked >= 14;
+                            const borderColor = isOverdue ? 'var(--danger)' : 'var(--info, #3b82f6)';
+                            const bgColor = isOverdue ? 'rgba(239,68,68,0.05)' : 'rgba(59,130,246,0.05)';
+                            const titleColor = isOverdue ? 'var(--danger)' : 'var(--info, #3b82f6)';
+                            return `<div style="margin-top: 24px; padding: 16px; background: ${bgColor}; border-radius: 8px; border-left: 3px solid ${borderColor};">
+                                <p style="font-weight: 600; color: ${titleColor}; margin-bottom: 8px;">${isOverdue ? '⚠ Payment Confirmation Overdue' : 'Awaiting Payment Confirmation'}</p>
+                                <p style="color: var(--dark-700); margin-bottom: 4px;">Practice marked as paid on <strong>${DateUtils.format(invoice.practiceMarkedPaidDate, 'full')}</strong></p>
+                                ${isOverdue
+                                    ? `<p style="color: var(--danger); font-weight: 600; margin-top: 8px;">It has been ${daysSinceMarked} days since the practice marked this as paid. If you have not received payment, follow up with the practice via messages.</p>`
+                                    : `<p style="color: var(--dark-600); font-size: 0.85rem; margin-top: 4px;">Please confirm receipt of payment. If not confirmed within 14 days, this will be flagged for follow-up.</p>`
+                                }
+                            </div>`;
+                        })() : ''}
 
                         ${(invoice.status === 'disputed' || invoice.status === 'revised') && invoice.disputeReason ? `
                             <div style="margin-top: 24px; padding: 16px; background: rgba(239,68,68,0.05); border-radius: 8px; border-left: 3px solid var(--danger);">
