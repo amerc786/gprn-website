@@ -95,20 +95,90 @@
         // Earnings mini chart - last 6 months
         const invoices = InvoiceManager.getForLocum(session.id);
         const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthsFull = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         const earningsData = [];
         for (let i = 5; i >= 0; i--) {
             const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const mMonth = m.getMonth();
             const mYear = m.getFullYear();
-            const total = invoices
-                .filter(inv => {
-                    const d = new Date(inv.sessionDate || inv.shiftDate);
-                    return d.getMonth() === mMonth && d.getFullYear() === mYear;
-                })
-                .reduce((s, inv) => s + inv.total, 0);
-            earningsData.push({ label: monthsShort[mMonth], value: total });
+            const monthInvoices = invoices.filter(inv => {
+                const d = new Date(inv.sessionDate || inv.shiftDate);
+                return d.getMonth() === mMonth && d.getFullYear() === mYear;
+            });
+            const total = monthInvoices.reduce((s, inv) => s + inv.total, 0);
+            earningsData.push({ label: monthsShort[mMonth], value: total, month: mMonth, year: mYear, fullLabel: monthsFull[mMonth] + ' ' + mYear });
         }
         const maxEarning = Math.max(...earningsData.map(e => e.value), 1);
+
+        function showMonthDetail(index) {
+            const m = earningsData[index];
+            if (!m) return;
+            const monthInvoices = invoices.filter(inv => {
+                const d = new Date(inv.sessionDate || inv.shiftDate);
+                return d.getMonth() === m.month && d.getFullYear() === m.year;
+            }).sort((a, b) => new Date(a.sessionDate || a.shiftDate) - new Date(b.sessionDate || b.shiftDate));
+
+            const paid = monthInvoices.filter(i => i.status === 'paid');
+            const pending = monthInvoices.filter(i => i.status === 'pending');
+            const overdue = monthInvoices.filter(i => i.status === 'overdue');
+            const disputed = monthInvoices.filter(i => i.status === 'disputed' || i.status === 'revised');
+            const totalEarned = paid.reduce((s, i) => s + i.total, 0);
+            const totalOutstanding = [...pending, ...overdue, ...disputed].reduce((s, i) => s + i.total, 0);
+
+            const statusBadge = (status) => {
+                const map = { paid: 'badge-success', pending: 'badge-warning', overdue: 'badge-danger', disputed: 'badge-info', revised: 'badge-warning' };
+                const label = status === 'revised' ? 'Under Review' : status.charAt(0).toUpperCase() + status.slice(1);
+                return '<span class="badge ' + (map[status] || 'badge-neutral') + '" style="font-size:0.75rem;">' + label + '</span>';
+            };
+
+            const rows = monthInvoices.length > 0 ? monthInvoices.map(inv => `
+                <tr style="cursor: pointer;" onclick="Modal.close(document.querySelector('.modal-overlay')); window.location.href='invoice-view.html?id=${inv.id}';">
+                    <td>${DateUtils.format(inv.sessionDate || inv.shiftDate, 'short')}</td>
+                    <td>${inv.practiceName}</td>
+                    <td>${inv.sessionType}</td>
+                    <td style="text-align:right;"><strong>${formatCurrency(inv.total)}</strong></td>
+                    <td style="text-align:center;">${statusBadge(inv.status)}</td>
+                </tr>
+            `).join('') : '<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--dark-600);">No shifts recorded this month</td></tr>';
+
+            Modal.show({
+                title: m.fullLabel,
+                size: 'large',
+                body: `
+                    <div style="display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <div style="flex:1; min-width: 120px; padding: 12px 16px; background: rgba(5,150,105,0.06); border-radius: 8px; border-left: 3px solid var(--primary);">
+                            <p style="font-size: 0.78rem; color: var(--dark-600); margin-bottom: 2px;">Paid</p>
+                            <p style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">${formatCurrency(totalEarned)}</p>
+                            <p style="font-size: 0.75rem; color: var(--dark-600);">${paid.length} shift${paid.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div style="flex:1; min-width: 120px; padding: 12px 16px; background: rgba(245,158,11,0.06); border-radius: 8px; border-left: 3px solid #F59E0B;">
+                            <p style="font-size: 0.78rem; color: var(--dark-600); margin-bottom: 2px;">Outstanding</p>
+                            <p style="font-size: 1.1rem; font-weight: 700; color: #D97706;">${formatCurrency(totalOutstanding)}</p>
+                            <p style="font-size: 0.75rem; color: var(--dark-600);">${pending.length + overdue.length + disputed.length} invoice${pending.length + overdue.length + disputed.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div style="flex:1; min-width: 120px; padding: 12px 16px; background: rgba(11,15,25,0.04); border-radius: 8px; border-left: 3px solid var(--dark);">
+                            <p style="font-size: 0.78rem; color: var(--dark-600); margin-bottom: 2px;">Total</p>
+                            <p style="font-size: 1.1rem; font-weight: 700; color: var(--dark);">${formatCurrency(m.value)}</p>
+                            <p style="font-size: 0.75rem; color: var(--dark-600);">${monthInvoices.length} shift${monthInvoices.length !== 1 ? 's' : ''}</p>
+                        </div>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Practice</th>
+                                <th>Session</th>
+                                <th style="text-align:right;">Amount</th>
+                                <th style="text-align:center;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <p style="margin-top: 12px; font-size: 0.78rem; color: var(--dark-600);">Click a row to view the full invoice.</p>
+                `,
+                footer: '<button class="btn btn-ghost" data-modal-close>Close</button>'
+            });
+        }
 
         // Offers needing confirmation by practice (accepted status)
         const needsConfirmation = myOffers.filter(o => o.status === 'accepted' && new Date(o.sessionDate || o.shiftDate) >= now);
@@ -221,8 +291,8 @@
                     </div>
                     <div class="content-card-body">
                         <div class="bar-chart">
-                            ${earningsData.map(e => `
-                                <div class="bar-chart-item">
+                            ${earningsData.map((e, idx) => `
+                                <div class="bar-chart-item" onclick="showMonthDetail(${idx})" style="cursor: pointer;" title="Click to view ${e.fullLabel} details">
                                     <div class="bar-chart-value">${e.value > 0 ? formatCurrency(e.value) : '-'}</div>
                                     <div class="bar-chart-bar" style="height: ${e.value > 0 ? Math.max((e.value / maxEarning) * 120, 4) : 4}px;"></div>
                                     <div class="bar-chart-label">${e.label}</div>

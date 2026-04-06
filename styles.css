@@ -2417,8 +2417,10 @@ body.gprn-app .content-card-header h2 {
 
 /* ===== CHARTS (CSS-only) ===== */
 .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 0 8px; }
-.bar-chart-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.bar-chart-bar { width: 100%; border-radius: 6px 6px 0 0; background: var(--gradient); min-height: 4px; transition: height 0.5s; }
+.bar-chart-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: opacity 0.2s; border-radius: 8px; padding: 4px 2px; }
+.bar-chart-item[onclick]:hover { background: rgba(5,150,105,0.06); }
+.bar-chart-item[onclick]:hover .bar-chart-bar { opacity: 0.85; }
+.bar-chart-bar { width: 100%; border-radius: 6px 6px 0 0; background: var(--gradient); min-height: 4px; transition: height 0.5s, opacity 0.2s; }
 .bar-chart-label { font-size: 0.7rem; color: var(--gray-400); }
 .bar-chart-value { font-size: 0.72rem; font-weight: 600; color: var(--dark-700); }
 
