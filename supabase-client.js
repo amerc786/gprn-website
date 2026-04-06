@@ -627,7 +627,8 @@
     // Falls back to blob locums if profiles table is unavailable
     // ============================================================
     function _fetchApprovedLocums() {
-        if (!_getAccessToken()) return null; // not authenticated, caller should use blob
+        // If not authenticated, return empty — never show mock/fake locums
+        if (!_getAccessToken()) return [];
         var res = _syncRequest('GET',
             '/rest/v1/profiles?role=eq.locum&approval_status=eq.approved&is_admin=eq.false&select=id,email,profile_data');
         if (res.status === 200 && Array.isArray(res.body)) {
@@ -639,7 +640,7 @@
             });
         }
         console.warn('[Supabase] fetch approved locums failed', res.status, res.body);
-        return null; // fallback
+        return [];
     }
 
     window.SupabaseClient = {
