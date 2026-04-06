@@ -129,6 +129,7 @@ const Auth = {
                     firstName: user.role === 'locum' ? user.firstName : user.contactName.split(' ')[0]
                 };
                 localStorage.setItem('gprn_session', JSON.stringify(session));
+                OnlineStatus.setOnline(session.id);
                 return session;
             }
             return null;
@@ -137,6 +138,11 @@ const Auth = {
     },
 
     logout() {
+        // Update last seen before logging out
+        const sess = Auth.getSession();
+        if (sess && sess.id) {
+            OnlineStatus.setOffline(sess.id);
+        }
         localStorage.removeItem('gprn_session');
         window.location.href = 'login.html';
     },
@@ -976,59 +982,200 @@ const Booking = {
     }
 };
 
+// ---- Online Status Manager ----
+const OnlineStatus = {
+    _key: 'gprn_online_status',
+
+    _getAll() {
+        try { return JSON.parse(localStorage.getItem(this._key) || '{}'); } catch { return {}; }
+    },
+
+    _saveAll(statuses) {
+        localStorage.setItem(this._key, JSON.stringify(statuses));
+    },
+
+    setOnline(userId) {
+        const s = this._getAll();
+        s[userId] = { online: true, lastSeen: new Date().toISOString() };
+        this._saveAll(s);
+    },
+
+    setOffline(userId) {
+        const s = this._getAll();
+        s[userId] = { online: false, lastSeen: new Date().toISOString() };
+        this._saveAll(s);
+    },
+
+    heartbeat(userId) {
+        const s = this._getAll();
+        s[userId] = { online: true, lastSeen: new Date().toISOString() };
+        this._saveAll(s);
+    },
+
+    getStatus(userId) {
+        const s = this._getAll();
+        if (!s[userId]) return { online: false, lastSeen: null };
+        // Consider offline if heartbeat older than 2 minutes
+        if (s[userId].online) {
+            const elapsed = Date.now() - new Date(s[userId].lastSeen).getTime();
+            if (elapsed > 2 * 60 * 1000) {
+                s[userId].online = false;
+                this._saveAll(s);
+            }
+        }
+        return s[userId];
+    },
+
+    formatStatus(userId) {
+        const st = this.getStatus(userId);
+        if (st.online) return { text: 'Online now', online: true };
+        if (!st.lastSeen) return { text: 'Offline', online: false };
+        const d = new Date(st.lastSeen);
+        const now = new Date();
+        const diffMs = now - d;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        let when;
+        if (diffDays === 0) when = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        else if (diffDays === 1) when = 'yesterday';
+        else if (diffDays < 7) when = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+        else when = d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+        return { text: 'Last seen ' + when, online: false };
+    }
+};
+
 // ---- Message Manager ----
 const MessageManager = {
-    hasBookingRelationship(userId1, userId2) {
+    // Get the role of a user by their ID
+    getUserRole(userId) {
         const data = getMockData();
-        if (!data.offers) return false;
-        // Any offer (even sent/viewed) establishes a relationship in the new model
-        return data.offers.some(o =>
-            (o.locumId === userId1 && o.practiceId === userId2) ||
-            (o.locumId === userId2 && o.practiceId === userId1)
+        if (data.locums.find(l => l.id === userId)) return 'locum';
+        if (data.practices.find(p => p.id === userId)) return 'practice';
+        return null;
+    },
+
+    // Check if a locum can message (only reply — must have existing thread initiated by practice)
+    canLocumMessage(locumId, practiceId) {
+        const data = getMockData();
+        if (!data.messages) return false;
+        // Check if practice has ever sent a message to this locum (not deleted by locum)
+        return data.messages.some(m =>
+            m.fromId === practiceId && m.toId === locumId && !this._isDeletedFor(m, locumId)
         );
+    },
+
+    // Check if from/to is a valid messaging pair
+    canSendMessage(fromId, toId) {
+        const fromRole = this.getUserRole(fromId);
+        const toRole = this.getUserRole(toId);
+        // Same role cannot message each other
+        if (fromRole === toRole) return { allowed: false, reason: fromRole === 'locum' ? 'GPs cannot message other GPs.' : 'Practices cannot message other practices.' };
+        // Locum can only reply (practice must have messaged first)
+        if (fromRole === 'locum') {
+            if (!this.canLocumMessage(fromId, toId)) {
+                return { allowed: false, reason: 'You can only reply to messages from practices. You cannot initiate conversations.' };
+            }
+        }
+        return { allowed: true };
+    },
+
+    _isDeletedFor(msg, userId) {
+        return msg._deletedFor && msg._deletedFor.includes(userId);
     },
 
     send(fromId, toId, subject, body, shiftId) {
         if (!body || !body.trim()) return { error: 'empty_message', message: 'Message cannot be empty.' };
         if (!toId) return { error: 'no_recipient', message: 'Please select a recipient.' };
+
+        // Enforce messaging restrictions
+        const check = this.canSendMessage(fromId, toId);
+        if (!check.allowed) return { error: 'not_allowed', message: check.reason };
+
         const data = getMockData();
         if (!data.messages) data.messages = [];
-        // Warn (but don't block) if no booking relationship exists
-        if (!shiftId && !this.hasBookingRelationship(fromId, toId)) {
-            // Allow the message but flag it — in a real system this would be blocked
-        }
-        const threadId = this.findThread(data, fromId, toId, shiftId) || ('thread-' + Date.now());
+
+        // Find existing thread between these two users (regardless of shiftId)
+        // New thread only created if no thread exists or prior was deleted by sender
+        const threadId = this._findActiveThread(data, fromId, toId) || ('thread-' + Date.now());
+
         data.messages.push({
             id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
             threadId,
             fromId,
             toId,
-            subject,
+            subject: subject || '',
             body,
             shiftId: shiftId || null,
             timestamp: new Date().toISOString(),
-            read: false
+            read: false,
+            _deletedFor: []
         });
         // Email notification
-        EmailManager.send(data, toId, 'New Message: ' + subject, body.length > 200 ? body.substring(0, 200) + '...' : body, 'message_received');
-        Booking.addNotification(data, toId, 'message', 'New Message', `You have a new message: "${subject}"`);
+        EmailManager.send(data, toId, 'New Message: ' + (subject || 'Message'), body.length > 200 ? body.substring(0, 200) + '...' : body, 'message_received');
+        Booking.addNotification(data, toId, 'message', 'New Message', 'You have a new message from ' + this.getUserName(fromId));
         saveMockData(data);
         return threadId;
     },
 
-    findThread(data, user1, user2, shiftId) {
+    // Send a system message (e.g. "Offer confirmed · Tue 07, 08:00–13:00")
+    sendSystemMessage(threadId, fromId, toId, text) {
+        const data = getMockData();
+        if (!data.messages) data.messages = [];
+        data.messages.push({
+            id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+            threadId,
+            fromId,
+            toId,
+            subject: '',
+            body: text,
+            shiftId: null,
+            timestamp: new Date().toISOString(),
+            read: false,
+            _deletedFor: [],
+            _system: true
+        });
+        saveMockData(data);
+    },
+
+    // Find an active (non-deleted) thread between two users
+    _findActiveThread(data, user1, user2) {
         if (!data.messages) return null;
-        const msg = data.messages.find(m =>
+        // Get all messages between these two users that are not deleted for user1
+        const relevantMsgs = data.messages.filter(m =>
             ((m.fromId === user1 && m.toId === user2) || (m.fromId === user2 && m.toId === user1)) &&
-            (shiftId ? m.shiftId === shiftId : true)
+            !this._isDeletedFor(m, user1)
         );
-        return msg ? msg.threadId : null;
+        if (relevantMsgs.length === 0) return null;
+        // Return the thread ID of the most recent message
+        return relevantMsgs[relevantMsgs.length - 1].threadId;
+    },
+
+    // Delete a thread for one user only (soft delete)
+    deleteThread(threadId, userId) {
+        const data = getMockData();
+        if (!data.messages) return;
+        data.messages.forEach(m => {
+            if (m.threadId === threadId) {
+                if (!m._deletedFor) m._deletedFor = [];
+                if (!m._deletedFor.includes(userId)) m._deletedFor.push(userId);
+            }
+        });
+        // Clean up messages deleted for all participants
+        data.messages = data.messages.filter(m => {
+            if (m.threadId !== threadId) return true;
+            const participants = new Set();
+            data.messages.filter(mm => mm.threadId === threadId).forEach(mm => { participants.add(mm.fromId); participants.add(mm.toId); });
+            return !Array.from(participants).every(p => m._deletedFor && m._deletedFor.includes(p));
+        });
+        saveMockData(data);
     },
 
     getThreads(userId) {
         const data = getMockData();
         if (!data.messages) return [];
-        const userMsgs = data.messages.filter(m => m.fromId === userId || m.toId === userId);
+        // Filter messages visible to this user (not deleted for them)
+        const userMsgs = data.messages.filter(m =>
+            (m.fromId === userId || m.toId === userId) && !this._isDeletedFor(m, userId)
+        );
         const threads = {};
         userMsgs.forEach(m => {
             if (!threads[m.threadId]) threads[m.threadId] = [];
@@ -1043,10 +1190,12 @@ const MessageManager = {
         }).sort((a, b) => new Date(b.lastMessage.timestamp) - new Date(a.lastMessage.timestamp));
     },
 
-    getThread(threadId) {
+    getThread(threadId, userId) {
         const data = getMockData();
         if (!data.messages) return [];
-        return data.messages.filter(m => m.threadId === threadId).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        return data.messages.filter(m =>
+            m.threadId === threadId && !this._isDeletedFor(m, userId)
+        ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     },
 
     markThreadRead(threadId, userId) {
@@ -1060,7 +1209,7 @@ const MessageManager = {
     getUnreadCount(userId) {
         const data = getMockData();
         if (!data.messages) return 0;
-        return data.messages.filter(m => m.toId === userId && !m.read).length;
+        return data.messages.filter(m => m.toId === userId && !m.read && !this._isDeletedFor(m, userId)).length;
     },
 
     getUserName(userId) {
@@ -1408,5 +1557,13 @@ const Availability = {
 function initPage(role) {
     if (!Auth.requireAuth(role)) return false;
     initMockData();
+    // Online status: set online + heartbeat every 60s
+    const sess = Auth.getSession();
+    if (sess && sess.id) {
+        OnlineStatus.setOnline(sess.id);
+        setInterval(() => OnlineStatus.heartbeat(sess.id), 60000);
+        // Set offline on tab close/navigate away
+        window.addEventListener('beforeunload', () => OnlineStatus.setOffline(sess.id));
+    }
     return true;
 }
