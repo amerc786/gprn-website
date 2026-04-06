@@ -65,7 +65,8 @@
                 pending: 'badge-warning',
                 paid: 'badge-success',
                 overdue: 'badge-danger',
-                disputed: 'badge-info'
+                disputed: 'badge-info',
+                revised: 'badge-warning'
             };
             return map[status] || 'badge-neutral';
         }
@@ -145,6 +146,118 @@
             }
         }
 
+        function handleReviseInvoice() {
+            Modal.show({
+                title: 'Revise Invoice Amount',
+                size: 'medium',
+                body: `
+                    <p style="margin-bottom: 16px; color: var(--dark-600);">Enter the revised amount for this invoice. The practice will be notified and must approve before payment can proceed.</p>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label">Current Amount</label>
+                        <p style="font-size: 1.2rem; font-weight: 700; color: var(--dark);">${formatCurrency(invoice.total)}</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Revised Amount (£)</label>
+                        <input type="number" id="revisedAmount" class="form-input" step="0.01" min="0" value="${invoice.total.toFixed(2)}" placeholder="Enter new amount" style="font-size: 1.1rem; padding: 10px 14px;" required>
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" id="submitRevision">Submit Revision</button>
+                `,
+                onOpen(overlay) {
+                    const input = overlay.querySelector('#revisedAmount');
+                    input.focus();
+                    input.select();
+                    overlay.querySelector('#submitRevision').addEventListener('click', () => {
+                        const newAmount = parseFloat(input.value);
+                        if (isNaN(newAmount) || newAmount <= 0) {
+                            Toast.show('Please enter a valid amount.', 'warning');
+                            return;
+                        }
+                        if (newAmount === invoice.total) {
+                            Toast.show('The revised amount is the same as the current amount. Please enter a different amount.', 'warning');
+                            return;
+                        }
+                        if (InvoiceManager.reviseAmount(invoiceId, newAmount)) {
+                            Modal.close(overlay);
+                            Toast.show('Invoice revised. The practice has been notified for approval.', 'success');
+                            // Update local invoice object for re-render
+                            invoice.originalTotal = invoice.originalTotal || invoice.total;
+                            invoice.revisedTotal = newAmount;
+                            invoice.status = 'revised';
+                            setTimeout(() => render(), 500);
+                        } else {
+                            Toast.show('Failed to revise invoice. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function handleApproveRevision() {
+            Modal.show({
+                title: 'Approve Revised Amount',
+                size: 'small',
+                body: `
+                    <p style="color: var(--dark-600); line-height: 1.6;">Approve the revised amount of <strong>${formatCurrency(invoice.revisedTotal)}</strong> for invoice <strong>${invoice.invoiceNumber}</strong>?</p>
+                    <p style="color: var(--dark-600); margin-top: 8px;">Original amount was ${formatCurrency(invoice.originalTotal || invoice.total)}. Once approved, you can proceed to mark the invoice as paid.</p>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" id="confirmApproveRevision">Approve</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#confirmApproveRevision').addEventListener('click', () => {
+                        if (InvoiceManager.approveRevision(invoiceId)) {
+                            Modal.close(overlay);
+                            Toast.show('Revised amount approved. You can now mark the invoice as paid.', 'success');
+                            // Update local invoice object
+                            invoice.total = invoice.revisedTotal;
+                            invoice.sessionRate = invoice.revisedTotal;
+                            invoice.status = 'pending';
+                            delete invoice.revisedTotal;
+                            setTimeout(() => render(), 500);
+                        } else {
+                            Toast.show('Failed to approve revision. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function handleRejectRevision() {
+            Modal.show({
+                title: 'Reject Revised Amount',
+                size: 'medium',
+                body: `
+                    <p style="margin-bottom: 16px; color: var(--dark-600);">Reject the revised amount of <strong>${formatCurrency(invoice.revisedTotal)}</strong>? The invoice will return to disputed status so you can discuss further.</p>
+                    <div class="form-group">
+                        <label class="form-label">Reason (optional)</label>
+                        <textarea id="rejectReason" class="form-textarea" rows="3" placeholder="Why is this amount not acceptable..."></textarea>
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-danger" id="confirmRejectRevision">Reject Revision</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#confirmRejectRevision').addEventListener('click', () => {
+                        const reason = overlay.querySelector('#rejectReason').value.trim();
+                        if (InvoiceManager.rejectRevision(invoiceId, reason)) {
+                            Modal.close(overlay);
+                            Toast.show('Revision rejected. The locum has been notified to discuss further.', 'info');
+                            invoice.status = 'disputed';
+                            delete invoice.revisedTotal;
+                            setTimeout(() => render(), 500);
+                        } else {
+                            Toast.show('Failed to reject revision. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
         function render() {
             if (!invoice) {
                 pageContent.innerHTML = `
@@ -189,9 +302,21 @@
                     <button class="btn btn-danger btn-ghost" onclick="handleDispute()">Dispute</button>
                 `;
             }
+            if (role === 'practice' && invoice.status === 'revised') {
+                actionButtons = `
+                    <button class="btn btn-primary" onclick="handleApproveRevision()">Approve Revision</button>
+                    <button class="btn btn-danger btn-ghost" onclick="handleRejectRevision()">Reject Revision</button>
+                `;
+            }
             if (role === 'locum' && (invoice.status === 'pending' || invoice.status === 'overdue')) {
                 actionButtons = `
                     <button class="btn btn-warning" onclick="handleChasePayment()">Chase Payment</button>
+                `;
+            }
+            if (role === 'locum' && invoice.status === 'disputed') {
+                actionButtons = `
+                    <button class="btn btn-primary" onclick="handleReviseInvoice()">Revise Invoice</button>
+                    <a href="messages.html" class="btn btn-ghost">${getIcon('chat-circle')} Discuss in Messages</a>
                 `;
             }
 
@@ -278,7 +403,25 @@
                             </div>
                         </div>
 
-                        ${invoice.status === 'disputed' && invoice.disputeReason ? `
+                        ${invoice.status === 'revised' && invoice.revisedTotal ? `
+                            <div style="margin-top: 24px; padding: 16px; background: rgba(5,150,105,0.05); border-radius: 8px; border-left: 3px solid var(--primary);">
+                                <p style="font-weight: 600; color: var(--primary); margin-bottom: 8px;">Revised Amount Pending Approval</p>
+                                <div style="display: flex; gap: 24px; align-items: center;">
+                                    <div>
+                                        <p style="color: var(--dark-600); font-size: 0.85rem;">Original</p>
+                                        <p style="color: var(--dark-700); font-size: 1.1rem; text-decoration: line-through;">${formatCurrency(invoice.originalTotal || invoice.total)}</p>
+                                    </div>
+                                    <div style="color: var(--dark-600); font-size: 1.2rem;">→</div>
+                                    <div>
+                                        <p style="color: var(--dark-600); font-size: 0.85rem;">Revised</p>
+                                        <p style="color: var(--primary); font-size: 1.1rem; font-weight: 700;">${formatCurrency(invoice.revisedTotal)}</p>
+                                    </div>
+                                </div>
+                                ${role === 'practice' ? '<p style="margin-top: 8px; color: var(--dark-600); font-size: 0.85rem;">Please approve or reject this revised amount above.</p>' : '<p style="margin-top: 8px; color: var(--dark-600); font-size: 0.85rem;">Awaiting practice approval of the revised amount.</p>'}
+                            </div>
+                        ` : ''}
+
+                        ${(invoice.status === 'disputed' || invoice.status === 'revised') && invoice.disputeReason ? `
                             <div style="margin-top: 24px; padding: 16px; background: rgba(239,68,68,0.05); border-radius: 8px; border-left: 3px solid var(--danger);">
                                 <p style="font-weight: 600; color: var(--danger); margin-bottom: 4px;">Dispute Reason</p>
                                 <p style="color: var(--dark-700);">${sanitizeHTML(invoice.disputeReason)}</p>

@@ -389,6 +389,9 @@
             if (status === 'disputed') {
                 return '<span class="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-slate-200"><span class="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>' + label + '</span>';
             }
+            if (status === 'revised') {
+                return '<span class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-amber-200"><span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>Under Review</span>';
+            }
             return '<span class="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-slate-200">' + label + '</span>';
         }
 

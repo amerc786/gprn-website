@@ -1363,6 +1363,116 @@ const InvoiceManager = {
         return true;
     },
 
+    // GP revises invoice amount after dispute discussion
+    reviseAmount(invoiceId, newAmount) {
+        const data = getMockData();
+        const inv = data.invoices.find(i => i.id === invoiceId);
+        if (!inv || inv.status !== 'disputed') return false;
+        inv.originalTotal = inv.originalTotal || inv.total;
+        inv.revisedTotal = newAmount;
+        inv.status = 'revised';
+        saveMockData(data);
+
+        // Message practice about revision
+        if (!data.messages) data.messages = [];
+        const threadId = MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
+            || MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
+            || ('thread-' + Date.now());
+        data.messages.push({
+            id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+            threadId,
+            fromId: inv.locumId,
+            toId: inv.practiceId,
+            subject: 'Invoice Revised: ' + inv.invoiceNumber,
+            body: `Invoice ${inv.invoiceNumber} has been revised.\n\nOriginal amount: ${formatCurrency(inv.originalTotal)}\nRevised amount: ${formatCurrency(newAmount)}\n\nPlease review and approve the revised amount.`,
+            shiftId: null,
+            timestamp: new Date().toISOString(),
+            read: false,
+            _deletedFor: [],
+            _invoiceId: inv.id
+        });
+        Booking.addNotification(data, inv.practiceId, 'invoice_revised', 'Invoice Revised',
+            `Invoice ${inv.invoiceNumber} has been revised to ${formatCurrency(newAmount)}. Please review.`);
+        EmailManager.send(data, inv.practiceId, 'Invoice Revised: ' + inv.invoiceNumber,
+            `Invoice ${inv.invoiceNumber} has been revised from ${formatCurrency(inv.originalTotal)} to ${formatCurrency(newAmount)}. Please log in to review and approve.`, 'invoice_revised');
+        saveMockData(data);
+        return true;
+    },
+
+    // Practice approves revised amount — invoice goes to pending with new total
+    approveRevision(invoiceId) {
+        const data = getMockData();
+        const inv = data.invoices.find(i => i.id === invoiceId);
+        if (!inv || inv.status !== 'revised') return false;
+        inv.total = inv.revisedTotal;
+        inv.sessionRate = inv.revisedTotal;
+        inv.status = 'pending';
+        delete inv.revisedTotal;
+        saveMockData(data);
+
+        // Notify GP that revision was approved
+        if (!data.messages) data.messages = [];
+        const threadId = MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
+            || MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
+            || ('thread-' + Date.now());
+        data.messages.push({
+            id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+            threadId,
+            fromId: inv.practiceId,
+            toId: inv.locumId,
+            subject: '',
+            body: `Revised amount of ${formatCurrency(inv.total)} for invoice ${inv.invoiceNumber} has been approved. Payment will follow.`,
+            shiftId: null,
+            timestamp: new Date().toISOString(),
+            read: false,
+            _deletedFor: [],
+            _system: true,
+            _invoiceId: inv.id
+        });
+        Booking.addNotification(data, inv.locumId, 'revision_approved', 'Revision Approved',
+            `${inv.practiceName} has approved the revised amount of ${formatCurrency(inv.total)} for invoice ${inv.invoiceNumber}.`);
+        EmailManager.send(data, inv.locumId, 'Revision Approved: ' + inv.invoiceNumber,
+            `The revised amount of ${formatCurrency(inv.total)} for invoice ${inv.invoiceNumber} has been approved by ${inv.practiceName}.`, 'revision_approved');
+        saveMockData(data);
+        return true;
+    },
+
+    // Practice rejects revised amount — back to disputed for further discussion
+    rejectRevision(invoiceId, reason) {
+        const data = getMockData();
+        const inv = data.invoices.find(i => i.id === invoiceId);
+        if (!inv || inv.status !== 'revised') return false;
+        inv.status = 'disputed';
+        inv.disputeReason = reason || inv.disputeReason;
+        delete inv.revisedTotal;
+        saveMockData(data);
+
+        // Notify GP that revision was rejected
+        if (!data.messages) data.messages = [];
+        const threadId = MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
+            || MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
+            || ('thread-' + Date.now());
+        data.messages.push({
+            id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+            threadId,
+            fromId: inv.practiceId,
+            toId: inv.locumId,
+            subject: 'Revision Rejected: ' + inv.invoiceNumber,
+            body: `The revised amount for invoice ${inv.invoiceNumber} has been rejected.${reason ? '\n\nReason: ' + reason : ''}\n\nPlease discuss further and submit a new revision.`,
+            shiftId: null,
+            timestamp: new Date().toISOString(),
+            read: false,
+            _deletedFor: [],
+            _invoiceId: inv.id
+        });
+        Booking.addNotification(data, inv.locumId, 'revision_rejected', 'Revision Rejected',
+            `${inv.practiceName} has rejected the revised amount for invoice ${inv.invoiceNumber}. Check your messages.`);
+        EmailManager.send(data, inv.locumId, 'Revision Rejected: ' + inv.invoiceNumber,
+            `The revised amount for invoice ${inv.invoiceNumber} has been rejected by ${inv.practiceName}. Please discuss further.`, 'revision_rejected');
+        saveMockData(data);
+        return true;
+    },
+
     chasePayment(invoiceId) {
         const data = getMockData();
         const inv = data.invoices.find(i => i.id === invoiceId);

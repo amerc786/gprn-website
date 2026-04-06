@@ -121,7 +121,8 @@
                 pending: 'badge-warning',
                 paid: 'badge-success',
                 overdue: 'badge-danger',
-                disputed: 'badge-info'
+                disputed: 'badge-info',
+                revised: 'badge-warning'
             };
             return map[status] || 'badge-neutral';
         }
@@ -209,6 +210,7 @@
                                     <option value="paid" ${filterStatus === 'paid' ? 'selected' : ''}>Paid</option>
                                     <option value="overdue" ${filterStatus === 'overdue' ? 'selected' : ''}>Overdue</option>
                                     <option value="disputed" ${filterStatus === 'disputed' ? 'selected' : ''}>Disputed</option>
+                                    <option value="revised" ${filterStatus === 'revised' ? 'selected' : ''}>Under Review</option>
                                 </select>
                             </div>
                         </div>
