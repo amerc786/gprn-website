@@ -446,16 +446,22 @@
             const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const body = sanitizeHTML(m.body).replace(/\n/g, '<br>');
 
+            // Invoice-linked message: add "View Invoice" button
+            const invoiceBtn = m._invoiceId ? `
+                <a href="invoice-view.html?id=${m._invoiceId}" class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg text-[12px] font-bold ${isMine ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-navy/10 text-navy hover:bg-navy/15'} transition-colors" style="text-decoration:none;">
+                    <i class="ph ph-file-text text-sm"></i> View Invoice
+                </a>` : '';
+
             if (isMine) {
                 return `
                     <div class="flex flex-col items-end max-w-[75%] self-end">
-                        <div class="bg-navy text-white rounded-2xl rounded-br-md px-4 py-2.5 text-[14px] leading-relaxed shadow-subtle">${body}</div>
+                        <div class="bg-navy text-white rounded-2xl rounded-br-md px-4 py-2.5 text-[14px] leading-relaxed shadow-subtle">${body}${invoiceBtn}</div>
                         <div class="text-[10px] text-slate-400 mt-1 mr-1">${time}</div>
                     </div>`;
             } else {
                 return `
                     <div class="flex flex-col items-start max-w-[75%] self-start">
-                        <div class="bg-slate-100 text-navy rounded-2xl rounded-bl-md px-4 py-2.5 text-[14px] leading-relaxed">${body}</div>
+                        <div class="bg-slate-100 text-navy rounded-2xl rounded-bl-md px-4 py-2.5 text-[14px] leading-relaxed">${body}${invoiceBtn}</div>
                         <div class="text-[10px] text-slate-400 mt-1 ml-1">${time}</div>
                     </div>`;
             }

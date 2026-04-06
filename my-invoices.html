@@ -105,7 +105,8 @@
             }
         }
 
-        let filterStatus = '';
+        // Support URL param to pre-filter (e.g. ?status=overdue from dashboard)
+        let filterStatus = new URLSearchParams(window.location.search).get('status') || '';
 
         function getFilteredInvoices() {
             let filtered = InvoiceManager.getForLocum(session.id);

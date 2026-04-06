@@ -71,12 +71,26 @@
         }
 
         function handleMarkPaid() {
-            if (InvoiceManager.updateStatus(invoiceId, 'paid')) {
-                Toast.show('Invoice marked as paid. Locum has been notified.', 'success');
-                setTimeout(() => location.reload(), 800);
-            } else {
-                Toast.show('Failed to update invoice. Please try again.', 'error');
-            }
+            Modal.show({
+                title: 'Confirm Payment',
+                size: 'small',
+                body: `<p style="color: var(--dark-600); line-height: 1.6;">Mark invoice <strong>${invoice.invoiceNumber}</strong> for <strong>${formatCurrency(invoice.total)}</strong> as paid? The locum will be notified.</p>`,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" id="confirmPaidBtn">Confirm Payment</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#confirmPaidBtn').addEventListener('click', () => {
+                        if (InvoiceManager.updateStatus(invoiceId, 'paid')) {
+                            Modal.close(overlay);
+                            Toast.show('Invoice marked as paid. Locum has been notified.', 'success');
+                            setTimeout(() => render(), 500);
+                        } else {
+                            Toast.show('Failed to update invoice. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
         }
 
         function handleDispute() {
@@ -103,8 +117,8 @@
                         }
                         if (InvoiceManager.updateStatus(invoiceId, 'disputed', reason)) {
                             Modal.close(overlay);
-                            Toast.show('Invoice has been disputed. The locum will be notified.', 'info');
-                            setTimeout(() => location.reload(), 800);
+                            Toast.show('Invoice disputed. The locum has been notified via messages.', 'info');
+                            setTimeout(() => render(), 500);
                         } else {
                             Toast.show('Failed to dispute invoice. Please try again.', 'error');
                         }
@@ -115,8 +129,17 @@
 
         function handleChasePayment() {
             if (InvoiceManager.chasePayment(invoiceId)) {
-                Toast.show('Payment reminder sent to the practice.', 'success');
-                setTimeout(() => location.reload(), 800);
+                Toast.show('Payment reminder sent to the practice\'s inbox.', 'success');
+                Modal.show({
+                    title: 'Reminder Sent',
+                    size: 'small',
+                    body: `<p style="color: var(--dark-600); line-height: 1.6;">A payment reminder has been sent to <strong>${invoice.practiceName}</strong>. They will see it in their messages and can approve or dispute the invoice from there.</p>`,
+                    footer: `
+                        <a href="messages.html" class="btn btn-primary">Go to Messages</a>
+                        <button class="btn btn-ghost" data-modal-close>Stay Here</button>
+                    `
+                });
+                setTimeout(() => render(), 500);
             } else {
                 Toast.show('Could not send reminder. Please try again.', 'error');
             }

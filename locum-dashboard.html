@@ -119,8 +119,26 @@
         // Unread messages count
         const unreadMsgCount = MessageManager.getUnreadCount(session.id);
 
+        // Auto-detect overdue invoices
+        const overdueResult = InvoiceManager.checkOverdue(session.id);
+
         pageContent.innerHTML = `
             <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 44px; font-weight: 800; color: var(--dark); margin-bottom: 24px; letter-spacing: -0.025em; line-height: 1.1;">${greeting}</h2>
+
+            ${overdueResult.count > 0 ? `
+            <div class="content-card" style="margin-bottom: 20px; border-left: 4px solid var(--danger); background: rgba(239, 68, 68, 0.04);">
+                <div class="content-card-body" style="padding: 18px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                    <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(239, 68, 68, 0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        ${getIcon('warning')}
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <strong style="font-size: 0.95rem; color: var(--dark);">You have ${overdueResult.count} overdue invoice${overdueResult.count > 1 ? 's' : ''} totalling ${formatCurrency(overdueResult.total)}</strong>
+                        <p style="font-size: 0.85rem; color: var(--dark-600); margin-top: 2px;">Payment${overdueResult.count > 1 ? 's are' : ' is'} past the 30-day due date. Send a reminder to the practice${overdueResult.count > 1 ? 's' : ''}.</p>
+                    </div>
+                    <a href="my-invoices.html?status=overdue" class="btn btn-small" style="background: var(--danger); color: #fff; border: none;">View Overdue Invoices</a>
+                </div>
+            </div>
+            ` : ''}
 
             ${docWarnings.length > 0 ? `
             <div style="margin-bottom: 20px;">
@@ -289,8 +307,9 @@
                         ${notifications.length === 0
                             ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No notifications.</p>'
                             : notifications.slice(0, 6).map(n => {
-                                const dotColor = n.type === 'offer_accepted' || n.type === 'booking_confirmed' ? 'var(--success)' :
-                                    n.type === 'shift_cancelled' || n.type === 'no_show' || n.type === 'offer_withdrawn' ? 'var(--danger)' :
+                                const dotColor = n.type === 'offer_accepted' || n.type === 'booking_confirmed' || n.type === 'payment_received' ? 'var(--success)' :
+                                    n.type === 'shift_cancelled' || n.type === 'no_show' || n.type === 'offer_withdrawn' || n.type === 'invoice_disputed' ? 'var(--danger)' :
+                                    n.type === 'invoice_overdue' || n.type === 'payment_reminder' ? 'var(--danger)' :
                                     n.type === 'new_offer' || n.type === 'offer_received' ? 'var(--primary)' :
                                     n.type === 'counter_offer' ? 'var(--warning)' :
                                     'var(--coral)';

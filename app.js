@@ -1311,12 +1311,55 @@ const InvoiceManager = {
         if (status === 'paid') inv.paidDate = DateUtils.toISO(new Date());
         if (status === 'disputed') inv.disputeReason = reason;
         saveMockData(data);
-        try {
-            if (status === 'paid') {
-                EmailManager.send(data, inv.locumId, 'Payment Received', `Payment of ${formatCurrency(inv.total)} for session on ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')} at ${inv.practiceName} has been received.`, 'payment_received');
-                saveMockData(data);
-            }
-        } catch(e) { /* email notification is non-critical */ }
+
+        // Send message to the other party about the status change
+        if (!data.messages) data.messages = [];
+        const threadId = MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
+            || MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
+            || ('thread-' + Date.now());
+
+        if (status === 'paid') {
+            // Notify locum: payment received — send as system message + notification
+            data.messages.push({
+                id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+                threadId,
+                fromId: inv.practiceId,
+                toId: inv.locumId,
+                subject: '',
+                body: `Payment confirmed for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}). Thank you.`,
+                shiftId: null,
+                timestamp: new Date().toISOString(),
+                read: false,
+                _deletedFor: [],
+                _system: true
+            });
+            Booking.addNotification(data, inv.locumId, 'payment_received', 'Payment Received',
+                `${inv.practiceName} has paid invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}).`);
+            EmailManager.send(data, inv.locumId, 'Payment Received', `Payment of ${formatCurrency(inv.total)} for session on ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')} at ${inv.practiceName} has been received.`, 'payment_received');
+        }
+
+        if (status === 'disputed') {
+            // Send dispute message to locum with reason
+            data.messages.push({
+                id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+                threadId,
+                fromId: inv.practiceId,
+                toId: inv.locumId,
+                subject: 'Invoice Disputed: ' + inv.invoiceNumber,
+                body: `Invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) has been disputed.\n\nReason: ${reason}`,
+                shiftId: null,
+                timestamp: new Date().toISOString(),
+                read: false,
+                _deletedFor: [],
+                _invoiceId: inv.id
+            });
+            Booking.addNotification(data, inv.locumId, 'invoice_disputed', 'Invoice Disputed',
+                `${inv.practiceName} has disputed invoice ${inv.invoiceNumber}. Check your messages.`);
+            EmailManager.send(data, inv.locumId, 'Invoice Disputed: ' + inv.invoiceNumber,
+                `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} has been disputed by ${inv.practiceName}. Reason: ${reason}`, 'invoice_disputed');
+        }
+
+        saveMockData(data);
         return true;
     },
 
@@ -1325,11 +1368,73 @@ const InvoiceManager = {
         const inv = data.invoices.find(i => i.id === invoiceId);
         if (!inv) return false;
         inv.status = 'overdue';
-        EmailManager.send(data, inv.practiceId, 'Payment Reminder', `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is overdue. Session: ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}, Locum: ${inv.locumName}.`, 'payment_reminder');
+        saveMockData(data);
+
+        // Send message to practice inbox (bypasses locum-can't-initiate restriction for system invoicing)
+        if (!data.messages) data.messages = [];
+        const threadId = MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
+            || MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
+            || ('thread-' + Date.now());
+        // Add invoice reminder message with _invoiceId metadata for linking
+        data.messages.push({
+            id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+            threadId,
+            fromId: inv.locumId,
+            toId: inv.practiceId,
+            subject: 'Payment Reminder: ' + inv.invoiceNumber,
+            body: `Payment reminder for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) for ${inv.sessionType} session on ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}. Payment was due on ${DateUtils.format(inv.dueDate, 'medium')}. Please review and arrange payment.`,
+            shiftId: null,
+            timestamp: new Date().toISOString(),
+            read: false,
+            _deletedFor: [],
+            _invoiceId: inv.id
+        });
+        // Dashboard notification for the practice
         Booking.addNotification(data, inv.practiceId, 'payment_reminder', 'Payment Reminder',
-            `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is overdue.`);
+            `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is overdue. Check your messages.`);
+        // Email notification
+        EmailManager.send(data, inv.practiceId, 'Payment Reminder: ' + inv.invoiceNumber,
+            `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is overdue. Session: ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}, Locum: ${inv.locumName}. Please log in to review.`, 'payment_reminder');
         saveMockData(data);
         return true;
+    },
+
+    // Auto-detect and flag overdue invoices, create notifications
+    checkOverdue(locumId) {
+        const data = getMockData();
+        if (!data.invoices) return { count: 0, total: 0, invoices: [] };
+        const now = new Date();
+        let changed = false;
+        const overdueInvoices = [];
+        data.invoices.forEach(inv => {
+            if (inv.locumId === locumId && inv.status === 'pending' && inv.dueDate) {
+                const due = new Date(inv.dueDate);
+                if (due < now) {
+                    inv.status = 'overdue';
+                    changed = true;
+                    overdueInvoices.push(inv);
+                    // Only notify if not already notified (check existing notifications)
+                    const existingNotif = (data.notifications || []).find(n =>
+                        n.userId === locumId && n.type === 'invoice_overdue' && n.message && n.message.includes(inv.invoiceNumber)
+                    );
+                    if (!existingNotif) {
+                        Booking.addNotification(data, locumId, 'invoice_overdue', 'Invoice Overdue',
+                            `Invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) to ${inv.practiceName} is past due. Consider sending a payment reminder.`);
+                        // Also notify the practice
+                        Booking.addNotification(data, inv.practiceId, 'payment_reminder', 'Payment Overdue',
+                            `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} from ${inv.locumName} is overdue.`);
+                    }
+                }
+            }
+        });
+        if (changed) saveMockData(data);
+        // Return all overdue invoices for this locum (including previously flagged)
+        const allOverdue = data.invoices.filter(i => i.locumId === locumId && i.status === 'overdue');
+        return {
+            count: allOverdue.length,
+            total: allOverdue.reduce((s, i) => s + i.total, 0),
+            invoices: allOverdue
+        };
     }
 };
 
