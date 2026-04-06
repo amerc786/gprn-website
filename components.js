@@ -5,7 +5,7 @@ function renderSidebar(role, activePage) {
     const session = Auth.getSession();
     const locumNav = [
         { id: 'dashboard', label: 'Dashboard', icon: 'grid', href: 'locum-dashboard.html' },
-        { id: 'invitations', label: 'My Invitations', icon: 'mail', href: 'available-shifts.html' },
+        { id: 'invitations', label: 'My Shifts', icon: 'mail', href: 'available-shifts.html' },
         { id: 'calendar', label: 'My Calendar', icon: 'calendar', href: 'my-calendar.html' },
         { id: 'bookings', label: 'My Bookings', icon: 'file-text', href: 'my-offers.html' },
         { id: 'rates', label: 'My Rates', icon: 'pound', href: 'my-rates.html' },

@@ -129,7 +129,7 @@
 
             <div class="dash-stats-row">
                 ${renderStatCard('calendar', 'Upcoming Sessions', upcomingAccepted.length, null, 'rgba(91, 77, 255,0.15)')}
-                ${renderStatCard('mail', 'Pending Invitations', pendingInvitations.length, null, 'rgba(245,158,11,0.15)')}
+                ${renderStatCard('mail', 'Pending Shifts', pendingInvitations.length, null, 'rgba(245,158,11,0.15)')}
                 ${renderStatCard('pound', "This Month's Earnings", formatCurrency(monthEarnings), null, 'rgba(34, 197, 94,0.15)')}
                 <div onclick="showReliabilityBreakdown()" style="cursor:pointer;" role="button" tabindex="0" aria-label="View reliability score breakdown">
                 ${renderStatCard('activity', 'Booking Reliability', reliability + '%', null, 'rgba(59, 130, 246,0.15)', 'Click for details')}
@@ -194,7 +194,7 @@
             ${pendingInvitations.length > 0 ? `
             <div class="content-card" style="margin-top: 8px;">
                 <div class="content-card-header">
-                    <h2>Pending Invitations</h2>
+                    <h2>Pending Shifts</h2>
                     <a href="available-shifts.html" class="btn btn-ghost btn-small">View All</a>
                 </div>
                 <div class="content-card-body">
@@ -345,8 +345,8 @@
         })();
 
         function showReliabilityBreakdown() {
-            var scoreColor = reliability >= 95 ? 'var(--success)' : (reliability >= 80 ? 'var(--warning)' : 'var(--danger)');
-            var scoreLabel = reliability >= 95 ? 'Priority visibility' : (reliability >= 80 ? 'Standard visibility' : 'Reduced visibility');
+            var scoreColor = reliability >= 95 ? 'var(--success)' : (reliability >= 70 ? 'var(--warning)' : 'var(--danger)');
+            var scoreLabel = reliability >= 95 ? 'Priority visibility' : (reliability >= 70 ? 'Standard visibility' : 'Reduced visibility');
             Modal.show({
                 title: 'Reliability Score Breakdown',
                 size: 'medium',
@@ -357,8 +357,8 @@
                     + '<p style="font-size:0.88rem;color:var(--dark-600);margin-bottom:16px;">Your reliability score affects your visibility to practices when they search for available locums.</p>'
                     + '<div style="border:1px solid var(--gray-100);border-radius:var(--radius);overflow:hidden;">'
                     + '<div style="padding:10px 14px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;"><span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--success);margin-right:8px;"></span>95%+ Green</span><span style="font-size:0.85rem;color:var(--dark-600);">Priority visibility</span></div>'
-                    + '<div style="padding:10px 14px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;"><span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--warning);margin-right:8px;"></span>80-94% Orange</span><span style="font-size:0.85rem;color:var(--dark-600);">Standard visibility</span></div>'
-                    + '<div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;"><span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--danger);margin-right:8px;"></span>Below 80% Red</span><span style="font-size:0.85rem;color:var(--dark-600);">Reduced visibility, practices may be warned</span></div>'
+                    + '<div style="padding:10px 14px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;"><span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--warning);margin-right:8px;"></span>70-94% Orange</span><span style="font-size:0.85rem;color:var(--dark-600);">Standard visibility</span></div>'
+                    + '<div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;"><span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--danger);margin-right:8px;"></span>Below 70% Red</span><span style="font-size:0.85rem;color:var(--dark-600);">Reduced visibility, practices may be warned</span></div>'
                     + '</div>'
                     + '<div style="margin-top:16px;padding:14px;background:var(--gray-50);border-radius:var(--radius);">'
                     + '<h4 style="font-size:0.88rem;font-weight:600;margin-bottom:8px;">How your score changes:</h4>'

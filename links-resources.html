@@ -37,24 +37,24 @@
         const html = `
         <h2 style="font-size: 1.25rem; margin-bottom: 24px;">Useful Links and Resources</h2>
 
-        <!-- Locum Specific -->
+        <!-- Key Resources -->
         <div class="content-card" style="margin-bottom: 24px;">
             <div class="content-card-header">
-                <h2>Locum Specific</h2>
+                <h2>Key Resources</h2>
             </div>
             <div class="content-card-body" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
-                ${linkCard('https://www.nasgp.org.uk', 'users', 'NASGP', 'National Association of Sessional GPs - advocacy, resources and community for sessional and locum GPs across the UK.')}
-                ${linkCard('https://www.locumorganiser.co.uk', 'briefcase', 'Locum Organiser', 'Manage your bookings, invoices, pension contributions and tax returns in one place. Essential tool for locum GPs.')}
+                ${linkCard('https://www.bma.org.uk/pay-and-contracts/locum-and-freelance-gps', 'file-text', 'BMA Locum GP Guidance', 'British Medical Association guidance for locum GPs on contracts, rates, rights and best practice.')}
+                ${linkCard('https://www.gmc-uk.org', 'shield', 'GMC', 'General Medical Council - registration, licensing, standards and guidance for all doctors in the UK.')}
+                ${linkCard('https://www.nbmedical.com', 'book-open', 'NB Medical', 'Independent CPD and clinical updates for GPs, including hot topics, guidelines and educational resources.')}
             </div>
         </div>
 
         <!-- Welsh GPs -->
-        <div class="content-card" style="margin-bottom: 24px;">
+        <div class="content-card">
             <div class="content-card-header">
                 <h2>Welsh GPs</h2>
             </div>
             <div class="content-card-body" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
-                ${linkCard('https://gpone.wales.nhs.uk', 'home', 'GP One', 'Central hub for Welsh GP information, including guidance, updates and resources for primary care in Wales.')}
                 ${linkCard('https://abuhb.nhs.wales', 'activity', 'Aneurin Bevan UHB', 'Aneurin Bevan University Health Board covering Gwent, Newport and surrounding areas.')}
                 ${linkCard('https://bcuhb.nhs.wales', 'activity', 'Betsi Cadwaladr UHB', 'Betsi Cadwaladr University Health Board covering North Wales.')}
                 ${linkCard('https://cavuhb.nhs.wales', 'activity', 'Cardiff and Vale UHB', 'Cardiff and Vale University Health Board covering Cardiff and the Vale of Glamorgan.')}
@@ -62,18 +62,6 @@
                 ${linkCard('https://hduhb.nhs.wales', 'activity', 'Hywel Dda UHB', 'Hywel Dda University Health Board covering West Wales including Carmarthenshire, Ceredigion and Pembrokeshire.')}
                 ${linkCard('https://pthb.nhs.wales', 'activity', 'Powys THB', 'Powys Teaching Health Board covering Mid Wales.')}
                 ${linkCard('https://sbuhb.nhs.wales', 'activity', 'Swansea Bay UHB', 'Swansea Bay University Health Board covering Swansea and Neath Port Talbot.')}
-            </div>
-        </div>
-
-        <!-- Resources -->
-        <div class="content-card">
-            <div class="content-card-header">
-                <h2>Resources</h2>
-            </div>
-            <div class="content-card-body" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
-                ${linkCard('https://www.nhs.wales', 'award', 'NHS Wales', 'Official NHS Wales website with health services information, policies, and resources for healthcare professionals.')}
-                ${linkCard('https://heiw.nhs.wales', 'award', 'HEIW', 'Health Education and Improvement Wales - education, training and workforce development for NHS Wales.')}
-                ${linkCard('https://www.bma.org.uk/pay-and-contracts/locum-and-freelance-gps', 'file-text', 'BMA Locum GP Guidance', 'British Medical Association guidance for locum GPs on contracts, rates, rights and best practice.')}
             </div>
         </div>`;
 

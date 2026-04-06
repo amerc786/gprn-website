@@ -515,7 +515,7 @@
             var locumName = locum ? locum.title + ' ' + locum.firstName + ' ' + locum.lastName : 'this locum';
 
             Modal.show({
-                title: 'Accept Proposed Rate',
+                title: 'Accept Locum Rate',
                 body: '<p style="font-size:0.92rem;color:var(--dark-600);margin-bottom:12px;">Are you sure you want to accept the rate of <strong>' + rateDisplay + '</strong> from <strong>' + locumName + '</strong>?</p><p style="font-size:0.85rem;color:var(--dark-600);">This will confirm the booking at the agreed rate.</p>',
                 footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="confirmAcceptCounterBtn">Accept Rate</button>',
                 onOpen: function(overlay) {
@@ -545,7 +545,7 @@
 
         function openNegotiate(offerId, currentRate) {
             Modal.show({
-                title: 'Negotiate Rate',
+                title: 'Counter Offer',
                 body: '<div style="padding:8px 0;"><p style="font-size:0.88rem;color:var(--dark-600);margin-bottom:16px;">Current rate: <strong>' + formatCurrency(currentRate) + '</strong></p><div class="form-group"><label class="form-label">Your counter-offer (£)</label><input type="number" id="counterRate" class="form-input" placeholder="e.g. 400" step="10" min="0"></div><div class="form-group"><label class="form-label">Message (optional)</label><textarea id="counterMessage" class="form-input" rows="2" placeholder="e.g. This is our standard rate for PM sessions"></textarea></div></div>',
                 footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="sendCounterBtn">Send Counter-Offer</button>',
                 onOpen: function(overlay) {

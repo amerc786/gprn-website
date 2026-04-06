@@ -21,7 +21,7 @@
         if (!initPage('locum')) throw new Error('Auth required');
 
         const session = Auth.getSession();
-        const pageContent = initAppLayout('locum', 'invitations', 'My Invitations');
+        const pageContent = initAppLayout('locum', 'invitations', 'My Shifts');
 
         // Auto-expire old offers
         Booking.expireOffers();
@@ -73,10 +73,10 @@
 
             pageContent.innerHTML = `
                 <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 8px;">
-                    My Invitations
+                    My Shifts
                 </h1>
                 <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 20px;">
-                    Review session invitations from practices. Accept, negotiate, or decline.
+                    Review session offers from practices. Accept or decline.
                 </p>
 
                 <div class="filter-bar">
@@ -85,8 +85,7 @@
                         <select class="form-select" id="filterStatus">
                             <option value="">All</option>
                             <option value="viewed">New</option>
-                            <option value="negotiating">Negotiating</option>
-                        </select>
+                                                    </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Health Board</label>
