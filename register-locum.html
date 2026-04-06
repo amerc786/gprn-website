@@ -101,13 +101,13 @@
 
         .register-shell .stepper {
             display: flex; align-items: center; justify-content: flex-start; gap: 0; margin-bottom: 32px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
-        .register-shell .step { display: flex; align-items: center; gap: 10px; color: #94A3B8; }
+        .register-shell .step { display: flex; align-items: center; gap: 8px; color: #94A3B8; white-space: nowrap; }
         .register-shell .step-circle {
             width: 32px; height: 32px; border-radius: 9999px; background: #F1F5F9; color: #64748B;
             display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;
-            border: 1px solid #E2E8F0;
+            border: 1px solid #E2E8F0; flex-shrink: 0;
         }
         .register-shell .step.active .step-circle { background: #101524; color: #ffffff; border-color: #101524; }
         .register-shell .step.completed .step-circle { background: #0F8B5A; color: #ffffff; border-color: #0F8B5A; }
@@ -115,6 +115,24 @@
         .register-shell .step.active .step-label { color: #0F172A; }
         .register-shell .step-line { flex: 1; height: 2px; background: #E2E8F0; margin: 0 10px; border-radius: 2px; min-width: 12px; }
         .register-shell .step-line.completed { background: #0F8B5A; }
+
+        @media (max-width: 640px) {
+            .register-shell .stepper {
+                flex-direction: column; align-items: stretch; gap: 0;
+                background: #ffffff; border: 1px solid #E2E8F0; border-radius: 16px;
+                padding: 6px; margin-bottom: 24px;
+            }
+            .register-shell .step {
+                padding: 10px 14px; border-radius: 12px; gap: 10px;
+            }
+            .register-shell .step.active {
+                background: #F1F5F9;
+            }
+            .register-shell .step-circle {
+                width: 28px; height: 28px; font-size: 0.75rem;
+            }
+            .register-shell .step-line { display: none; }
+        }
 
         .register-shell .form-row {
             display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
@@ -209,7 +227,7 @@
         </aside>
 
         <!-- RIGHT: FORM -->
-        <main class="flex items-start justify-center p-6 sm:p-10 lg:p-12 register-shell">
+        <main class="flex items-start justify-center px-5 py-6 sm:p-10 lg:p-12 register-shell">
             <div class="w-full max-w-2xl">
 
                 <div class="lg:hidden mb-8 flex items-center justify-between">
@@ -228,8 +246,8 @@
                             <i class="ph ph-arrow-left"></i> Change role
                         </a>
                     </div>
-                    <h2 class="font-display text-3xl lg:text-4xl font-semibold text-slate-900 mb-2">Join as a Locum GP.</h2>
-                    <p class="text-slate-600">Takes about 3 minutes. Your account will be reviewed before going live.</p>
+                    <h2 class="font-display text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-900 mb-2">Join as a Locum GP.</h2>
+                    <p class="text-slate-600 text-sm sm:text-base">Takes about 3 minutes. Your account will be reviewed before going live.</p>
                 </div>
 
                 <!-- Stepper -->
