@@ -319,25 +319,25 @@
         },
 
         insert: function(offer) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                if (!data.offers) data.offers = [];
-                data.offers.push(offer);
-                saveMockData(data);
-                return;
+            // Always write to blob so data is not lost if table write fails
+            var data = getMockData();
+            if (!data.offers) data.offers = [];
+            data.offers.push(offer);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('POST', '/rest/v1/offers', _toSnake(offer), { 'Prefer': 'return=minimal' });
             }
-            _req('POST', '/rest/v1/offers', _toSnake(offer), { 'Prefer': 'return=minimal' });
         },
 
         update: function(offerId, fields) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                var o = (data.offers || []).find(function(o) { return o.id === offerId; });
-                if (o) Object.assign(o, fields);
-                saveMockData(data);
-                return;
+            // Always update blob so data is not lost if table write fails
+            var data = getMockData();
+            var o = (data.offers || []).find(function(o) { return o.id === offerId; });
+            if (o) Object.assign(o, fields);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('PATCH', '/rest/v1/offers?id=eq.' + encodeURIComponent(offerId), _toSnake(fields));
             }
-            _req('PATCH', '/rest/v1/offers?id=eq.' + encodeURIComponent(offerId), _toSnake(fields));
         },
 
         getAll: function() {
@@ -354,37 +354,39 @@
         getForPractice: function(practiceId) {
             if (!_hasAuth()) return (getMockData().sessionNeeds || getMockData().shifts || []).filter(function(s) { return s.practiceId === practiceId; });
             var res = _req('GET', '/rest/v1/session_needs?practice_id=eq.' + practiceId + '&order=date.desc');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            // Fall back to blob data if table is empty
+            return (getMockData().sessionNeeds || getMockData().shifts || []).filter(function(s) { return s.practiceId === practiceId; });
         },
 
         getById: function(needId) {
             if (!_hasAuth()) return (getMockData().sessionNeeds || getMockData().shifts || []).find(function(s) { return s.id === needId; }) || null;
             var res = _req('GET', '/rest/v1/session_needs?id=eq.' + encodeURIComponent(needId));
             if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamel(res.body[0]);
-            return null;
+            // Fall back to blob data if not found in Supabase table
+            return (getMockData().sessionNeeds || getMockData().shifts || []).find(function(s) { return s.id === needId; }) || null;
         },
 
         insert: function(need) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                if (!data.sessionNeeds) data.sessionNeeds = [];
-                data.sessionNeeds.push(need);
-                saveMockData(data);
-                return;
+            // Always write to blob so data is not lost if table write fails
+            var data = getMockData();
+            if (!data.sessionNeeds) data.sessionNeeds = [];
+            data.sessionNeeds.push(need);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('POST', '/rest/v1/session_needs', _toSnake(need), { 'Prefer': 'return=minimal' });
             }
-            _req('POST', '/rest/v1/session_needs', _toSnake(need), { 'Prefer': 'return=minimal' });
         },
 
         update: function(needId, fields) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                var s = (data.sessionNeeds || data.shifts || []).find(function(s) { return s.id === needId; });
-                if (s) Object.assign(s, fields);
-                saveMockData(data);
-                return;
+            // Always update blob so data is not lost if table write fails
+            var data = getMockData();
+            var s = (data.sessionNeeds || data.shifts || []).find(function(s) { return s.id === needId; });
+            if (s) Object.assign(s, fields);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('PATCH', '/rest/v1/session_needs?id=eq.' + encodeURIComponent(needId), _toSnake(fields));
             }
-            _req('PATCH', '/rest/v1/session_needs?id=eq.' + encodeURIComponent(needId), _toSnake(fields));
         },
 
         remove: function(needId) {
