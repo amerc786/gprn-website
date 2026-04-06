@@ -3,9 +3,9 @@
 // Loaded AFTER supabase-client.js. Provides entity-specific functions
 // that read/write individual Supabase tables with RLS protection.
 //
-// When authenticated (access_token present), all functions query
-// the dedicated tables. When not authenticated (local dev/demo),
-// falls back to the blob via getMockData()/saveMockData().
+// STRATEGY: Blob (app_state) is the source of truth for all data.
+// When authenticated, reads try Supabase tables first, then fall back
+// to blob. Writes ALWAYS go to blob, and also attempt table writes.
 // ============================================================
 
 (function() {
@@ -158,169 +158,172 @@
     }
 
     // ============================================================
+    // BLOB HELPERS — always-available fallback reads from app_state
+    // ============================================================
+    function _blobData() { return getMockData(); }
+
+    // ============================================================
     // TABLE-SPECIFIC CRUD FUNCTIONS
-    // Each function checks _hasAuth() — if no auth, falls back to blob.
+    // Pattern: reads try table first, fall back to blob.
+    //          writes ALWAYS write to blob, then attempt table write.
     // ============================================================
 
     // ---- MESSAGES ----
     var Messages = {
         getAll: function(userId) {
-            if (!_hasAuth()) return (getMockData().messages || []).filter(function(m) {
+            var blobResult = (_blobData().messages || []).filter(function(m) {
                 return (m.fromId === userId || m.toId === userId) && !(m._deletedFor || []).includes(userId);
             });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/messages?or=(from_id.eq.' + userId + ',to_id.eq.' + userId + ')&order=timestamp.asc');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         },
 
         getByThread: function(threadId, userId) {
-            if (!_hasAuth()) return (getMockData().messages || []).filter(function(m) {
+            var blobResult = (_blobData().messages || []).filter(function(m) {
                 return m.threadId === threadId && !(m._deletedFor || []).includes(userId);
             });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/messages?thread_id=eq.' + encodeURIComponent(threadId) + '&order=timestamp.asc');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         },
 
         insert: function(msg) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                if (!data.messages) data.messages = [];
-                data.messages.push(msg);
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            if (!data.messages) data.messages = [];
+            data.messages.push(msg);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('POST', '/rest/v1/messages', _toSnake(msg), { 'Prefer': 'return=minimal' });
             }
-            var row = _toSnake(msg);
-            _req('POST', '/rest/v1/messages', row, { 'Prefer': 'return=minimal' });
         },
 
         markRead: function(threadId, userId) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                (data.messages || []).forEach(function(m) {
-                    if (m.threadId === threadId && m.toId === userId) m.read = true;
-                });
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            (data.messages || []).forEach(function(m) {
+                if (m.threadId === threadId && m.toId === userId) m.read = true;
+            });
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('PATCH', '/rest/v1/messages?thread_id=eq.' + encodeURIComponent(threadId) + '&to_id=eq.' + userId + '&read=eq.false',
+                    { read: true });
             }
-            _req('PATCH', '/rest/v1/messages?thread_id=eq.' + encodeURIComponent(threadId) + '&to_id=eq.' + userId + '&read=eq.false',
-                { read: true });
         },
 
         softDelete: function(threadId, userId) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                (data.messages || []).forEach(function(m) {
-                    if (m.threadId === threadId) {
-                        if (!m._deletedFor) m._deletedFor = [];
-                        if (!m._deletedFor.includes(userId)) m._deletedFor.push(userId);
-                    }
-                });
-                data.messages = data.messages.filter(function(m) {
-                    return !(m._deletedFor && m._deletedFor.includes(m.fromId) && m._deletedFor.includes(m.toId));
-                });
-                saveMockData(data);
-                return;
-            }
-            // For Supabase, append userId to deleted_for array
-            var msgs = this.getByThread(threadId, userId);
-            msgs.forEach(function(m) {
-                var del = m._deletedFor || [];
-                if (!del.includes(userId)) {
-                    del.push(userId);
-                    _req('PATCH', '/rest/v1/messages?id=eq.' + encodeURIComponent(m.id), { deleted_for: del });
+            var data = _blobData();
+            (data.messages || []).forEach(function(m) {
+                if (m.threadId === threadId) {
+                    if (!m._deletedFor) m._deletedFor = [];
+                    if (!m._deletedFor.includes(userId)) m._deletedFor.push(userId);
                 }
             });
+            data.messages = data.messages.filter(function(m) {
+                return !(m._deletedFor && m._deletedFor.includes(m.fromId) && m._deletedFor.includes(m.toId));
+            });
+            saveMockData(data);
+            if (_hasAuth()) {
+                var msgs = this.getByThread(threadId, userId);
+                msgs.forEach(function(m) {
+                    var del = m._deletedFor || [];
+                    if (!del.includes(userId)) {
+                        del.push(userId);
+                        _req('PATCH', '/rest/v1/messages?id=eq.' + encodeURIComponent(m.id), { deleted_for: del });
+                    }
+                });
+            }
         },
 
         getUnreadCount: function(userId) {
-            if (!_hasAuth()) {
-                return (getMockData().messages || []).filter(function(m) {
-                    return m.toId === userId && !m.read && !(m._deletedFor || []).includes(userId);
-                }).length;
-            }
+            var blobCount = (_blobData().messages || []).filter(function(m) {
+                return m.toId === userId && !m.read && !(m._deletedFor || []).includes(userId);
+            }).length;
+            if (!_hasAuth()) return blobCount;
             var res = _req('GET', '/rest/v1/messages?to_id=eq.' + userId + '&read=eq.false&select=id', { 'Prefer': 'count=exact' });
-            if (res.status === 200 && Array.isArray(res.body)) return res.body.length;
-            return 0;
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return res.body.length;
+            return blobCount;
         }
     };
 
     // ---- NOTIFICATIONS ----
     var Notifications = {
         getForUser: function(userId) {
-            if (!_hasAuth()) return (getMockData().notifications || []).filter(function(n) { return n.userId === userId; });
+            var blobResult = (_blobData().notifications || []).filter(function(n) { return n.userId === userId; });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/notifications?user_id=eq.' + userId + '&order=date.desc&limit=50');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         },
 
         insert: function(notif) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                if (!data.notifications) data.notifications = [];
-                data.notifications.push(notif);
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            if (!data.notifications) data.notifications = [];
+            data.notifications.push(notif);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _reqAsync('POST', '/rest/v1/notifications', _toSnake(notif), { 'Prefer': 'return=minimal' });
             }
-            _reqAsync('POST', '/rest/v1/notifications', _toSnake(notif), { 'Prefer': 'return=minimal' });
         },
 
         markRead: function(notifId) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                var n = (data.notifications || []).find(function(n) { return n.id === notifId; });
-                if (n) n.read = true;
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            var n = (data.notifications || []).find(function(n) { return n.id === notifId; });
+            if (n) n.read = true;
+            saveMockData(data);
+            if (_hasAuth()) {
+                _reqAsync('PATCH', '/rest/v1/notifications?id=eq.' + encodeURIComponent(notifId), { read: true });
             }
-            _reqAsync('PATCH', '/rest/v1/notifications?id=eq.' + encodeURIComponent(notifId), { read: true });
         },
 
         acknowledge: function(notifId) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                var n = (data.notifications || []).find(function(n) { return n.id === notifId; });
-                if (n) n.acknowledged = true;
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            var n = (data.notifications || []).find(function(n) { return n.id === notifId; });
+            if (n) n.acknowledged = true;
+            saveMockData(data);
+            if (_hasAuth()) {
+                _reqAsync('PATCH', '/rest/v1/notifications?id=eq.' + encodeURIComponent(notifId), { acknowledged: true });
             }
-            _reqAsync('PATCH', '/rest/v1/notifications?id=eq.' + encodeURIComponent(notifId), { acknowledged: true });
         }
     };
 
     // ---- OFFERS ----
     var Offers = {
         getForLocum: function(locumId) {
-            if (!_hasAuth()) return (getMockData().offers || []).filter(function(o) { return o.locumId === locumId; });
+            var blobResult = (_blobData().offers || []).filter(function(o) { return o.locumId === locumId; });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/offers?locum_id=eq.' + locumId + '&order=created_at.desc');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         },
 
         getForPractice: function(practiceId) {
-            if (!_hasAuth()) return (getMockData().offers || []).filter(function(o) { return o.practiceId === practiceId; });
+            var blobResult = (_blobData().offers || []).filter(function(o) { return o.practiceId === practiceId; });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/offers?practice_id=eq.' + practiceId + '&order=created_at.desc');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         },
 
         getForSessionNeed: function(needId) {
-            if (!_hasAuth()) return (getMockData().offers || []).filter(function(o) { return o.sessionNeedId === needId; });
+            var blobResult = (_blobData().offers || []).filter(function(o) { return o.sessionNeedId === needId; });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/offers?session_need_id=eq.' + encodeURIComponent(needId));
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         },
 
         getById: function(offerId) {
-            if (!_hasAuth()) return (getMockData().offers || []).find(function(o) { return o.id === offerId; }) || null;
+            var blobResult = (_blobData().offers || []).find(function(o) { return o.id === offerId; }) || null;
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/offers?id=eq.' + encodeURIComponent(offerId));
             if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamel(res.body[0]);
-            return null;
+            return blobResult;
         },
 
         insert: function(offer) {
-            // Always write to blob so data is not lost if table write fails
-            var data = getMockData();
+            var data = _blobData();
             if (!data.offers) data.offers = [];
             data.offers.push(offer);
             saveMockData(data);
@@ -330,8 +333,7 @@
         },
 
         update: function(offerId, fields) {
-            // Always update blob so data is not lost if table write fails
-            var data = getMockData();
+            var data = _blobData();
             var o = (data.offers || []).find(function(o) { return o.id === offerId; });
             if (o) Object.assign(o, fields);
             saveMockData(data);
@@ -341,35 +343,34 @@
         },
 
         getAll: function() {
-            if (!_hasAuth()) return getMockData().offers || [];
-            // This will be filtered by RLS — user only sees their own
+            var blobResult = _blobData().offers || [];
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/offers?order=created_at.desc&limit=500');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         }
     };
 
     // ---- SESSION NEEDS ----
     var SessionNeeds = {
         getForPractice: function(practiceId) {
-            if (!_hasAuth()) return (getMockData().sessionNeeds || getMockData().shifts || []).filter(function(s) { return s.practiceId === practiceId; });
+            var blobResult = (_blobData().sessionNeeds || _blobData().shifts || []).filter(function(s) { return s.practiceId === practiceId; });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/session_needs?practice_id=eq.' + practiceId + '&order=date.desc');
             if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
-            // Fall back to blob data if table is empty
-            return (getMockData().sessionNeeds || getMockData().shifts || []).filter(function(s) { return s.practiceId === practiceId; });
+            return blobResult;
         },
 
         getById: function(needId) {
-            if (!_hasAuth()) return (getMockData().sessionNeeds || getMockData().shifts || []).find(function(s) { return s.id === needId; }) || null;
+            var blobResult = (_blobData().sessionNeeds || _blobData().shifts || []).find(function(s) { return s.id === needId; }) || null;
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/session_needs?id=eq.' + encodeURIComponent(needId));
             if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamel(res.body[0]);
-            // Fall back to blob data if not found in Supabase table
-            return (getMockData().sessionNeeds || getMockData().shifts || []).find(function(s) { return s.id === needId; }) || null;
+            return blobResult;
         },
 
         insert: function(need) {
-            // Always write to blob so data is not lost if table write fails
-            var data = getMockData();
+            var data = _blobData();
             if (!data.sessionNeeds) data.sessionNeeds = [];
             data.sessionNeeds.push(need);
             saveMockData(data);
@@ -379,8 +380,7 @@
         },
 
         update: function(needId, fields) {
-            // Always update blob so data is not lost if table write fails
-            var data = getMockData();
+            var data = _blobData();
             var s = (data.sessionNeeds || data.shifts || []).find(function(s) { return s.id === needId; });
             if (s) Object.assign(s, fields);
             saveMockData(data);
@@ -390,223 +390,223 @@
         },
 
         remove: function(needId) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                data.sessionNeeds = (data.sessionNeeds || data.shifts || []).filter(function(s) { return s.id !== needId; });
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            data.sessionNeeds = (data.sessionNeeds || data.shifts || []).filter(function(s) { return s.id !== needId; });
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('DELETE', '/rest/v1/session_needs?id=eq.' + encodeURIComponent(needId));
             }
-            _req('DELETE', '/rest/v1/session_needs?id=eq.' + encodeURIComponent(needId));
         }
     };
 
     // ---- INVOICES ----
     var Invoices = {
         getForPractice: function(practiceId) {
-            if (!_hasAuth()) return (getMockData().invoices || []).filter(function(i) { return i.practiceId === practiceId; });
+            var blobResult = (_blobData().invoices || []).filter(function(i) { return i.practiceId === practiceId; });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/invoices?practice_id=eq.' + practiceId + '&order=created_at.desc');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         },
 
         getForLocum: function(locumId) {
-            if (!_hasAuth()) return (getMockData().invoices || []).filter(function(i) { return i.locumId === locumId; });
+            var blobResult = (_blobData().invoices || []).filter(function(i) { return i.locumId === locumId; });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/invoices?locum_id=eq.' + locumId + '&order=created_at.desc');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         },
 
         getById: function(invoiceId) {
-            if (!_hasAuth()) return (getMockData().invoices || []).find(function(i) { return i.id === invoiceId; }) || null;
+            var blobResult = (_blobData().invoices || []).find(function(i) { return i.id === invoiceId; }) || null;
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/invoices?id=eq.' + encodeURIComponent(invoiceId));
             if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamel(res.body[0]);
-            return null;
+            return blobResult;
         },
 
         insert: function(invoice) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                if (!data.invoices) data.invoices = [];
-                data.invoices.push(invoice);
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            if (!data.invoices) data.invoices = [];
+            data.invoices.push(invoice);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('POST', '/rest/v1/invoices', _toSnake(invoice), { 'Prefer': 'return=minimal' });
             }
-            _req('POST', '/rest/v1/invoices', _toSnake(invoice), { 'Prefer': 'return=minimal' });
         },
 
         update: function(invoiceId, fields) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                var inv = (data.invoices || []).find(function(i) { return i.id === invoiceId; });
-                if (inv) Object.assign(inv, fields);
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            var inv = (data.invoices || []).find(function(i) { return i.id === invoiceId; });
+            if (inv) Object.assign(inv, fields);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('PATCH', '/rest/v1/invoices?id=eq.' + encodeURIComponent(invoiceId), _toSnake(fields));
             }
-            _req('PATCH', '/rest/v1/invoices?id=eq.' + encodeURIComponent(invoiceId), _toSnake(fields));
         }
     };
 
     // ---- FEEDBACK ----
     var Feedback = {
         getForUser: function(userId) {
-            if (!_hasAuth()) return (getMockData().feedback || []).filter(function(f) { return f.toId === userId; });
+            var blobResult = (_blobData().feedback || []).filter(function(f) { return f.toId === userId; });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/feedback?to_id=eq.' + userId + '&order=timestamp.desc');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         },
 
         getFromUser: function(userId) {
-            if (!_hasAuth()) return (getMockData().feedback || []).filter(function(f) { return f.fromId === userId; });
+            var blobResult = (_blobData().feedback || []).filter(function(f) { return f.fromId === userId; });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/feedback?from_id=eq.' + userId + '&order=timestamp.desc');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         },
 
         getAll: function() {
-            if (!_hasAuth()) return getMockData().feedback || [];
+            var blobResult = _blobData().feedback || [];
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/feedback?order=timestamp.desc&limit=500');
-            if (res.status === 200 && Array.isArray(res.body)) return _toCamelArray(res.body);
-            return [];
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            return blobResult;
         },
 
         insert: function(fb) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                if (!data.feedback) data.feedback = [];
-                data.feedback.push(fb);
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            if (!data.feedback) data.feedback = [];
+            data.feedback.push(fb);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('POST', '/rest/v1/feedback', _toSnake(fb), { 'Prefer': 'return=minimal' });
             }
-            _req('POST', '/rest/v1/feedback', _toSnake(fb), { 'Prefer': 'return=minimal' });
         }
     };
 
     // ---- AVAILABILITY ----
     var AvailabilityTable = {
         getForLocum: function(locumId) {
-            if (!_hasAuth()) return (getMockData().availability || {})[locumId] || {};
+            var blobResult = (_blobData().availability || {})[locumId] || {};
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/availability?locum_id=eq.' + locumId);
-            if (res.status !== 200 || !Array.isArray(res.body)) return {};
-            var obj = {};
-            res.body.forEach(function(row) {
-                obj[row.date] = { am: row.am, pm: row.pm };
-            });
-            return obj;
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) {
+                var obj = {};
+                res.body.forEach(function(row) {
+                    obj[row.date] = { am: row.am, pm: row.pm };
+                });
+                return obj;
+            }
+            return blobResult;
         },
 
         set: function(locumId, date, session, status) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                if (!data.availability) data.availability = {};
-                if (!data.availability[locumId]) data.availability[locumId] = {};
-                if (!data.availability[locumId][date]) data.availability[locumId][date] = { am: 'none', pm: 'none' };
-                data.availability[locumId][date][session] = status;
-                saveMockData(data);
-                return;
-            }
-            // Upsert: try to get existing row first
-            var existing = _req('GET', '/rest/v1/availability?locum_id=eq.' + locumId + '&date=eq.' + date);
-            if (existing.status === 200 && Array.isArray(existing.body) && existing.body.length) {
-                var update = {};
-                update[session] = status;
-                _req('PATCH', '/rest/v1/availability?locum_id=eq.' + locumId + '&date=eq.' + date, update);
-            } else {
-                var row = { locum_id: locumId, date: date, am: 'none', pm: 'none' };
-                row[session] = status;
-                _req('POST', '/rest/v1/availability', row, { 'Prefer': 'return=minimal' });
+            // Always write to blob
+            var data = _blobData();
+            if (!data.availability) data.availability = {};
+            if (!data.availability[locumId]) data.availability[locumId] = {};
+            if (!data.availability[locumId][date]) data.availability[locumId][date] = { am: 'none', pm: 'none' };
+            data.availability[locumId][date][session] = status;
+            saveMockData(data);
+            if (_hasAuth()) {
+                // Upsert: try to get existing row first
+                var existing = _req('GET', '/rest/v1/availability?locum_id=eq.' + locumId + '&date=eq.' + date);
+                if (existing.status === 200 && Array.isArray(existing.body) && existing.body.length) {
+                    var update = {};
+                    update[session] = status;
+                    _req('PATCH', '/rest/v1/availability?locum_id=eq.' + locumId + '&date=eq.' + date, update);
+                } else {
+                    var row = { locum_id: locumId, date: date, am: 'none', pm: 'none' };
+                    row[session] = status;
+                    _req('POST', '/rest/v1/availability', row, { 'Prefer': 'return=minimal' });
+                }
             }
         },
 
         get: function(locumId, date, session) {
-            if (!_hasAuth()) {
-                var avail = (getMockData().availability || {})[locumId];
-                return avail && avail[date] ? (avail[date][session] || 'none') : 'none';
-            }
+            var blobAvail = (_blobData().availability || {})[locumId];
+            var blobResult = blobAvail && blobAvail[date] ? (blobAvail[date][session] || 'none') : 'none';
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/availability?locum_id=eq.' + locumId + '&date=eq.' + date);
             if (res.status === 200 && Array.isArray(res.body) && res.body.length) {
                 return res.body[0][session] || 'none';
             }
-            return 'none';
+            return blobResult;
         }
     };
 
     // ---- BARRED / PREFERRED LISTS ----
     var BarredTable = {
         isBarred: function(practiceId, locumId) {
-            if (!_hasAuth()) {
-                var bl = (getMockData().barredLists || {})[practiceId] || [];
-                return bl.some(function(b) { return b.locumId === locumId; });
-            }
+            var blobResult = (((_blobData().barredLists || {})[practiceId]) || []).some(function(b) { return b.locumId === locumId; });
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/barred_locums?practice_id=eq.' + practiceId + '&locum_id=eq.' + locumId);
-            return res.status === 200 && Array.isArray(res.body) && res.body.length > 0;
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length > 0) return true;
+            return blobResult;
         },
 
         bar: function(practiceId, locumId, reason) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                if (!data.barredLists) data.barredLists = {};
-                if (!data.barredLists[practiceId]) data.barredLists[practiceId] = [];
-                data.barredLists[practiceId].push({ locumId: locumId, reason: reason, date: new Date().toISOString().split('T')[0] });
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            if (!data.barredLists) data.barredLists = {};
+            if (!data.barredLists[practiceId]) data.barredLists[practiceId] = [];
+            data.barredLists[practiceId].push({ locumId: locumId, reason: reason, date: new Date().toISOString().split('T')[0] });
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('POST', '/rest/v1/barred_locums', {
+                    practice_id: practiceId, locum_id: locumId, reason: reason,
+                    date: new Date().toISOString().split('T')[0]
+                }, { 'Prefer': 'return=minimal' });
             }
-            _req('POST', '/rest/v1/barred_locums', {
-                practice_id: practiceId, locum_id: locumId, reason: reason,
-                date: new Date().toISOString().split('T')[0]
-            }, { 'Prefer': 'return=minimal' });
         },
 
         unbar: function(practiceId, locumId) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                if (data.barredLists && data.barredLists[practiceId]) {
-                    data.barredLists[practiceId] = data.barredLists[practiceId].filter(function(b) { return b.locumId !== locumId; });
-                }
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            if (data.barredLists && data.barredLists[practiceId]) {
+                data.barredLists[practiceId] = data.barredLists[practiceId].filter(function(b) { return b.locumId !== locumId; });
             }
-            _req('DELETE', '/rest/v1/barred_locums?practice_id=eq.' + practiceId + '&locum_id=eq.' + locumId);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('DELETE', '/rest/v1/barred_locums?practice_id=eq.' + practiceId + '&locum_id=eq.' + locumId);
+            }
         },
 
         getList: function(practiceId) {
-            if (!_hasAuth()) return (getMockData().barredLists || {})[practiceId] || [];
+            var blobResult = (_blobData().barredLists || {})[practiceId] || [];
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/barred_locums?practice_id=eq.' + practiceId);
-            if (res.status === 200 && Array.isArray(res.body)) {
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) {
                 return res.body.map(function(r) { return { locumId: r.locum_id, reason: r.reason, date: r.date }; });
             }
-            return [];
+            return blobResult;
         },
 
         isPreferred: function(practiceId, locumId) {
-            if (!_hasAuth()) {
-                return ((getMockData().preferredLists || {})[practiceId] || []).includes(locumId);
-            }
+            var blobResult = ((_blobData().preferredLists || {})[practiceId] || []).includes(locumId);
+            if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/preferred_locums?practice_id=eq.' + practiceId + '&locum_id=eq.' + locumId);
-            return res.status === 200 && Array.isArray(res.body) && res.body.length > 0;
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length > 0) return true;
+            return blobResult;
         },
 
         addPreferred: function(practiceId, locumId) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                if (!data.preferredLists) data.preferredLists = {};
-                if (!data.preferredLists[practiceId]) data.preferredLists[practiceId] = [];
-                if (!data.preferredLists[practiceId].includes(locumId)) data.preferredLists[practiceId].push(locumId);
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            if (!data.preferredLists) data.preferredLists = {};
+            if (!data.preferredLists[practiceId]) data.preferredLists[practiceId] = [];
+            if (!data.preferredLists[practiceId].includes(locumId)) data.preferredLists[practiceId].push(locumId);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('POST', '/rest/v1/preferred_locums', { practice_id: practiceId, locum_id: locumId }, { 'Prefer': 'return=minimal' });
             }
-            _req('POST', '/rest/v1/preferred_locums', { practice_id: practiceId, locum_id: locumId }, { 'Prefer': 'return=minimal' });
         },
 
         removePreferred: function(practiceId, locumId) {
-            if (!_hasAuth()) {
-                var data = getMockData();
-                if (data.preferredLists && data.preferredLists[practiceId]) {
-                    data.preferredLists[practiceId] = data.preferredLists[practiceId].filter(function(id) { return id !== locumId; });
-                }
-                saveMockData(data);
-                return;
+            var data = _blobData();
+            if (data.preferredLists && data.preferredLists[practiceId]) {
+                data.preferredLists[practiceId] = data.preferredLists[practiceId].filter(function(id) { return id !== locumId; });
             }
-            _req('DELETE', '/rest/v1/preferred_locums?practice_id=eq.' + practiceId + '&locum_id=eq.' + locumId);
+            saveMockData(data);
+            if (_hasAuth()) {
+                _req('DELETE', '/rest/v1/preferred_locums?practice_id=eq.' + practiceId + '&locum_id=eq.' + locumId);
+            }
         }
     };
 
@@ -625,5 +625,5 @@
         hasAuth: _hasAuth
     };
 
-    console.log('[SupaTables] Data access layer loaded. Auth:', _hasAuth() ? 'YES (table queries)' : 'NO (blob fallback)');
+    console.log('[SupaTables] Data access layer loaded. Auth:', _hasAuth() ? 'YES (table + blob)' : 'NO (blob only)');
 })();
