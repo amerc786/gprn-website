@@ -462,7 +462,7 @@
 
                     // Negotiations
                     if (offer.negotiations && offer.negotiations.length > 0) {
-                        info += '<div style="width:100%;padding:8px 12px;background:rgba(59, 130, 246,0.06);border-radius:6px;margin-top:4px;">'
+                        info += '<div style="width:100%;padding:8px 12px;background:rgba(5, 150, 105,0.04);border-radius:6px;margin-top:4px;">'
                             + '<div style="font-size:0.75rem;font-weight:600;color:var(--secondary);margin-bottom:4px;">Rate Negotiation</div>';
                         offer.negotiations.forEach(function(n) {
                             info += '<div style="font-size:0.78rem;color:var(--dark-600);margin-bottom:2px;"><strong>' + (n.from === 'practice' ? 'You' : 'Locum') + ':</strong> ' + formatCurrency(n.rate) + (n.accepted ? ' ✓ Agreed' : '') + (n.message ? ' — ' + sanitizeHTML(n.message) : '') + '</div>';

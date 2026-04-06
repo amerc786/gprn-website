@@ -43,7 +43,7 @@
             font-size: 1.4rem;
         }
         .admin-header .logo-icon {
-            background: linear-gradient(135deg, #3B82F6, #5B4DFF, #8B5CF6);
+            background: #059669;
             color: #fff;
             padding: 0.25rem 0.5rem;
             border-radius: 6px;
@@ -102,7 +102,7 @@
             background: rgba(255,255,255,0.08);
         }
         .filter-tab.active {
-            background: linear-gradient(135deg, #3B82F6, #5B4DFF);
+            background: #059669;
             border-color: transparent;
             color: #fff;
         }
@@ -157,9 +157,9 @@
             flex-shrink: 0;
         }
         .role-badge.locum {
-            background: rgba(59, 130, 246, 0.15);
+            background: rgba(5, 150, 105, 0.1);
             color: #60A5FA;
-            border: 1px solid rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(5, 150, 105, 0.2);
         }
         .role-badge.practice {
             background: rgba(20, 184, 166, 0.15);
@@ -280,7 +280,7 @@
         .admin-modal input:focus,
         .admin-modal textarea:focus {
             outline: none;
-            border-color: #5B4DFF;
+            border-color: #059669;
         }
         .form-row {
             display: grid;
@@ -728,19 +728,19 @@
 
                 if (!session) {
                     msg = 'You are not signed in. Please log in again.';
-                    cta = '<a href="login.html" class="btn-primary" style="display:inline-block; margin-top:10px; padding:8px 16px; background:#5B4DFF; color:#fff; border-radius:8px; text-decoration:none; font-weight:600;">Log in</a>';
+                    cta = '<a href="login.html" class="btn-primary" style="display:inline-block; margin-top:10px; padding:8px 16px; background:#059669; color:#fff; border-radius:8px; text-decoration:none; font-weight:600;">Log in</a>';
                     showDiagBanner('error', msg, cta);
                     return;
                 }
                 if (!session.is_admin) {
                     msg = 'Your session does not have admin privileges. This can happen if you were bootstrapped as admin after your last login. Log out and back in to refresh.';
-                    cta = '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#5B4DFF; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>';
+                    cta = '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#059669; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>';
                     showDiagBanner('error', msg, cta);
                     return;
                 }
                 if (!session.access_token) {
                     msg = 'Session has no access token. Please log out and log back in.';
-                    cta = '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#5B4DFF; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>';
+                    cta = '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#059669; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>';
                     showDiagBanner('error', msg, cta);
                     return;
                 }
@@ -759,12 +759,12 @@
                     if (status === 401) {
                         showDiagBanner('error',
                             'Your login session has expired (HTTP 401). Please log out and log back in to continue.',
-                            '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#5B4DFF; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>'
+                            '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#059669; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>'
                         );
                     } else if (status === 403) {
                         showDiagBanner('error',
                             'Access denied by Supabase (HTTP 403). Your admin row may be missing or RLS is blocking it. Try logging out and back in first.',
-                            '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#5B4DFF; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>'
+                            '<button onclick="localStorage.removeItem(\'gprn_session\'); window.location.href=\'login.html\';" style="margin-top:10px; padding:8px 16px; background:#059669; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Log out and log back in</button>'
                         );
                     } else if (status === 200 && Array.isArray(parsed) && parsed.length === 0) {
                         showDiagBanner('warn',

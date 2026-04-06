@@ -73,7 +73,7 @@
 
         /* Bulk set bar */
         .cal-bulk-bar {
-            background: rgba(91, 77, 255,0.06); border: 1px solid rgba(91, 77, 255,0.15); border-radius: var(--radius);
+            background: rgba(5, 150, 105,0.04); border: 1px solid rgba(5, 150, 105,0.1); border-radius: var(--radius);
             padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
         }
         .cal-bulk-bar label { font-size: 0.85rem; font-weight: 600; color: var(--dark); white-space: nowrap; }
@@ -228,7 +228,7 @@
                 }
 
                 return `
-                    <div class="calendar-day-cell ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${isPast && !isOtherMonth ? 'past' : ''}" data-date="${dateStr}" style="${isSelected ? 'background: rgba(91, 77, 255,0.08); outline: 2px solid var(--primary); outline-offset: -2px;' : ''}">
+                    <div class="calendar-day-cell ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${isPast && !isOtherMonth ? 'past' : ''}" data-date="${dateStr}" style="${isSelected ? 'background: rgba(5, 150, 105,0.06); outline: 2px solid var(--primary); outline-offset: -2px;' : ''}">
                         ${cellContent}
                     </div>`;
             }

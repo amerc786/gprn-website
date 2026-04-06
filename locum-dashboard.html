@@ -120,7 +120,7 @@
         const unreadMsgCount = MessageManager.getUnreadCount(session.id);
 
         pageContent.innerHTML = `
-            <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">${greeting}</h2>
+            <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 44px; font-weight: 800; color: #0B0F19; margin-bottom: 24px; letter-spacing: -0.025em; line-height: 1.1;">${greeting}</h2>
 
             ${docWarnings.length > 0 ? `
             <div style="margin-bottom: 20px;">
@@ -140,7 +140,7 @@
             ` : ''}
 
             ${upcomingAccepted.length === 0 && pendingInvitations.length === 0 ? `
-            <div class="content-card" style="margin-bottom: 24px; border-left: 4px solid var(--primary); background: rgba(91, 77, 255,0.03);">
+            <div class="content-card" style="margin-bottom: 24px; border-left: 4px solid var(--primary); background: rgba(5, 150, 105,0.03);">
                 <div class="content-card-body" style="padding: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">
                         <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--dark); margin-bottom: 6px;">Get started with GPRN</h3>
@@ -152,11 +152,11 @@
             ` : ''}
 
             <div class="dash-stats-row">
-                ${renderStatCard('calendar', 'Upcoming Sessions', upcomingAccepted.length, null, 'rgba(91, 77, 255,0.15)')}
+                ${renderStatCard('calendar', 'Upcoming Sessions', upcomingAccepted.length, null, 'rgba(5, 150, 105,0.1)')}
                 ${renderStatCard('mail', 'Pending Shifts', pendingInvitations.length, null, 'rgba(245,158,11,0.15)')}
                 ${renderStatCard('pound', "This Month's Earnings", formatCurrency(monthEarnings), null, 'rgba(34, 197, 94,0.15)')}
                 <div onclick="showReliabilityBreakdown()" style="cursor:pointer;" role="button" tabindex="0" aria-label="View reliability score breakdown">
-                ${renderStatCard('activity', 'Booking Reliability', reliability + '%', null, 'rgba(59, 130, 246,0.15)', 'Click for details')}
+                ${renderStatCard('activity', 'Booking Reliability', reliability + '%', null, 'rgba(11, 15, 25,0.08)', 'Click for details')}
                 </div>
             </div>
 
