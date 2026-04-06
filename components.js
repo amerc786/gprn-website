@@ -1,70 +1,133 @@
 // ===== GPRN Shared Components =====
 
+// ---- Phosphor icon class map (replaces old SVG getIcon for sidebar) ----
+const _phIcons = {
+    'dashboard': 'ph-squares-four',
+    'invitations': 'ph-envelope-simple',
+    'calendar': 'ph-calendar-blank',
+    'bookings': 'ph-clipboard-text',
+    'rates': 'ph-currency-gbp',
+    'profile': 'ph-user-circle',
+    'report': 'ph-plus-circle',
+    'invoices': 'ph-receipt',
+    'messages': 'ph-chat-circle-dots',
+    'cpd': 'ph-certificate',
+    'jobs': 'ph-buildings',
+    'links': 'ph-link-simple',
+    'help': 'ph-question',
+    'settings': 'ph-gear',
+    'logout': 'ph-sign-out',
+    'create-session': 'ph-calendar-plus',
+    'my-sessions': 'ph-clipboard-text',
+    'find-locums': 'ph-users',
+    'billing': 'ph-receipt',
+};
+
 // ---- Sidebar Navigation ----
 function renderSidebar(role, activePage) {
     const session = Auth.getSession();
     const locumNav = [
-        { id: 'dashboard', label: 'Dashboard', icon: 'grid', href: 'locum-dashboard.html' },
-        { id: 'invitations', label: 'My Shifts', icon: 'mail', href: 'available-shifts.html' },
-        { id: 'calendar', label: 'My Calendar', icon: 'calendar', href: 'my-calendar.html' },
-        { id: 'bookings', label: 'My Bookings', icon: 'file-text', href: 'my-offers.html' },
-        { id: 'rates', label: 'My Rates', icon: 'pound', href: 'my-rates.html' },
-        { id: 'profile', label: 'My Profile', icon: 'user', href: 'my-profile.html' },
-        { id: 'report', label: 'Log Outside Work', icon: 'plus-circle', href: 'report-extra-shifts.html' },
-        { id: 'invoices', label: 'My Invoices', icon: 'pound', href: 'my-invoices.html' },
-        { id: 'messages', label: 'Messages', icon: 'mail', href: 'messages.html' },
-        { divider: true, label: 'Resources' },
-        { id: 'cpd', label: 'CPD Events', icon: 'award', href: 'cpd-events.html' },
-        { id: 'jobs', label: 'Jobs Board', icon: 'briefcase', href: 'jobs-board.html' },
-        { id: 'links', label: 'Links & Resources', icon: 'link', href: 'links-resources.html' },
-        { id: 'help', label: 'Help / FAQ', icon: 'help-circle', href: 'help-faq.html' },
+        { id: 'dashboard', label: 'Dashboard', href: 'locum-dashboard.html' },
+        { id: 'invitations', label: 'My Shifts', href: 'available-shifts.html' },
+        { id: 'calendar', label: 'My Calendar', href: 'my-calendar.html' },
+        { id: 'bookings', label: 'My Bookings', href: 'my-offers.html' },
+        { id: 'rates', label: 'My Rates', href: 'my-rates.html' },
+        { id: 'profile', label: 'My Profile', href: 'my-profile.html' },
+        { id: 'report', label: 'Log Outside Work', href: 'report-extra-shifts.html' },
+        { id: 'invoices', label: 'My Invoices', href: 'my-invoices.html' },
+        { id: 'messages', label: 'Messages', href: 'messages.html' },
+    ];
+    const locumResources = [
+        { id: 'cpd', label: 'CPD Events', href: 'cpd-events.html' },
+        { id: 'jobs', label: 'Jobs Board', href: 'jobs-board.html' },
+        { id: 'links', label: 'Links & Resources', href: 'links-resources.html' },
+        { id: 'help', label: 'Help / FAQ', href: 'help-faq.html' },
     ];
 
     const practiceNav = [
-        { id: 'dashboard', label: 'Dashboard', icon: 'grid', href: 'practice-dashboard.html' },
-        { id: 'create-session', label: 'Create Session', icon: 'plus-circle', href: 'post-shift.html' },
-        { id: 'my-sessions', label: 'My Sessions', icon: 'list', href: 'view-requested-shifts.html' },
-        { id: 'find-locums', label: 'Find Locums', icon: 'search', href: 'find-locums.html' },
-        { id: 'billing', label: 'Billing', icon: 'pound', href: 'billing.html' },
-        { id: 'messages', label: 'Messages', icon: 'mail', href: 'messages.html' },
-        { divider: true, label: 'Resources' },
-        { id: 'cpd', label: 'CPD Events', icon: 'award', href: 'cpd-events.html' },
-        { id: 'jobs', label: 'Jobs Board', icon: 'briefcase', href: 'jobs-board.html' },
-        { id: 'links', label: 'Links & Resources', icon: 'link', href: 'links-resources.html' },
-        { id: 'help', label: 'Help / FAQ', icon: 'help-circle', href: 'help-faq.html' },
+        { id: 'dashboard', label: 'Dashboard', href: 'practice-dashboard.html' },
+        { id: 'create-session', label: 'Create Session', href: 'post-shift.html' },
+        { id: 'my-sessions', label: 'Manage Shifts', href: 'view-requested-shifts.html' },
+        { id: 'find-locums', label: 'Locum Network', href: 'find-locums.html' },
+        { id: 'billing', label: 'Compliance & Billing', href: 'billing.html' },
+        { id: 'messages', label: 'Messages', href: 'messages.html' },
     ];
 
-    const nav = role === 'locum' ? locumNav : practiceNav;
+    const mainNav = role === 'locum' ? locumNav : practiceNav;
+    const resourceNav = role === 'locum' ? locumResources : [];
     const settingsHref = role === 'locum' ? 'my-settings.html' : 'practice-settings.html';
+    const settingsLabel = role === 'locum' ? 'Settings' : 'Practice Settings';
+
+    function navItem(item, isActive) {
+        const iconBase = _phIcons[item.id] || 'ph-circle';
+        const iconClass = isActive ? `ph-fill ${iconBase}` : `ph ${iconBase}`;
+        if (isActive) {
+            return `<a href="${item.href}" class="sidebar-active-bar relative flex items-center gap-3 px-4 py-2.5 bg-slate-50 text-[#0B0F19] rounded-xl text-[14px] font-bold transition-all">
+                <i class="${iconClass} text-lg"></i> ${item.label}
+            </a>`;
+        }
+        return `<a href="${item.href}" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-[#0B0F19] hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+            <i class="${iconClass} text-lg group-hover:text-[#0B0F19] transition-colors"></i> ${item.label}
+        </a>`;
+    }
+
+    const unreadMsgCount = MessageManager.getUnreadCount(session.id);
+    const msgBadge = unreadMsgCount > 0
+        ? `<span class="text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full">${unreadMsgCount}</span>`
+        : '';
 
     return `
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <a href="index.html" class="logo">
-                <span class="logo-icon">GP</span><span class="logo-text">RN</span>
+    <div id="sidebarBackdrop" class="fixed inset-0 bg-black/40 z-40 hidden lg:hidden" onclick="document.getElementById('appSidebar').classList.add('-translate-x-full');this.classList.add('hidden');"></div>
+    <aside id="appSidebar" class="fixed inset-y-0 left-0 z-50 w-[280px] bg-white border-r border-slate-200 flex flex-col -translate-x-full lg:translate-x-0 lg:relative lg:w-[260px] lg:z-20 lg:shrink-0 transition-transform duration-300 ease-in-out">
+        <div class="h-20 px-6 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-[8px] select-none">
+                <div class="w-[38px] h-[38px] bg-[#101524] rounded-[12px] flex items-center justify-center shadow-sm">
+                    <span class="text-white font-black text-[24px] leading-none tracking-tight pt-[2px]">G</span>
+                </div>
+                <div class="flex items-baseline pt-1">
+                    <span class="text-[#101524] font-black text-[32px] leading-[0.8] tracking-[-0.05em]">PRN</span>
+                    <div class="w-[9px] h-[9px] bg-[#0F8B5A] ml-[4px] mb-[3px]"></div>
+                </div>
             </a>
-            <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">&times;</button>
-        </div>
-        <nav class="sidebar-nav">
-            ${nav.map(item => {
-                if (item.divider) {
-                    return `<div class="sidebar-divider"><span>${item.label}</span></div>`;
-                }
-                return `<a href="${item.href}" class="sidebar-link ${activePage === item.id ? 'active' : ''}">
-                    ${getIcon(item.icon)}
-                    <span>${item.label}</span>
-                </a>`;
-            }).join('')}
-        </nav>
-        <div class="sidebar-footer">
-            <a href="${settingsHref}" class="sidebar-link ${activePage === 'settings' ? 'active' : ''}">
-                ${getIcon('settings')}
-                <span>Settings</span>
-            </a>
-            <button class="sidebar-link" onclick="Auth.logout()">
-                ${getIcon('log-out')}
-                <span>Log Out</span>
+            <button class="lg:hidden w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600" onclick="document.getElementById('appSidebar').classList.add('-translate-x-full');document.getElementById('sidebarBackdrop').classList.add('hidden');">
+                <i class="ph ph-x text-xl"></i>
             </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scroll py-6 px-4 flex flex-col gap-8">
+            <nav class="flex flex-col gap-1.5">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] px-4 mb-2">Platform</p>
+                ${mainNav.map(item => {
+                    if (item.id === 'messages') {
+                        const isActive = activePage === 'messages';
+                        const iconBase = _phIcons.messages;
+                        const iconClass = isActive ? `ph-fill ${iconBase}` : `ph ${iconBase}`;
+                        const cls = isActive
+                            ? 'sidebar-active-bar relative flex items-center justify-between px-4 py-2.5 bg-slate-50 text-[#0B0F19] rounded-xl text-[14px] font-bold transition-all'
+                            : 'flex items-center justify-between px-4 py-2.5 text-slate-500 hover:text-[#0B0F19] hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group';
+                        return `<a href="${item.href}" class="${cls}">
+                            <div class="flex items-center gap-3">
+                                <i class="${iconClass} text-lg${isActive ? '' : ' group-hover:text-[#0B0F19]'} transition-colors"></i> ${item.label}
+                            </div>
+                            ${msgBadge}
+                        </a>`;
+                    }
+                    return navItem(item, activePage === item.id);
+                }).join('')}
+            </nav>
+
+            ${resourceNav.length > 0 ? `
+            <nav class="flex flex-col gap-1.5">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] px-4 mb-2">Resources</p>
+                ${resourceNav.map(item => navItem(item, activePage === item.id)).join('')}
+            </nav>` : ''}
+
+            <nav class="flex flex-col gap-1.5 mt-auto">
+                ${navItem({ id: 'settings', label: settingsLabel, href: settingsHref }, activePage === 'settings')}
+                <button onclick="Auth.logout()" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl text-[14px] font-semibold transition-colors group cursor-pointer text-left">
+                    <i class="ph ph-sign-out text-lg"></i> Log Out
+                </button>
+            </nav>
         </div>
     </aside>`;
 }
@@ -72,179 +135,56 @@ function renderSidebar(role, activePage) {
 // ---- Top Header Bar ----
 function renderTopHeader(title, breadcrumbs) {
     const session = Auth.getSession();
-    const data = getMockData();
-    const userNotifs = data.notifications ? data.notifications.filter(n => !n.userId || n.userId === session.id).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
-    const unreadNotifs = userNotifs.filter(n => !n.read).length;
-    const unreadMsgs = MessageManager.getUnreadCount(session.id);
-    const unreadCount = unreadNotifs + unreadMsgs;
-
-    const notifTypeIcons = {
-        'shift_confirmed': 'check', 'booking_confirmed': 'check', 'new_shifts': 'calendar',
-        'offer_accepted': 'check', 'offer_declined': 'x', 'offer_viewed': 'eye',
-        'offer_withdrawn': 'x', 'offer_expired': 'clock', 'counter_offer': 'pound',
-        'rate_agreed': 'check', 'reliability_warning': 'activity', 'cpd_event': 'award',
-        'message': 'mail', 'no_show': 'x', 'cancellation': 'x',
-        'leave_feedback': 'award', 'payment_reminder': 'pound', 'new_offer': 'briefcase',
-        'late_cancellation': 'x'
-    };
-
     const settingsHref = session.role === 'locum' ? 'my-settings.html' : 'practice-settings.html';
-    const profileHref = session.role === 'locum' ? 'my-profile.html' : 'practice-settings.html';
+    const initials = getInitials(session.name);
+    const displayName = session.firstName || (session.name || 'User').split(' ')[0];
+    const searchPlaceholder = session.role === 'locum' ? 'Search shifts, bookings...' : 'Search locums, shifts, or invoices...';
 
     return `
-    <header class="top-header">
-        <div class="top-header-left">
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">
-                <span></span><span></span><span></span>
+    <header class="h-16 lg:h-20 px-4 lg:px-10 flex items-center justify-between shrink-0 z-10 sticky top-0 bg-[#F8F9FA]/80 backdrop-blur-md">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+            <button class="lg:hidden w-10 h-10 flex items-center justify-center text-slate-600 hover:text-[#0B0F19] rounded-xl hover:bg-slate-100 transition-colors shrink-0" onclick="document.getElementById('appSidebar').classList.remove('-translate-x-full');document.getElementById('sidebarBackdrop').classList.remove('hidden');">
+                <i class="ph ph-list text-2xl"></i>
             </button>
-            ${breadcrumbs ? `<nav class="breadcrumbs">${breadcrumbs.map((b, i) =>
-                i === breadcrumbs.length - 1
-                    ? `<span class="breadcrumb-current">${b.label}</span>`
-                    : `<a href="${b.href}" class="breadcrumb-link">${b.label}</a><span class="breadcrumb-sep">/</span>`
-            ).join('')}</nav>` : `<h1 class="page-title">${title || ''}</h1>`}
+            <a href="index.html" class="lg:hidden flex items-center gap-[6px] select-none shrink-0">
+                <div class="w-[32px] h-[32px] bg-[#101524] rounded-[10px] flex items-center justify-center">
+                    <span class="text-white font-black text-[18px] leading-none tracking-tight pt-[2px]">G</span>
+                </div>
+                <div class="flex items-baseline pt-0.5">
+                    <span class="text-[#101524] font-black text-[24px] leading-[0.8] tracking-[-0.05em]">PRN</span>
+                    <div class="w-[7px] h-[7px] bg-[#0F8B5A] ml-[3px] mb-[2px]"></div>
+                </div>
+            </a>
+            <div class="relative w-full max-w-96 group hidden sm:block">
+                <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-[#0B0F19] transition-colors"></i>
+                <input type="text" placeholder="${searchPlaceholder}" class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-[#0B0F19] placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+            </div>
         </div>
-        <div class="top-header-right">
-            <div class="header-notifications">
-                <button class="notification-bell" id="notifBell">
-                    ${getIcon('bell')}
-                    ${unreadCount > 0 ? `<span class="notification-badge">${unreadCount}</span>` : ''}
-                </button>
-                <div class="header-dropdown notif-dropdown" id="notifDropdown">
-                    <div class="dropdown-header">
-                        <h3>Notifications</h3>
-                        ${unreadNotifs > 0 ? `<button class="dropdown-action" id="markAllRead">Mark all read</button>` : ''}
-                    </div>
-                    <div class="dropdown-list" id="notifList">
-                        ${userNotifs.length === 0 ? '<div class="dropdown-empty">No notifications</div>' :
-                        userNotifs.slice(0, 8).map(n => `
-                            <div class="dropdown-item ${n.read ? '' : 'unread'}" data-notif-id="${n.id}">
-                                <div class="dropdown-item-icon ${n.read ? '' : 'icon-unread'}">
-                                    ${getIcon(notifTypeIcons[n.type] || 'bell')}
-                                </div>
-                                <div class="dropdown-item-content">
-                                    <div class="dropdown-item-title">${n.title}</div>
-                                    <div class="dropdown-item-text">${n.message}</div>
-                                    <div class="dropdown-item-time">${DateUtils.timeAgo(n.date)}</div>
-                                </div>
-                                ${n.read ? '' : '<div class="dropdown-item-dot"></div>'}
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            </div>
-            <div class="header-user" id="userMenuBtn">
-                <div class="header-avatar">${getInitials(session.name)}</div>
-                <span class="header-name">${session.name}</span>
-                <svg class="header-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                <div class="header-dropdown user-dropdown" id="userDropdown">
-                    <div class="dropdown-user-info">
-                        <div class="header-avatar" style="width:40px;height:40px;font-size:0.85rem;">${getInitials(session.name)}</div>
-                        <div>
-                            <div class="dropdown-user-name">${session.name}</div>
-                            <div class="dropdown-user-role">${session.role === 'locum' ? 'Locum GP' : 'Practice Manager'}</div>
-                        </div>
-                    </div>
-                    <div class="dropdown-divider"></div>
-                    <a href="${profileHref}" class="dropdown-menu-item">
-                        ${getIcon('user')}
-                        <span>My Profile</span>
-                    </a>
-                    <a href="${settingsHref}" class="dropdown-menu-item">
-                        ${getIcon('settings')}
-                        <span>Settings</span>
-                    </a>
-                    <a href="help-faq.html" class="dropdown-menu-item">
-                        ${getIcon('help-circle')}
-                        <span>Help & FAQ</span>
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <button class="dropdown-menu-item dropdown-logout" id="dropdownLogout">
-                        ${getIcon('log-out')}
-                        <span>Log Out</span>
-                    </button>
-                </div>
-            </div>
+        <div class="flex items-center gap-3 lg:gap-5 shrink-0">
+            <button onclick="window.location.href='${settingsHref}'" class="bg-[#0B0F19] rounded-full p-1 pl-1.5 pr-4 flex items-center gap-2.5 hover:bg-slate-800 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0B0F19] group">
+                <div class="bg-[#059669] text-white w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold tracking-wider">${initials}</div>
+                <span class="text-white text-[13px] font-semibold pr-1">${displayName}</span>
+                <i class="ph-bold ph-caret-down text-slate-400 text-[10px] group-hover:text-white transition-colors"></i>
+            </button>
         </div>
     </header>`;
 }
 
 // ---- App Layout Wrapper ----
 function initAppLayout(role, activePage, pageTitle, breadcrumbs) {
+    // Set body to match practice page design
+    document.body.className = 'gprn-app bg-[#F8F9FA] text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-[#059669] selection:text-white';
+    document.body.style.fontFamily = "'Plus Jakarta Sans', sans-serif";
+
     document.body.innerHTML = `
         ${renderSidebar(role, activePage)}
-        <div class="main-content">
+        <main class="flex-1 flex flex-col relative w-full h-full">
             ${renderTopHeader(pageTitle, breadcrumbs)}
-            <main class="page-content" id="pageContent"></main>
-        </div>
+            <div class="flex-1 overflow-y-auto custom-scroll px-4 lg:px-10 pb-20 pt-4">
+                <div class="max-w-[1400px] mx-auto w-full relative" id="pageContent"></div>
+            </div>
+        </main>
     `;
-
-    // Sidebar toggle
-    const toggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
-    const close = document.getElementById('sidebarClose');
-    if (toggle && sidebar) {
-        toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-        if (close) close.addEventListener('click', () => sidebar.classList.remove('open'));
-    }
-
-    // Notification dropdown
-    const notifBell = document.getElementById('notifBell');
-    const notifDropdown = document.getElementById('notifDropdown');
-    if (notifBell && notifDropdown) {
-        notifBell.addEventListener('click', function(e) {
-            e.stopPropagation();
-            document.getElementById('userDropdown')?.classList.remove('open');
-            notifDropdown.classList.toggle('open');
-        });
-        const markAllBtn = document.getElementById('markAllRead');
-        if (markAllBtn) {
-            markAllBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const data = getMockData();
-                const session = Auth.getSession();
-                if (data.notifications) {
-                    data.notifications.forEach(n => {
-                        if (!n.userId || n.userId === session.id) n.read = true;
-                    });
-                    saveMockData(data);
-                }
-                notifDropdown.querySelectorAll('.dropdown-item.unread').forEach(el => {
-                    el.classList.remove('unread');
-                    const dot = el.querySelector('.dropdown-item-dot');
-                    if (dot) dot.remove();
-                    const icon = el.querySelector('.dropdown-item-icon');
-                    if (icon) icon.classList.remove('icon-unread');
-                });
-                const badge = document.querySelector('.notification-badge');
-                if (badge) badge.remove();
-                this.remove();
-            });
-        }
-    }
-
-    // User menu dropdown
-    const userMenuBtn = document.getElementById('userMenuBtn');
-    const userDropdown = document.getElementById('userDropdown');
-    if (userMenuBtn && userDropdown) {
-        userMenuBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            notifDropdown?.classList.remove('open');
-            userDropdown.classList.toggle('open');
-        });
-        const logoutBtn = document.getElementById('dropdownLogout');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                Auth.logout();
-            });
-        }
-    }
-
-    // Close dropdowns on outside click
-    document.addEventListener('click', function() {
-        notifDropdown?.classList.remove('open');
-        userDropdown?.classList.remove('open');
-    });
 
     return document.getElementById('pageContent');
 }

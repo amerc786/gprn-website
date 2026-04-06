@@ -2352,6 +2352,7 @@ button:focus-visible, a:focus-visible, .btn:focus-visible {
 
 @media print {
     .sidebar, .top-header, .no-print { display: none !important; }
+    #appSidebar, #sidebarBackdrop { display: none !important; }
     .main-content { margin-left: 0 !important; width: 100% !important; }
     .page-content { padding: 0 !important; }
     .invoice-page { box-shadow: none !important; border: none !important; }
@@ -2371,6 +2372,25 @@ button:focus-visible, a:focus-visible, .btn:focus-visible {
     .data-table th, .data-table td { border: 1px solid #ddd !important; }
     .invoice-total-row { break-inside: avoid; }
 }
+
+/* ===== New Shared Layout (matching practice design) ===== */
+.sidebar-active-bar::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10%;
+    height: 80%;
+    width: 4px;
+    background-color: #0B0F19;
+    border-radius: 0 4px 4px 0;
+}
+
+.custom-scroll::-webkit-scrollbar { width: 6px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+.custom-scroll:hover::-webkit-scrollbar-thumb { background: #CBD5E1; }
+
+.gprn-app { font-family: 'Plus Jakarta Sans', sans-serif; }
 
 /* ===== CHARTS (CSS-only) ===== */
 .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 0 8px; }
