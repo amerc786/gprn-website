@@ -37,6 +37,13 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
+    <div id="pageLoader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#F8F9FA;z-index:9999;">
+        <div style="text-align:center;">
+            <div style="width:36px;height:36px;border:3px solid #E2E8F0;border-top-color:#059669;border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px;"></div>
+            <p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:#64748B;font-weight:500;">Loading...</p>
+        </div>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
 <script src="supabase-client.js"></script>
@@ -557,6 +564,9 @@
                 }
             });
         }
+        // Remove loading screen
+        var loader = document.getElementById('pageLoader');
+        if (loader) loader.remove();
     </script>
 </body>
 </html>

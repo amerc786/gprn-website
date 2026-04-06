@@ -96,6 +96,13 @@
     </style>
 </head>
 <body class="app-layout">
+    <div id="pageLoader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#F8F9FA;z-index:9999;">
+        <div style="text-align:center;">
+            <div style="width:36px;height:36px;border:3px solid #E2E8F0;border-top-color:#059669;border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px;"></div>
+            <p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:#64748B;font-weight:500;">Loading calendar...</p>
+        </div>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
 <script src="supabase-client.js"></script>
@@ -126,42 +133,59 @@
         }
 
         function toggleAvailability(dateStr, slot) {
-            // Simple 2-state toggle: none → available → unavailable → none
-            const current = Availability.get(session.id, dateStr, slot);
+            const current = _getCachedAvail(dateStr, slot);
             let next;
             if (current === 'none' || !current) next = 'available';
             else if (current === 'available' || current === 'preferred') next = 'unavailable';
             else next = 'none';
             Availability.set(session.id, dateStr, slot, next);
+            // Update local cache immediately so renderCalendar doesn't re-fetch
+            if (!_cachedAvail[dateStr]) _cachedAvail[dateStr] = { am: 'none', pm: 'none' };
+            _cachedAvail[dateStr][slot] = next;
             renderCalendar();
         }
 
         function bulkSetWeek(status) {
-            // Set all weekdays (Mon-Fri) of current view month
             const daysInMonth = DateUtils.getDaysInMonth(viewYear, viewMonth);
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const dayOfWeek = new Date(viewYear, viewMonth, d).getDay();
-                // Skip weekends (0 = Sunday, 6 = Saturday)
                 if (dayOfWeek === 0 || dayOfWeek === 6) continue;
-                // Don't overwrite past dates
                 if (dateStr < todayStr) continue;
                 Availability.set(session.id, dateStr, 'both', status);
+                // Update local cache
+                _cachedAvail[dateStr] = { am: status, pm: status };
             }
             Toast.show(status === 'none' ? 'Weekday availability cleared for ' + monthNames[viewMonth] + '.' : 'All weekdays in ' + monthNames[viewMonth] + ' set to ' + status + '.', 'info');
             renderCalendar();
         }
 
-        function getEventsForDate(dateStr) {
+        // Cache offers and availability to avoid repeated network calls
+        let _cachedOffers = null;
+        let _cachedAvail = null;
+
+        function _refreshCache() {
             const data = getMockData();
-            const myOffers = data.offers.filter(o => o.locumId === session.id);
+            _cachedOffers = (data.offers || []).filter(o => o.locumId === session.id);
+            _cachedAvail = Availability.getAll(session.id) || {};
+        }
+
+        function _getCachedAvail(dateStr, slot) {
+            if (!_cachedAvail) _refreshCache();
+            var day = _cachedAvail[dateStr];
+            if (!day) return 'none';
+            return day[slot] || 'none';
+        }
+
+        function getEventsForDate(dateStr) {
+            if (!_cachedOffers) _refreshCache();
             const events = [];
 
-            myOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['accepted', 'confirmed'].includes(o.status)).forEach(o => {
+            _cachedOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['accepted', 'confirmed'].includes(o.status)).forEach(o => {
                 events.push({ type: 'booked', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
             });
 
-            myOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['sent', 'viewed', 'negotiating'].includes(o.status)).forEach(o => {
+            _cachedOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['sent', 'viewed', 'negotiating'].includes(o.status)).forEach(o => {
                 events.push({ type: 'pending', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
             });
 
@@ -175,6 +199,9 @@
         }
 
         function renderCalendar() {
+            // Refresh cache once per render — 1 network call instead of ~70
+            _refreshCache();
+
             const daysInMonth = DateUtils.getDaysInMonth(viewYear, viewMonth);
             const firstDay = DateUtils.getFirstDayOfMonth(viewYear, viewMonth);
 
@@ -190,8 +217,8 @@
                 const isPast = dateStr < todayStr;
                 const events = getEventsForDate(dateStr);
 
-                const amSlot = Availability.get(session.id, dateStr, 'am') || 'none';
-                const pmSlot = Availability.get(session.id, dateStr, 'pm') || 'none';
+                const amSlot = _getCachedAvail(dateStr, 'am');
+                const pmSlot = _getCachedAvail(dateStr, 'pm');
                 // Treat 'preferred' as 'available' for display
                 const amNorm = (amSlot === 'preferred') ? 'available' : amSlot;
                 const pmNorm = (pmSlot === 'preferred') ? 'available' : pmSlot;
@@ -263,8 +290,8 @@
             let dayDetail = '';
             if (selectedDate) {
                 const selEvents = getEventsForDate(selectedDate);
-                const amSlot = Availability.get(session.id, selectedDate, 'am') || 'none';
-                const pmSlot = Availability.get(session.id, selectedDate, 'pm') || 'none';
+                const amSlot = _getCachedAvail(selectedDate, 'am');
+                const pmSlot = _getCachedAvail(selectedDate, 'pm');
                 const amNorm = (amSlot === 'preferred') ? 'available' : amSlot;
                 const pmNorm = (pmSlot === 'preferred') ? 'available' : pmSlot;
 
@@ -381,6 +408,9 @@
         }
 
         renderCalendar();
+        // Remove loading screen
+        var loader = document.getElementById('pageLoader');
+        if (loader) loader.remove();
     </script>
 </body>
 </html>
