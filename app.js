@@ -195,7 +195,7 @@ const PasswordReset = {
         var token = 'reset-' + Date.now();
         if (!data.resetTokens) data.resetTokens = [];
         data.resetTokens.push({ email: email, token: token, created: new Date().toISOString(), used: false });
-        EmailManager.send(data, user.id, 'Password Reset',
+        EmailManager.send(user.id, 'Password Reset',
             'A password reset link has been sent to your email. Use token: ' + token + ' to reset your password. This link expires in 1 hour.', 'password_reset');
         saveMockData(data);
         return { success: true, message: 'Reset link sent to ' + email };
@@ -546,62 +546,55 @@ const Booking = {
 
     // Practice creates an internal session need (not publicly visible)
     createSessionNeed(needData) {
-        const data = getMockData();
+        const data = getMockData(); // For profile lookup
         const session = Auth.getSession();
         if (!session || session.role !== 'practice') return { error: 'not_authorized', message: 'Only practices can create session needs' };
         const practice = data.practices.find(p => p.id === session.id);
         if (!practice) return { error: 'not_found', message: 'Practice not found' };
-        if (!data.sessionNeeds) data.sessionNeeds = [];
         const need = {
             id: 'need-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
             practiceId: session.id,
             practiceName: practice.practiceName,
             healthBoard: practice.healthBoard,
             date: needData.date,
-            sessionType: needData.sessionType, // 'AM', 'PM', 'Full Day'
+            sessionType: needData.sessionType,
             startTime: needData.startTime || (needData.sessionType === 'PM' ? '14:00' : '08:00'),
             endTime: needData.endTime || (needData.sessionType === 'AM' ? '13:00' : '18:30'),
             budgetRate: needData.budgetRate || null,
             notes: needData.notes || '',
             housecalls: needData.housecalls || false,
-            status: 'open', // open, filled, cancelled
+            status: 'open',
             createdDate: DateUtils.toISO(new Date()),
             offersCount: 0
         };
-        data.sessionNeeds.push(need);
-        saveMockData(data);
+        DB.SessionNeeds.insert(need);
         return { success: true, sessionNeed: need };
     },
 
     // Practice sends an offer to a specific locum
     sendOffer(sessionNeedId, locumId, proposedRate, message) {
-        const data = getMockData();
+        const data = getMockData(); // For profile lookups
         const session = Auth.getSession();
         if (!session || session.role !== 'practice') return { error: 'not_authorized', message: 'Only practices can send offers' };
         const practice = data.practices.find(p => p.id === session.id);
         if (!practice) return { error: 'not_found', message: 'Practice not found' };
         const locum = data.locums.find(l => l.id === locumId);
         if (!locum) return { error: 'locum_not_found', message: 'Locum not found' };
-        // Barred check
         if (BarredList.isBarred(session.id, locumId)) {
             return { error: 'barred', message: 'This locum is on your blocked list' };
         }
-        // Find or validate session need
-        if (!data.sessionNeeds) data.sessionNeeds = [];
-        let need = data.sessionNeeds.find(n => n.id === sessionNeedId);
+        const need = DB.SessionNeeds.getById(sessionNeedId);
         if (!need) return { error: 'need_not_found', message: 'Session need not found' };
         if (need.status !== 'open') return { error: 'need_filled', message: 'This session has already been filled' };
-        // Duplicate offer check — don't send to same locum for same need
-        const existingOffer = data.offers.find(o =>
-            o.sessionNeedId === sessionNeedId && o.locumId === locumId &&
-            !['declined', 'withdrawn', 'expired', 'cancelled'].includes(o.status)
+        // Duplicate offer check
+        const needOffers = DB.Offers.getForSessionNeed(sessionNeedId);
+        const existingOffer = needOffers.find(o =>
+            o.locumId === locumId && !['declined', 'withdrawn', 'expired', 'cancelled'].includes(o.status)
         );
         if (existingOffer) return { error: 'already_sent', message: 'You already have an active offer to this locum for this session' };
-        // Double-booking check
         if (this.isDoubleBooked(locumId, need.date, null, need.sessionType)) {
             return { error: 'double_booked', message: 'This locum already has a confirmed booking for this date/session' };
         }
-        // Get locum's published rate for this session type
         const locumRates = locum.rates || {};
         let locumPublishedRate = 0;
         if (need.sessionType === 'AM') locumPublishedRate = locumRates.am || 0;
@@ -628,46 +621,37 @@ const Booking = {
             initiatedBy: 'practice',
             sentDate: DateUtils.toISO(new Date()),
             viewedDate: null,
-            expiresAt: DateUtils.toISO(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), // 7 days
+            expiresAt: DateUtils.toISO(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
             practiceMessage: message || '',
             negotiations: []
         };
-        data.offers.push(newOffer);
-        need.offersCount = (need.offersCount || 0) + 1;
-        // Notify locum
-        this.addNotification(data, locumId, 'new_offer', 'New Invitation',
+        DB.Offers.insert(newOffer);
+        DB.SessionNeeds.update(sessionNeedId, { offersCount: (need.offersCount || 0) + 1 });
+        this.addNotification(locumId, 'new_offer', 'New Invitation',
             `${practice.practiceName} has invited you to work on ${DateUtils.format(need.date, 'medium')} (${need.sessionType}).`);
-        EmailManager.send(data, locumId, 'New Session Invitation',
+        EmailManager.send(locumId, 'New Session Invitation',
             `${practice.practiceName} has sent you an invitation for a ${need.sessionType} session on ${DateUtils.format(need.date, 'medium')}. Please review in your invitations.`, 'new_offer');
-        saveMockData(data);
         return { success: true, offer: newOffer };
     },
 
     // Auto-mark offer as viewed when locum opens it
     viewOffer(offerId) {
-        const data = getMockData();
-        const offer = data.offers.find(o => o.id === offerId);
+        const offer = DB.Offers.getById(offerId);
         if (!offer) return false;
         if (offer.status === 'sent') {
-            offer.status = 'viewed';
-            offer.viewedDate = DateUtils.toISO(new Date());
-            // Notify practice that locum has seen their offer
-            this.addNotification(data, offer.practiceId, 'offer_viewed', 'Invitation Viewed',
+            DB.Offers.update(offerId, { status: 'viewed', viewedDate: DateUtils.toISO(new Date()) });
+            this.addNotification(offer.practiceId, 'offer_viewed', 'Invitation Viewed',
                 `The locum has viewed your invitation for ${DateUtils.format(offer.sessionDate, 'medium')}.`);
-            saveMockData(data);
         }
         return true;
     },
 
     // Locum responds to an offer: accept, decline, or counter
     respondToOffer(offerId, response, counterRate, message) {
-        const data = getMockData();
-        const offer = data.offers.find(o => o.id === offerId);
+        const offer = DB.Offers.getById(offerId);
         if (!offer) return { error: 'not_found', message: 'Offer not found' };
-        // Check if offer has expired
         if (offer.expiresAt && new Date(offer.expiresAt) < new Date()) {
-            offer.status = 'expired';
-            saveMockData(data);
+            DB.Offers.update(offerId, { status: 'expired' });
             return { error: 'expired', message: 'This offer has expired and can no longer be acted on.' };
         }
         if (!['sent', 'viewed', 'negotiating'].includes(offer.status)) {
@@ -675,51 +659,39 @@ const Booking = {
         }
 
         if (response === 'accept') {
-            // Double-book check
             const sessionDate = offer.sessionDate || offer.shiftDate;
             if (sessionDate && this.isDoubleBooked(offer.locumId, sessionDate, offer.id, offer.sessionType)) {
                 return { error: 'double_booked', message: 'You already have a confirmed booking for this date and session type.' };
             }
-            // Accept at the current proposed rate (or last counter rate)
             const agreedRate = offer.agreedRate || offer.proposedRate;
-            offer.agreedRate = agreedRate;
-            offer.status = 'accepted';
-            offer.acceptedDate = DateUtils.toISO(new Date());
-            offer.negotiations.push({ from: 'locum', accepted: true, rate: agreedRate, message: message || 'Accepted', date: new Date().toISOString() });
-            // Mark session need as filled
-            if (data.sessionNeeds) {
-                const need = data.sessionNeeds.find(n => n.id === offer.sessionNeedId);
-                if (need) need.status = 'filled';
-            }
-            // Auto-withdraw other sent/viewed offers for same session need
-            data.offers.filter(o => o.sessionNeedId === offer.sessionNeedId && o.id !== offerId && ['sent', 'viewed', 'negotiating'].includes(o.status))
+            const negotiations = offer.negotiations || [];
+            negotiations.push({ from: 'locum', accepted: true, rate: agreedRate, message: message || 'Accepted', date: new Date().toISOString() });
+            DB.Offers.update(offerId, { agreedRate: agreedRate, status: 'accepted', acceptedDate: DateUtils.toISO(new Date()), negotiations: negotiations });
+            DB.SessionNeeds.update(offer.sessionNeedId, { status: 'filled' });
+            // Auto-withdraw other offers for same session need
+            const otherOffers = DB.Offers.getForSessionNeed(offer.sessionNeedId);
+            otherOffers.filter(o => o.id !== offerId && ['sent', 'viewed', 'negotiating'].includes(o.status))
                 .forEach(o => {
-                    o.status = 'withdrawn';
-                    o.autoWithdrawn = true;
-                    o.withdrawnDate = DateUtils.toISO(new Date());
-                    this.addNotification(data, o.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
+                    DB.Offers.update(o.id, { status: 'withdrawn', autoWithdrawn: true, withdrawnDate: DateUtils.toISO(new Date()) });
+                    this.addNotification(o.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
                         `The invitation from ${offer.practiceName} for ${DateUtils.format(o.sessionDate, 'medium')} has been filled by another locum.`);
                 });
-            this.addNotification(data, offer.practiceId, 'offer_accepted', 'Invitation Accepted',
+            this.addNotification(offer.practiceId, 'offer_accepted', 'Invitation Accepted',
                 `A locum has accepted your invitation for ${DateUtils.format(offer.sessionDate, 'medium')} (${offer.sessionType}).`);
-            EmailManager.send(data, offer.practiceId, 'Invitation Accepted',
+            EmailManager.send(offer.practiceId, 'Invitation Accepted',
                 `A locum has accepted your session invitation for ${DateUtils.format(offer.sessionDate, 'medium')}. Please confirm in your dashboard.`, 'offer_accepted');
-            saveMockData(data);
             return { success: true, status: 'accepted' };
 
         } else if (response === 'decline') {
-            offer.status = 'declined';
-            offer.declinedDate = DateUtils.toISO(new Date());
-            offer.negotiations.push({ from: 'locum', declined: true, message: message || 'Declined', date: new Date().toISOString() });
-            if (data.sessionNeeds) {
-                const need = data.sessionNeeds.find(n => n.id === offer.sessionNeedId);
-                if (need && need.offersCount > 0) need.offersCount--;
-            }
-            this.addNotification(data, offer.practiceId, 'offer_declined', 'Invitation Declined',
+            const negotiations = offer.negotiations || [];
+            negotiations.push({ from: 'locum', declined: true, message: message || 'Declined', date: new Date().toISOString() });
+            DB.Offers.update(offerId, { status: 'declined', declinedDate: DateUtils.toISO(new Date()), negotiations: negotiations });
+            const need = DB.SessionNeeds.getById(offer.sessionNeedId);
+            if (need && need.offersCount > 0) DB.SessionNeeds.update(offer.sessionNeedId, { offersCount: need.offersCount - 1 });
+            this.addNotification(offer.practiceId, 'offer_declined', 'Invitation Declined',
                 `A locum has declined your invitation for ${DateUtils.format(offer.sessionDate, 'medium')}.`);
-            EmailManager.send(data, offer.practiceId, 'Invitation Declined',
+            EmailManager.send(offer.practiceId, 'Invitation Declined',
                 `A locum has declined your session invitation for ${DateUtils.format(offer.sessionDate, 'medium')}.`, 'offer_declined');
-            saveMockData(data);
             return { success: true, status: 'declined' };
 
         } else if (response === 'counter') {
@@ -727,14 +699,13 @@ const Booking = {
             if (counterRate <= 0 || counterRate > 50000 || isNaN(counterRate)) {
                 return { error: 'invalid_rate', message: 'Please enter a valid rate between £1 and £50,000.' };
             }
-            offer.status = 'negotiating';
-            offer.proposedRate = counterRate;
-            offer.negotiations.push({ from: 'locum', rate: counterRate, message: message || '', date: new Date().toISOString() });
-            this.addNotification(data, offer.practiceId, 'counter_offer', 'Rate Counter-Offer',
+            const negotiations = offer.negotiations || [];
+            negotiations.push({ from: 'locum', rate: counterRate, message: message || '', date: new Date().toISOString() });
+            DB.Offers.update(offerId, { status: 'negotiating', proposedRate: counterRate, negotiations: negotiations });
+            this.addNotification(offer.practiceId, 'counter_offer', 'Rate Counter-Offer',
                 `A locum has proposed a rate of ${formatCurrency(counterRate)} for ${DateUtils.format(offer.sessionDate, 'medium')}.`);
-            EmailManager.send(data, offer.practiceId, 'Rate Counter-Offer',
+            EmailManager.send(offer.practiceId, 'Rate Counter-Offer',
                 `A locum has proposed a different rate for your ${offer.sessionType} session on ${DateUtils.format(offer.sessionDate, 'medium')}. Please review.`, 'counter_offer');
-            saveMockData(data);
             return { success: true, status: 'negotiating' };
         }
         return { error: 'invalid_response', message: 'Invalid response type' };
@@ -742,36 +713,27 @@ const Booking = {
 
     // Practice responds during negotiation: accept locum's counter, counter again, or withdraw
     practiceRespondToNegotiation(offerId, response, counterRate, message) {
-        const data = getMockData();
-        const offer = data.offers.find(o => o.id === offerId);
+        const offer = DB.Offers.getById(offerId);
         if (!offer) return { error: 'not_found', message: 'Offer not found' };
         if (offer.status !== 'negotiating') return { error: 'invalid_status', message: 'Offer is not in negotiation' };
 
         if (response === 'accept') {
-            const agreedRate = offer.proposedRate; // Accept the locum's last counter
-            offer.agreedRate = agreedRate;
-            offer.status = 'accepted';
-            offer.acceptedDate = DateUtils.toISO(new Date());
-            offer.negotiations.push({ from: 'practice', accepted: true, rate: agreedRate, message: message || 'Rate accepted', date: new Date().toISOString() });
-            // Mark session need as filled
-            if (data.sessionNeeds) {
-                const need = data.sessionNeeds.find(n => n.id === offer.sessionNeedId);
-                if (need) need.status = 'filled';
-            }
-            // Auto-withdraw other offers for same need
-            data.offers.filter(o => o.sessionNeedId === offer.sessionNeedId && o.id !== offerId && ['sent', 'viewed', 'negotiating'].includes(o.status))
+            const agreedRate = offer.proposedRate;
+            const negotiations = offer.negotiations || [];
+            negotiations.push({ from: 'practice', accepted: true, rate: agreedRate, message: message || 'Rate accepted', date: new Date().toISOString() });
+            DB.Offers.update(offerId, { agreedRate: agreedRate, status: 'accepted', acceptedDate: DateUtils.toISO(new Date()), negotiations: negotiations });
+            DB.SessionNeeds.update(offer.sessionNeedId, { status: 'filled' });
+            const otherOffers = DB.Offers.getForSessionNeed(offer.sessionNeedId);
+            otherOffers.filter(o => o.id !== offerId && ['sent', 'viewed', 'negotiating'].includes(o.status))
                 .forEach(o => {
-                    o.status = 'withdrawn';
-                    o.autoWithdrawn = true;
-                    o.withdrawnDate = DateUtils.toISO(new Date());
-                    this.addNotification(data, o.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
+                    DB.Offers.update(o.id, { status: 'withdrawn', autoWithdrawn: true, withdrawnDate: DateUtils.toISO(new Date()) });
+                    this.addNotification(o.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
                         `The invitation from ${offer.practiceName} for ${DateUtils.format(o.sessionDate, 'medium')} has been filled by another locum.`);
                 });
-            this.addNotification(data, offer.locumId, 'rate_agreed', 'Rate Agreed',
+            this.addNotification(offer.locumId, 'rate_agreed', 'Rate Agreed',
                 `${offer.practiceName} has accepted your proposed rate of ${formatCurrency(agreedRate)} for ${DateUtils.format(offer.sessionDate, 'medium')}.`);
-            EmailManager.send(data, offer.locumId, 'Rate Agreed',
+            EmailManager.send(offer.locumId, 'Rate Agreed',
                 `${offer.practiceName} has agreed to your rate for the session on ${DateUtils.format(offer.sessionDate, 'medium')}.`, 'rate_agreed');
-            saveMockData(data);
             return { success: true, status: 'accepted' };
 
         } else if (response === 'counter') {
@@ -779,13 +741,13 @@ const Booking = {
             if (counterRate <= 0 || counterRate > 50000 || isNaN(counterRate)) {
                 return { error: 'invalid_rate', message: 'Please enter a valid rate between £1 and £50,000.' };
             }
-            offer.proposedRate = counterRate;
-            offer.negotiations.push({ from: 'practice', rate: counterRate, message: message || '', date: new Date().toISOString() });
-            this.addNotification(data, offer.locumId, 'counter_offer', 'Rate Counter-Offer',
+            const negotiations = offer.negotiations || [];
+            negotiations.push({ from: 'practice', rate: counterRate, message: message || '', date: new Date().toISOString() });
+            DB.Offers.update(offerId, { proposedRate: counterRate, negotiations: negotiations });
+            this.addNotification(offer.locumId, 'counter_offer', 'Rate Counter-Offer',
                 `${offer.practiceName} has proposed a rate of ${formatCurrency(counterRate)} for ${DateUtils.format(offer.sessionDate, 'medium')}.`);
-            EmailManager.send(data, offer.locumId, 'Rate Counter-Offer',
+            EmailManager.send(offer.locumId, 'Rate Counter-Offer',
                 `${offer.practiceName} has proposed a different rate for the session on ${DateUtils.format(offer.sessionDate, 'medium')}. Please review.`, 'counter_offer');
-            saveMockData(data);
             return { success: true, status: 'negotiating' };
 
         } else if (response === 'withdraw') {
@@ -794,165 +756,124 @@ const Booking = {
         return { error: 'invalid_response', message: 'Invalid response type' };
     },
 
-    // Practice withdraws an offer (pull it back before locum accepts)
     withdrawOffer(offerId) {
-        const data = getMockData();
-        const offer = data.offers.find(o => o.id === offerId);
+        const offer = DB.Offers.getById(offerId);
         if (!offer) return { error: 'not_found', message: 'Offer not found' };
         if (!['sent', 'viewed', 'negotiating'].includes(offer.status)) {
             return { error: 'cannot_withdraw', message: 'This offer can no longer be withdrawn' };
         }
-        offer.status = 'withdrawn';
-        offer.withdrawnDate = DateUtils.toISO(new Date());
-        if (data.sessionNeeds) {
-            const need = data.sessionNeeds.find(n => n.id === offer.sessionNeedId);
-            if (need && need.offersCount > 0) need.offersCount--;
-        }
-        this.addNotification(data, offer.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
+        DB.Offers.update(offerId, { status: 'withdrawn', withdrawnDate: DateUtils.toISO(new Date()) });
+        const need = DB.SessionNeeds.getById(offer.sessionNeedId);
+        if (need && need.offersCount > 0) DB.SessionNeeds.update(offer.sessionNeedId, { offersCount: need.offersCount - 1 });
+        this.addNotification(offer.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
             `${offer.practiceName} has withdrawn the invitation for ${DateUtils.format(offer.sessionDate, 'medium')}.`);
-        saveMockData(data);
         return { success: true };
     },
 
-    // Practice confirms the booking (after locum accepts)
     confirmBooking(offerId) {
-        const data = getMockData();
-        const offer = data.offers.find(o => o.id === offerId);
+        const offer = DB.Offers.getById(offerId);
         if (!offer || offer.status !== 'accepted') return false;
-        offer.status = 'confirmed';
-        offer.confirmedDate = DateUtils.toISO(new Date());
-        this.addNotification(data, offer.locumId, 'booking_confirmed', 'Booking Confirmed',
+        DB.Offers.update(offerId, { status: 'confirmed', confirmedDate: DateUtils.toISO(new Date()) });
+        this.addNotification(offer.locumId, 'booking_confirmed', 'Booking Confirmed',
             `${offer.practiceName} has confirmed your booking for ${DateUtils.format(offer.sessionDate, 'medium')} (${offer.sessionType}).`);
-        EmailManager.send(data, offer.locumId, 'Booking Confirmed',
+        EmailManager.send(offer.locumId, 'Booking Confirmed',
             `Your booking at ${offer.practiceName} on ${DateUtils.format(offer.sessionDate, 'medium')} has been confirmed.`, 'booking_confirmed');
-        saveMockData(data);
         return true;
     },
 
     // Mark session as complete (either party)
     markComplete(offerId, attended = true, completedBy = 'practice') {
-        const data = getMockData();
-        const offer = data.offers.find(o => o.id === offerId);
+        const offer = DB.Offers.getById(offerId);
         if (!offer) return false;
         if (!['accepted', 'confirmed'].includes(offer.status)) return false;
         if (attended) {
-            offer.status = 'completed';
-            offer.completedDate = DateUtils.toISO(new Date());
-            offer.completedBy = completedBy;
-            const existingInvoice = data.invoices && data.invoices.find(i => i.offerId === offer.id);
-            if (!existingInvoice) {
-                InvoiceManager.generateFromOffer(data, offer);
-            }
-            this.addNotification(data, offer.locumId, 'leave_feedback', 'Rate This Practice',
+            DB.Offers.update(offerId, { status: 'completed', completedDate: DateUtils.toISO(new Date()), completedBy: completedBy });
+            InvoiceManager.generateFromOffer(offer);
+            this.addNotification(offer.locumId, 'leave_feedback', 'Rate This Practice',
                 `Your session at ${offer.practiceName} is complete. Please leave a rating.`);
-            this.addNotification(data, offer.practiceId, 'leave_feedback', 'Shift Completed',
+            this.addNotification(offer.practiceId, 'leave_feedback', 'Shift Completed',
                 `The shift on ${DateUtils.format(offer.sessionDate, 'medium')} is complete. Report any issues if applicable.`);
         } else {
-            offer.status = 'no_show';
-            offer.noShowDate = DateUtils.toISO(new Date());
-            this.applyReliabilityPenalty(data, offer.locumId, 10);
-            this.addNotification(data, offer.locumId, 'no_show', 'No Show Recorded',
+            DB.Offers.update(offerId, { status: 'no_show', noShowDate: DateUtils.toISO(new Date()) });
+            this.applyReliabilityPenalty(offer.locumId, 10);
+            this.addNotification(offer.locumId, 'no_show', 'No Show Recorded',
                 `A no show was recorded at ${offer.practiceName} on ${DateUtils.format(offer.sessionDate, 'full')}. Your reliability score has been reduced by 10 points.`);
         }
-        saveMockData(data);
         return true;
     },
 
-    // Cancel a confirmed booking
     cancelBooking(offerId, cancelledBy) {
-        const data = getMockData();
-        const offer = data.offers.find(o => o.id === offerId);
+        const offer = DB.Offers.getById(offerId);
         if (!offer) return false;
         if (['cancelled', 'declined', 'withdrawn', 'expired'].includes(offer.status)) {
             return { error: 'already_cancelled', message: 'This booking has already been cancelled.' };
         }
         if (!['accepted', 'confirmed'].includes(offer.status)) return false;
         const daysBefore = Math.ceil((new Date(offer.sessionDate) - new Date()) / (1000 * 60 * 60 * 24));
-        offer.status = 'cancelled';
-        offer.cancelledBy = cancelledBy;
-        offer.cancelledDate = DateUtils.toISO(new Date());
-        offer.lateCancellation = daysBefore < 2;
-        // Re-open session need
-        if (data.sessionNeeds) {
-            const need = data.sessionNeeds.find(n => n.id === offer.sessionNeedId);
-            if (need) need.status = 'open';
-        }
-        // Late cancellation penalty for locum
-        if (cancelledBy === 'locum' && offer.lateCancellation) {
-            this.applyReliabilityPenalty(data, offer.locumId, 5);
-            this.addNotification(data, offer.locumId, 'late_cancellation', 'Late Cancellation Penalty',
+        const lateCancellation = daysBefore < 2;
+        DB.Offers.update(offerId, { status: 'cancelled', cancelledBy: cancelledBy, cancelledDate: DateUtils.toISO(new Date()), lateCancellation: lateCancellation });
+        DB.SessionNeeds.update(offer.sessionNeedId, { status: 'open' });
+        if (cancelledBy === 'locum' && lateCancellation) {
+            this.applyReliabilityPenalty(offer.locumId, 5);
+            this.addNotification(offer.locumId, 'late_cancellation', 'Late Cancellation Penalty',
                 `Your cancellation at ${offer.practiceName} on ${DateUtils.format(offer.sessionDate, 'full')} was within 48 hours. Your reliability score has been reduced by 5 points.`);
         }
         const notifyId = cancelledBy === 'locum' ? offer.practiceId : offer.locumId;
-        this.addNotification(data, notifyId, 'cancellation', 'Booking Cancelled',
+        this.addNotification(notifyId, 'cancellation', 'Booking Cancelled',
             `The booking on ${DateUtils.format(offer.sessionDate, 'medium')} at ${offer.practiceName} has been cancelled.`);
-        saveMockData(data);
         return true;
     },
 
-    // Auto-expire offers past their expiry date
     expireOffers() {
-        const data = getMockData();
+        const allOffers = DB.Offers.getAll();
         const now = new Date();
         let expired = 0;
-        data.offers.filter(o => ['sent', 'viewed'].includes(o.status) && o.expiresAt && new Date(o.expiresAt) < now)
+        allOffers.filter(o => ['sent', 'viewed'].includes(o.status) && o.expiresAt && new Date(o.expiresAt) < now)
             .forEach(o => {
-                o.status = 'expired';
-                o.expiredDate = DateUtils.toISO(now);
-                if (data.sessionNeeds) {
-                    const need = data.sessionNeeds.find(n => n.id === o.sessionNeedId);
-                    if (need && need.offersCount > 0) need.offersCount--;
-                }
-                this.addNotification(data, o.practiceId, 'offer_expired', 'Invitation Expired',
+                DB.Offers.update(o.id, { status: 'expired', expiredDate: DateUtils.toISO(now) });
+                const need = DB.SessionNeeds.getById(o.sessionNeedId);
+                if (need && need.offersCount > 0) DB.SessionNeeds.update(o.sessionNeedId, { offersCount: need.offersCount - 1 });
+                this.addNotification(o.practiceId, 'offer_expired', 'Invitation Expired',
                     `Your invitation for ${DateUtils.format(o.sessionDate, 'medium')} has expired without a response.`);
                 expired++;
             });
-        if (expired > 0) saveMockData(data);
         return expired;
     },
 
-    // Double-booking check with half-day awareness
     isDoubleBooked(locumId, date, excludeOfferId, sessionType) {
-        const data = getMockData();
-        return data.offers.some(o => {
-            if (o.locumId !== locumId || o.sessionDate !== date) return false;
+        const locumOffers = DB.Offers.getForLocum(locumId);
+        return locumOffers.some(o => {
+            if (o.sessionDate !== date) return false;
             if (!['accepted', 'confirmed'].includes(o.status)) return false;
             if (o.id === excludeOfferId) return false;
             if (sessionType && o.sessionType) {
                 if (sessionType === 'Full Day' || o.sessionType === 'Full Day') return true;
                 if (sessionType === o.sessionType) return true;
-                return false; // AM + PM on same day is fine
+                return false;
             }
             return true;
         });
     },
 
-    // Delete/cancel a session need
     deleteSessionNeed(needId) {
-        const data = getMockData();
-        if (!data.sessionNeeds) return { error: 'not_found', message: 'Session need not found' };
-        const need = data.sessionNeeds.find(n => n.id === needId);
+        const need = DB.SessionNeeds.getById(needId);
         if (!need) return { error: 'not_found', message: 'Session need not found' };
         const dateStr = DateUtils.format(need.date, 'full');
-        // Cancel any accepted/confirmed bookings and notify locums
-        data.offers.filter(o => o.sessionNeedId === needId && ['accepted', 'confirmed'].includes(o.status))
+        const needOffers = DB.Offers.getForSessionNeed(needId);
+        // Cancel accepted/confirmed bookings
+        needOffers.filter(o => ['accepted', 'confirmed'].includes(o.status))
             .forEach(o => {
-                o.status = 'cancelled';
-                o.cancelledBy = 'practice';
-                o.cancelledDate = DateUtils.toISO(new Date());
-                // Re-open session need handled below (set to cancelled)
-                this.addNotification(data, o.locumId, 'cancellation', 'Shift Cancelled',
+                DB.Offers.update(o.id, { status: 'cancelled', cancelledBy: 'practice', cancelledDate: DateUtils.toISO(new Date()) });
+                this.addNotification(o.locumId, 'cancellation', 'Shift Cancelled',
                     `${need.practiceName} has cancelled the ${need.sessionType} session on ${dateStr}. We apologise for the inconvenience.`);
-                // Send a system message so the GP sees it in their messages
-                const threadId = MessageManager._findActiveThread(data, need.practiceId, o.locumId) || ('thread-' + Date.now() + Math.random().toString(36).substr(2, 5));
-                if (!data.messages) data.messages = [];
-                data.messages.push({
+                const threadId = MessageManager._findActiveThread(need.practiceId, o.locumId) || ('thread-' + Date.now() + Math.random().toString(36).substr(2, 5));
+                DB.Messages.insert({
                     id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
                     threadId,
                     fromId: need.practiceId,
                     toId: o.locumId,
                     subject: '',
-                    body: `⚠️ Shift Cancelled — The ${need.sessionType} session on ${dateStr} has been cancelled by ${need.practiceName}.`,
+                    body: `\u26A0\uFE0F Shift Cancelled \u2014 The ${need.sessionType} session on ${dateStr} has been cancelled by ${need.practiceName}.`,
                     shiftId: null,
                     timestamp: new Date().toISOString(),
                     read: false,
@@ -960,38 +881,29 @@ const Booking = {
                     _system: true
                 });
             });
-        // Withdraw all pending/sent offers
-        data.offers.filter(o => o.sessionNeedId === needId && ['sent', 'viewed', 'negotiating'].includes(o.status))
+        // Withdraw pending offers
+        needOffers.filter(o => ['sent', 'viewed', 'negotiating'].includes(o.status))
             .forEach(o => {
-                o.status = 'withdrawn';
-                o.autoWithdrawn = true;
-                o.withdrawnDate = DateUtils.toISO(new Date());
-                this.addNotification(data, o.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
+                DB.Offers.update(o.id, { status: 'withdrawn', autoWithdrawn: true, withdrawnDate: DateUtils.toISO(new Date()) });
+                this.addNotification(o.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
                     `The session at ${need.practiceName} on ${dateStr} has been cancelled.`);
             });
-        need.status = 'cancelled';
-        saveMockData(data);
+        DB.SessionNeeds.update(needId, { status: 'cancelled' });
         return { success: true };
     },
 
-    // Get offers for a specific locum
     getOffersForLocum(locumId) {
         this.expireOffers();
-        const data = getMockData();
-        return data.offers.filter(o => o.locumId === locumId).sort((a, b) => new Date(b.sentDate) - new Date(a.sentDate));
+        return DB.Offers.getForLocum(locumId).sort((a, b) => new Date(b.sentDate) - new Date(a.sentDate));
     },
 
-    // Get offers for a specific practice
     getOffersForPractice(practiceId) {
         this.expireOffers();
-        const data = getMockData();
-        return data.offers.filter(o => o.practiceId === practiceId).sort((a, b) => new Date(b.sentDate) - new Date(a.sentDate));
+        return DB.Offers.getForPractice(practiceId).sort((a, b) => new Date(b.sentDate) - new Date(a.sentDate));
     },
 
-    // Get offers for a specific session need
     getOffersForSessionNeed(needId) {
-        const data = getMockData();
-        return data.offers.filter(o => o.sessionNeedId === needId);
+        return DB.Offers.getForSessionNeed(needId);
     },
 
     // Valid state transitions for the new model
@@ -1014,9 +926,8 @@ const Booking = {
         return allowed ? allowed.includes(toStatus) : false;
     },
 
-    addNotification(data, userId, type, title, message) {
-        if (!data.notifications) data.notifications = [];
-        data.notifications.push({
+    addNotification(userId, type, title, message) {
+        DB.Notifications.insert({
             id: 'notif-' + Date.now() + Math.random().toString(36).substr(2, 5),
             userId: userId,
             type: type,
@@ -1028,25 +939,18 @@ const Booking = {
     },
 
     // Apply a weighted reliability penalty based on total shifts completed
-    // A GP with many completed shifts absorbs penalties better than a new GP
-    // penalty: raw points (10 for no-show, 5 for late cancellation)
-    applyReliabilityPenalty(data, locumId, penalty) {
+    applyReliabilityPenalty(locumId, penalty) {
+        const data = getMockData();
         const locum = data.locums ? data.locums.find(l => l.id === locumId) : null;
         if (!locum) return;
         const totalShifts = locum.totalShifts || 1;
-        // Formula: drop = penalty / (totalShifts + penalty) * 100
-        // Examples with no-show (penalty=10):
-        //   156 shifts → 10/166*100 = ~6% → capped at 2% = high 90s
-        //   50 shifts  → 10/60*100  = ~17% → capped at 5%
-        //   10 shifts  → 10/20*100  = ~50% → capped at 10%
-        // Cap: max drop is penalty itself, min drop is 1%
         const rawDrop = (penalty / (totalShifts + penalty)) * 100;
-        // Scale down: GPs with 50+ shifts get gentler drops
         const scaledDrop = totalShifts >= 50 ? Math.min(rawDrop, penalty * 0.2)
                          : totalShifts >= 20 ? Math.min(rawDrop, penalty * 0.5)
                          : Math.min(rawDrop, penalty);
         const actualDrop = Math.max(1, Math.round(scaledDrop));
         locum.bookingReliability = Math.max(0, Math.round((locum.bookingReliability || 100) - actualDrop));
+        saveMockData(data);
     }
 };
 
@@ -1113,7 +1017,6 @@ const OnlineStatus = {
 
 // ---- Message Manager ----
 const MessageManager = {
-    // Get the role of a user by their ID
     getUserRole(userId) {
         const data = getMockData();
         if (data.locums.find(l => l.id === userId)) return 'locum';
@@ -1121,23 +1024,15 @@ const MessageManager = {
         return null;
     },
 
-    // Check if a locum can message (only reply — must have existing thread initiated by practice)
     canLocumMessage(locumId, practiceId) {
-        const data = getMockData();
-        if (!data.messages) return false;
-        // Check if practice has ever sent a message to this locum (not deleted by locum)
-        return data.messages.some(m =>
-            m.fromId === practiceId && m.toId === locumId && !this._isDeletedFor(m, locumId)
-        );
+        const msgs = DB.Messages.getAll(locumId);
+        return msgs.some(m => m.fromId === practiceId && m.toId === locumId);
     },
 
-    // Check if from/to is a valid messaging pair
     canSendMessage(fromId, toId) {
         const fromRole = this.getUserRole(fromId);
         const toRole = this.getUserRole(toId);
-        // Same role cannot message each other
         if (fromRole === toRole) return { allowed: false, reason: fromRole === 'locum' ? 'GPs cannot message other GPs.' : 'Practices cannot message other practices.' };
-        // Locum can only reply (practice must have messaged first)
         if (fromRole === 'locum') {
             if (!this.canLocumMessage(fromId, toId)) {
                 return { allowed: false, reason: 'You can only reply to messages from practices. You cannot initiate conversations.' };
@@ -1154,18 +1049,17 @@ const MessageManager = {
         if (!body || !body.trim()) return { error: 'empty_message', message: 'Message cannot be empty.' };
         if (!toId) return { error: 'no_recipient', message: 'Please select a recipient.' };
 
-        // Enforce messaging restrictions
         const check = this.canSendMessage(fromId, toId);
         if (!check.allowed) return { error: 'not_allowed', message: check.reason };
 
-        const data = getMockData();
-        if (!data.messages) data.messages = [];
+        // Find existing thread
+        const allMsgs = DB.Messages.getAll(fromId);
+        const relevantMsgs = allMsgs.filter(m =>
+            ((m.fromId === fromId && m.toId === toId) || (m.fromId === toId && m.toId === fromId))
+        );
+        const threadId = relevantMsgs.length > 0 ? relevantMsgs[relevantMsgs.length - 1].threadId : ('thread-' + Date.now());
 
-        // Find existing thread between these two users (regardless of shiftId)
-        // New thread only created if no thread exists or prior was deleted by sender
-        const threadId = this._findActiveThread(data, fromId, toId) || ('thread-' + Date.now());
-
-        data.messages.push({
+        DB.Messages.insert({
             id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
             threadId,
             fromId,
@@ -1177,18 +1071,13 @@ const MessageManager = {
             read: false,
             _deletedFor: []
         });
-        // Email notification
-        EmailManager.send(data, toId, 'New Message: ' + (subject || 'Message'), body.length > 200 ? body.substring(0, 200) + '...' : body, 'message_received');
-        Booking.addNotification(data, toId, 'message', 'New Message', 'You have a new message from ' + this.getUserName(fromId));
-        saveMockData(data);
+        EmailManager.send(toId, 'New Message: ' + (subject || 'Message'), body.length > 200 ? body.substring(0, 200) + '...' : body, 'message_received');
+        Booking.addNotification(toId, 'message', 'New Message', 'You have a new message from ' + this.getUserName(fromId));
         return threadId;
     },
 
-    // Send a system message (e.g. "Offer confirmed · Tue 07, 08:00–13:00")
     sendSystemMessage(threadId, fromId, toId, text) {
-        const data = getMockData();
-        if (!data.messages) data.messages = [];
-        data.messages.push({
+        DB.Messages.insert({
             id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
             threadId,
             fromId,
@@ -1201,49 +1090,24 @@ const MessageManager = {
             _deletedFor: [],
             _system: true
         });
-        saveMockData(data);
     },
 
-    // Find an active (non-deleted) thread between two users
-    _findActiveThread(data, user1, user2) {
-        if (!data.messages) return null;
-        // Get all messages between these two users that are not deleted for user1
-        const relevantMsgs = data.messages.filter(m =>
-            ((m.fromId === user1 && m.toId === user2) || (m.fromId === user2 && m.toId === user1)) &&
-            !this._isDeletedFor(m, user1)
+    _findActiveThread(user1, user2) {
+        const msgs = DB.Messages.getAll(user1);
+        const relevantMsgs = msgs.filter(m =>
+            ((m.fromId === user1 && m.toId === user2) || (m.fromId === user2 && m.toId === user1))
         );
         if (relevantMsgs.length === 0) return null;
-        // Return the thread ID of the most recent message
         return relevantMsgs[relevantMsgs.length - 1].threadId;
     },
 
-    // Delete a thread for one user only (soft delete)
     deleteThread(threadId, userId) {
-        const data = getMockData();
-        if (!data.messages) return;
-        data.messages.forEach(m => {
-            if (m.threadId === threadId) {
-                if (!m._deletedFor) m._deletedFor = [];
-                if (!m._deletedFor.includes(userId)) m._deletedFor.push(userId);
-            }
-        });
-        // Clean up messages deleted for all participants
-        data.messages = data.messages.filter(m => {
-            if (m.threadId !== threadId) return true;
-            const participants = new Set();
-            data.messages.filter(mm => mm.threadId === threadId).forEach(mm => { participants.add(mm.fromId); participants.add(mm.toId); });
-            return !Array.from(participants).every(p => m._deletedFor && m._deletedFor.includes(p));
-        });
-        saveMockData(data);
+        DB.Messages.softDelete(threadId, userId);
     },
 
     getThreads(userId) {
-        const data = getMockData();
-        if (!data.messages) return [];
-        // Filter messages visible to this user (not deleted for them)
-        const userMsgs = data.messages.filter(m =>
-            (m.fromId === userId || m.toId === userId) && !this._isDeletedFor(m, userId)
-        );
+        const userMsgs = DB.Messages.getAll(userId);
+        if (!userMsgs.length) return [];
         const threads = {};
         userMsgs.forEach(m => {
             if (!threads[m.threadId]) threads[m.threadId] = [];
@@ -1259,25 +1123,15 @@ const MessageManager = {
     },
 
     getThread(threadId, userId) {
-        const data = getMockData();
-        if (!data.messages) return [];
-        return data.messages.filter(m =>
-            m.threadId === threadId && !this._isDeletedFor(m, userId)
-        ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        return DB.Messages.getByThread(threadId, userId).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     },
 
     markThreadRead(threadId, userId) {
-        const data = getMockData();
-        if (!data.messages) return;
-        data.messages.filter(m => m.threadId === threadId && m.toId === userId && !m.read)
-            .forEach(m => { m.read = true; });
-        saveMockData(data);
+        DB.Messages.markRead(threadId, userId);
     },
 
     getUnreadCount(userId) {
-        const data = getMockData();
-        if (!data.messages) return 0;
-        return data.messages.filter(m => m.toId === userId && !m.read && !this._isDeletedFor(m, userId)).length;
+        return DB.Messages.getUnreadCount(userId);
     },
 
     getUserName(userId) {
@@ -1292,7 +1146,8 @@ const MessageManager = {
 
 // ---- Email Manager (Simulated) ----
 const EmailManager = {
-    send(data, toUserId, subject, body, type) {
+    send(toUserId, subject, body, type) {
+        const data = getMockData();
         if (!data.emailLog) data.emailLog = [];
         const locum = data.locums.find(l => l.id === toUserId);
         const practice = data.practices.find(p => p.id === toUserId);
@@ -1309,6 +1164,7 @@ const EmailManager = {
             timestamp: new Date().toISOString(),
             status: 'sent'
         });
+        saveMockData(data);
     },
 
     getLog(userId) {
@@ -1320,31 +1176,31 @@ const EmailManager = {
 
 // ---- Invoice Manager ----
 const InvoiceManager = {
-    generateFromOffer(data, offer) {
-        if (!data.invoices) data.invoices = [];
-        if (data.invoices.some(i => i.offerId === offer.id)) return; // Already generated
+    generateFromOffer(offer) {
+        // Check for duplicate
+        const existing = DB.Invoices.getForLocum(offer.locumId);
+        if (existing.some(i => i.offerId === offer.id)) return;
+        const data = getMockData(); // For locum profile lookup
         const locum = data.locums.find(l => l.id === offer.locumId);
-        const practice = data.practices.find(p => p.id === offer.practiceId);
-        // Use agreed rate from negotiation, or proposed rate, or fall back to locum published rates
         const rate = offer.agreedRate || offer.proposedRate ||
             (offer.sessionType === 'Full Day' ? (locum ? locum.rates.fullDay : 0) :
             offer.sessionType === 'AM' ? (locum ? locum.rates.am : 0) : (locum ? locum.rates.pm : 0));
         const housecallFee = offer.housecalls ? (offer.housecallRate || (locum ? locum.rates.housecall : 0) || 0) : 0;
         const total = rate + housecallFee;
-        const existingNums = data.invoices.map(i => parseInt((i.invoiceNumber || '').replace('GPRN-', '')) || 0);
+        const allInvoices = DB.Invoices.getForLocum(offer.locumId).concat(DB.Invoices.getForPractice(offer.practiceId));
+        const existingNums = allInvoices.map(i => parseInt((i.invoiceNumber || '').replace('GPRN-', '')) || 0);
         const nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 10001;
-        const invNum = 'GPRN-' + nextNum;
-        const sessionDate = offer.sessionDate || offer.shiftDate; // backwards compat
-        data.invoices.push({
+        const sessionDate = offer.sessionDate || offer.shiftDate;
+        DB.Invoices.insert({
             id: 'inv-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-            invoiceNumber: invNum,
+            invoiceNumber: 'GPRN-' + nextNum,
             offerId: offer.id,
             locumId: offer.locumId,
             locumName: locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown',
             practiceId: offer.practiceId,
             practiceName: offer.practiceName,
             sessionDate: sessionDate,
-            shiftDate: sessionDate, // kept for backwards compat with invoice display pages
+            shiftDate: sessionDate,
             sessionType: offer.sessionType,
             startTime: offer.startTime,
             endTime: offer.endTime,
@@ -1360,311 +1216,199 @@ const InvoiceManager = {
     },
 
     getForPractice(practiceId) {
-        const data = getMockData();
-        if (!data.invoices) return [];
-        return data.invoices.filter(i => i.practiceId === practiceId).sort((a, b) => new Date(b.generatedDate) - new Date(a.generatedDate));
+        return DB.Invoices.getForPractice(practiceId).sort((a, b) => new Date(b.generatedDate) - new Date(a.generatedDate));
     },
 
     getForLocum(locumId) {
-        const data = getMockData();
-        if (!data.invoices) return [];
-        return data.invoices.filter(i => i.locumId === locumId).sort((a, b) => new Date(b.generatedDate) - new Date(a.generatedDate));
+        return DB.Invoices.getForLocum(locumId).sort((a, b) => new Date(b.generatedDate) - new Date(a.generatedDate));
     },
 
     updateStatus(invoiceId, status, reason) {
-        const data = getMockData();
-        const inv = data.invoices.find(i => i.id === invoiceId);
+        const inv = DB.Invoices.getById(invoiceId);
         if (!inv) return false;
-        inv.status = status;
-        if (status === 'paid' && !inv.paidDate) inv.paidDate = DateUtils.toISO(new Date());
-        if (status === 'disputed') inv.disputeReason = reason;
-        saveMockData(data);
+        const updates = { status: status };
+        if (status === 'paid' && !inv.paidDate) updates.paidDate = DateUtils.toISO(new Date());
+        if (status === 'disputed') updates.disputeReason = reason;
+        if (status === 'paid_pending') updates.practiceMarkedPaidDate = DateUtils.toISO(new Date());
+        DB.Invoices.update(invoiceId, updates);
 
-        // Send message to the other party about the status change
-        if (!data.messages) data.messages = [];
-        const threadId = MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
-            || MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
+        const threadId = MessageManager._findActiveThread(inv.practiceId, inv.locumId)
+            || MessageManager._findActiveThread(inv.locumId, inv.practiceId)
             || ('thread-' + Date.now());
 
         if (status === 'paid') {
-            // Direct paid (used by confirmPayment) — notify locum: payment confirmed
-            data.messages.push({
+            DB.Messages.insert({
                 id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
-                threadId,
-                fromId: inv.locumId,
-                toId: inv.practiceId,
-                subject: '',
+                threadId, fromId: inv.locumId, toId: inv.practiceId, subject: '',
                 body: `Payment for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) has been confirmed by the locum. This invoice is now complete.`,
-                shiftId: null,
-                timestamp: new Date().toISOString(),
-                read: false,
-                _deletedFor: [],
-                _system: true
+                shiftId: null, timestamp: new Date().toISOString(), read: false, _deletedFor: [], _system: true
             });
-            Booking.addNotification(data, inv.practiceId, 'payment_confirmed', 'Payment Confirmed',
+            Booking.addNotification(inv.practiceId, 'payment_confirmed', 'Payment Confirmed',
                 `${inv.locumName} has confirmed receipt of payment for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}).`);
         }
 
         if (status === 'paid_pending') {
-            // Practice says they've paid — locum must confirm receipt
-            inv.practiceMarkedPaidDate = DateUtils.toISO(new Date());
-            data.messages.push({
+            DB.Messages.insert({
                 id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
-                threadId,
-                fromId: inv.practiceId,
-                toId: inv.locumId,
-                subject: '',
+                threadId, fromId: inv.practiceId, toId: inv.locumId, subject: '',
                 body: `${inv.practiceName} has marked invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) as paid. Please confirm you have received the payment.`,
-                shiftId: null,
-                timestamp: new Date().toISOString(),
-                read: false,
-                _deletedFor: [],
-                _system: true,
-                _invoiceId: inv.id
+                shiftId: null, timestamp: new Date().toISOString(), read: false, _deletedFor: [], _system: true, _invoiceId: inv.id
             });
-            Booking.addNotification(data, inv.locumId, 'payment_awaiting_confirmation', 'Payment Awaiting Confirmation',
+            Booking.addNotification(inv.locumId, 'payment_awaiting_confirmation', 'Payment Awaiting Confirmation',
                 `${inv.practiceName} has marked invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) as paid. Please confirm receipt.`);
-            EmailManager.send(data, inv.locumId, 'Confirm Payment Received: ' + inv.invoiceNumber, `${inv.practiceName} has marked invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} as paid. Please log in and confirm you have received the payment.`, 'payment_awaiting_confirmation');
+            EmailManager.send(inv.locumId, 'Confirm Payment Received: ' + inv.invoiceNumber, `${inv.practiceName} has marked invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} as paid. Please log in and confirm you have received the payment.`, 'payment_awaiting_confirmation');
         }
 
         if (status === 'disputed') {
-            // Send dispute message to locum with reason
-            data.messages.push({
+            DB.Messages.insert({
                 id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
-                threadId,
-                fromId: inv.practiceId,
-                toId: inv.locumId,
+                threadId, fromId: inv.practiceId, toId: inv.locumId,
                 subject: 'Invoice Disputed: ' + inv.invoiceNumber,
                 body: `Invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) has been disputed.\n\nReason: ${reason}`,
-                shiftId: null,
-                timestamp: new Date().toISOString(),
-                read: false,
-                _deletedFor: [],
-                _invoiceId: inv.id
+                shiftId: null, timestamp: new Date().toISOString(), read: false, _deletedFor: [], _invoiceId: inv.id
             });
-            Booking.addNotification(data, inv.locumId, 'invoice_disputed', 'Invoice Disputed',
+            Booking.addNotification(inv.locumId, 'invoice_disputed', 'Invoice Disputed',
                 `${inv.practiceName} has disputed invoice ${inv.invoiceNumber}. Check your messages.`);
-            EmailManager.send(data, inv.locumId, 'Invoice Disputed: ' + inv.invoiceNumber,
+            EmailManager.send(inv.locumId, 'Invoice Disputed: ' + inv.invoiceNumber,
                 `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} has been disputed by ${inv.practiceName}. Reason: ${reason}`, 'invoice_disputed');
         }
-
-        saveMockData(data);
         return true;
     },
 
-    // GP revises invoice amount after dispute discussion
     reviseAmount(invoiceId, newAmount) {
-        const data = getMockData();
-        const inv = data.invoices.find(i => i.id === invoiceId);
+        const inv = DB.Invoices.getById(invoiceId);
         if (!inv || inv.status !== 'disputed') return false;
-        inv.originalTotal = inv.originalTotal || inv.total;
-        inv.revisedTotal = newAmount;
-        inv.status = 'revised';
-        saveMockData(data);
+        const originalTotal = inv.originalTotal || inv.total;
+        DB.Invoices.update(invoiceId, { originalTotal: originalTotal, revisedTotal: newAmount, status: 'revised' });
 
-        // Message practice about revision
-        if (!data.messages) data.messages = [];
-        const threadId = MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
-            || MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
+        const threadId = MessageManager._findActiveThread(inv.locumId, inv.practiceId)
+            || MessageManager._findActiveThread(inv.practiceId, inv.locumId)
             || ('thread-' + Date.now());
-        data.messages.push({
+        DB.Messages.insert({
             id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
-            threadId,
-            fromId: inv.locumId,
-            toId: inv.practiceId,
+            threadId, fromId: inv.locumId, toId: inv.practiceId,
             subject: 'Invoice Revised: ' + inv.invoiceNumber,
-            body: `Invoice ${inv.invoiceNumber} has been revised.\n\nOriginal amount: ${formatCurrency(inv.originalTotal)}\nRevised amount: ${formatCurrency(newAmount)}\n\nPlease review and approve the revised amount.`,
-            shiftId: null,
-            timestamp: new Date().toISOString(),
-            read: false,
-            _deletedFor: [],
-            _invoiceId: inv.id
+            body: `Invoice ${inv.invoiceNumber} has been revised.\n\nOriginal amount: ${formatCurrency(originalTotal)}\nRevised amount: ${formatCurrency(newAmount)}\n\nPlease review and approve the revised amount.`,
+            shiftId: null, timestamp: new Date().toISOString(), read: false, _deletedFor: [], _invoiceId: inv.id
         });
-        Booking.addNotification(data, inv.practiceId, 'invoice_revised', 'Invoice Revised',
+        Booking.addNotification(inv.practiceId, 'invoice_revised', 'Invoice Revised',
             `Invoice ${inv.invoiceNumber} has been revised to ${formatCurrency(newAmount)}. Please review.`);
-        EmailManager.send(data, inv.practiceId, 'Invoice Revised: ' + inv.invoiceNumber,
-            `Invoice ${inv.invoiceNumber} has been revised from ${formatCurrency(inv.originalTotal)} to ${formatCurrency(newAmount)}. Please log in to review and approve.`, 'invoice_revised');
-        saveMockData(data);
+        EmailManager.send(inv.practiceId, 'Invoice Revised: ' + inv.invoiceNumber,
+            `Invoice ${inv.invoiceNumber} has been revised from ${formatCurrency(originalTotal)} to ${formatCurrency(newAmount)}. Please log in to review and approve.`, 'invoice_revised');
         return true;
     },
 
-    // Practice approves revised amount — invoice goes to pending with new total
     approveRevision(invoiceId) {
-        const data = getMockData();
-        const inv = data.invoices.find(i => i.id === invoiceId);
+        const inv = DB.Invoices.getById(invoiceId);
         if (!inv || inv.status !== 'revised') return false;
-        inv.total = inv.revisedTotal;
-        inv.sessionRate = inv.revisedTotal;
-        inv.status = 'pending';
-        delete inv.revisedTotal;
-        saveMockData(data);
+        const newTotal = inv.revisedTotal;
+        DB.Invoices.update(invoiceId, { total: newTotal, sessionRate: newTotal, status: 'pending', revisedTotal: null });
 
-        // Notify GP that revision was approved
-        if (!data.messages) data.messages = [];
-        const threadId = MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
-            || MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
+        const threadId = MessageManager._findActiveThread(inv.practiceId, inv.locumId)
+            || MessageManager._findActiveThread(inv.locumId, inv.practiceId)
             || ('thread-' + Date.now());
-        data.messages.push({
+        DB.Messages.insert({
             id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
-            threadId,
-            fromId: inv.practiceId,
-            toId: inv.locumId,
-            subject: '',
-            body: `Revised amount of ${formatCurrency(inv.total)} for invoice ${inv.invoiceNumber} has been approved. Payment will follow.`,
-            shiftId: null,
-            timestamp: new Date().toISOString(),
-            read: false,
-            _deletedFor: [],
-            _system: true,
-            _invoiceId: inv.id
+            threadId, fromId: inv.practiceId, toId: inv.locumId, subject: '',
+            body: `Revised amount of ${formatCurrency(newTotal)} for invoice ${inv.invoiceNumber} has been approved. Payment will follow.`,
+            shiftId: null, timestamp: new Date().toISOString(), read: false, _deletedFor: [], _system: true, _invoiceId: inv.id
         });
-        Booking.addNotification(data, inv.locumId, 'revision_approved', 'Revision Approved',
-            `${inv.practiceName} has approved the revised amount of ${formatCurrency(inv.total)} for invoice ${inv.invoiceNumber}.`);
-        EmailManager.send(data, inv.locumId, 'Revision Approved: ' + inv.invoiceNumber,
-            `The revised amount of ${formatCurrency(inv.total)} for invoice ${inv.invoiceNumber} has been approved by ${inv.practiceName}.`, 'revision_approved');
-        saveMockData(data);
+        Booking.addNotification(inv.locumId, 'revision_approved', 'Revision Approved',
+            `${inv.practiceName} has approved the revised amount of ${formatCurrency(newTotal)} for invoice ${inv.invoiceNumber}.`);
+        EmailManager.send(inv.locumId, 'Revision Approved: ' + inv.invoiceNumber,
+            `The revised amount of ${formatCurrency(newTotal)} for invoice ${inv.invoiceNumber} has been approved by ${inv.practiceName}.`, 'revision_approved');
         return true;
     },
 
-    // Practice rejects revised amount — back to disputed for further discussion
     rejectRevision(invoiceId, reason) {
-        const data = getMockData();
-        const inv = data.invoices.find(i => i.id === invoiceId);
+        const inv = DB.Invoices.getById(invoiceId);
         if (!inv || inv.status !== 'revised') return false;
-        inv.status = 'disputed';
-        inv.disputeReason = reason || inv.disputeReason;
-        delete inv.revisedTotal;
-        saveMockData(data);
+        DB.Invoices.update(invoiceId, { status: 'disputed', disputeReason: reason || inv.disputeReason, revisedTotal: null });
 
-        // Notify GP that revision was rejected
-        if (!data.messages) data.messages = [];
-        const threadId = MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
-            || MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
+        const threadId = MessageManager._findActiveThread(inv.practiceId, inv.locumId)
+            || MessageManager._findActiveThread(inv.locumId, inv.practiceId)
             || ('thread-' + Date.now());
-        data.messages.push({
+        DB.Messages.insert({
             id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
-            threadId,
-            fromId: inv.practiceId,
-            toId: inv.locumId,
+            threadId, fromId: inv.practiceId, toId: inv.locumId,
             subject: 'Revision Rejected: ' + inv.invoiceNumber,
             body: `The revised amount for invoice ${inv.invoiceNumber} has been rejected.${reason ? '\n\nReason: ' + reason : ''}\n\nPlease discuss further and submit a new revision.`,
-            shiftId: null,
-            timestamp: new Date().toISOString(),
-            read: false,
-            _deletedFor: [],
-            _invoiceId: inv.id
+            shiftId: null, timestamp: new Date().toISOString(), read: false, _deletedFor: [], _invoiceId: inv.id
         });
-        Booking.addNotification(data, inv.locumId, 'revision_rejected', 'Revision Rejected',
+        Booking.addNotification(inv.locumId, 'revision_rejected', 'Revision Rejected',
             `${inv.practiceName} has rejected the revised amount for invoice ${inv.invoiceNumber}. Check your messages.`);
-        EmailManager.send(data, inv.locumId, 'Revision Rejected: ' + inv.invoiceNumber,
+        EmailManager.send(inv.locumId, 'Revision Rejected: ' + inv.invoiceNumber,
             `The revised amount for invoice ${inv.invoiceNumber} has been rejected by ${inv.practiceName}. Please discuss further.`, 'revision_rejected');
-        saveMockData(data);
         return true;
     },
 
     chasePayment(invoiceId) {
-        const data = getMockData();
-        const inv = data.invoices.find(i => i.id === invoiceId);
+        const inv = DB.Invoices.getById(invoiceId);
         if (!inv) return false;
-        inv.status = 'overdue';
-        saveMockData(data);
+        DB.Invoices.update(invoiceId, { status: 'overdue' });
 
-        // Send message to practice inbox (bypasses locum-can't-initiate restriction for system invoicing)
-        if (!data.messages) data.messages = [];
-        const threadId = MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
-            || MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
+        const threadId = MessageManager._findActiveThread(inv.locumId, inv.practiceId)
+            || MessageManager._findActiveThread(inv.practiceId, inv.locumId)
             || ('thread-' + Date.now());
-        // Add invoice reminder message with _invoiceId metadata for linking
-        data.messages.push({
+        DB.Messages.insert({
             id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
-            threadId,
-            fromId: inv.locumId,
-            toId: inv.practiceId,
+            threadId, fromId: inv.locumId, toId: inv.practiceId,
             subject: 'Payment Reminder: ' + inv.invoiceNumber,
             body: `Payment reminder for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) for ${inv.sessionType} session on ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}. Payment was due on ${DateUtils.format(inv.dueDate, 'medium')}. Please review and arrange payment.`,
-            shiftId: null,
-            timestamp: new Date().toISOString(),
-            read: false,
-            _deletedFor: [],
-            _invoiceId: inv.id
+            shiftId: null, timestamp: new Date().toISOString(), read: false, _deletedFor: [], _invoiceId: inv.id
         });
-        // Dashboard notification for the practice
-        Booking.addNotification(data, inv.practiceId, 'payment_reminder', 'Payment Reminder',
+        Booking.addNotification(inv.practiceId, 'payment_reminder', 'Payment Reminder',
             `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is overdue. Check your messages.`);
-        // Email notification
-        EmailManager.send(data, inv.practiceId, 'Payment Reminder: ' + inv.invoiceNumber,
+        EmailManager.send(inv.practiceId, 'Payment Reminder: ' + inv.invoiceNumber,
             `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is overdue. Session: ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}, Locum: ${inv.locumName}. Please log in to review.`, 'payment_reminder');
-        saveMockData(data);
         return true;
     },
 
-    // GP confirms they received the payment — finalises invoice as paid
     confirmPayment(invoiceId) {
-        const data = getMockData();
-        const inv = data.invoices.find(i => i.id === invoiceId);
+        const inv = DB.Invoices.getById(invoiceId);
         if (!inv || inv.status !== 'paid_pending') return false;
-        inv.status = 'paid';
-        inv.paidDate = inv.practiceMarkedPaidDate || DateUtils.toISO(new Date());
-        inv.confirmedDate = DateUtils.toISO(new Date());
-        saveMockData(data);
+        DB.Invoices.update(invoiceId, { status: 'paid', paidDate: inv.practiceMarkedPaidDate || DateUtils.toISO(new Date()), confirmedDate: DateUtils.toISO(new Date()) });
 
-        // Notify practice via message and notification
-        if (!data.messages) data.messages = [];
-        const threadId = MessageManager._findActiveThread(data, inv.locumId, inv.practiceId)
-            || MessageManager._findActiveThread(data, inv.practiceId, inv.locumId)
+        const threadId = MessageManager._findActiveThread(inv.locumId, inv.practiceId)
+            || MessageManager._findActiveThread(inv.practiceId, inv.locumId)
             || ('thread-' + Date.now());
-        data.messages.push({
+        DB.Messages.insert({
             id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
-            threadId,
-            fromId: inv.locumId,
-            toId: inv.practiceId,
-            subject: '',
+            threadId, fromId: inv.locumId, toId: inv.practiceId, subject: '',
             body: `Payment for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) has been confirmed. Thank you.`,
-            shiftId: null,
-            timestamp: new Date().toISOString(),
-            read: false,
-            _deletedFor: [],
-            _system: true
+            shiftId: null, timestamp: new Date().toISOString(), read: false, _deletedFor: [], _system: true
         });
-        Booking.addNotification(data, inv.practiceId, 'payment_confirmed', 'Payment Confirmed',
+        Booking.addNotification(inv.practiceId, 'payment_confirmed', 'Payment Confirmed',
             `${inv.locumName} has confirmed receipt of payment for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}).`);
-        EmailManager.send(data, inv.practiceId, 'Payment Confirmed: ' + inv.invoiceNumber,
+        EmailManager.send(inv.practiceId, 'Payment Confirmed: ' + inv.invoiceNumber,
             `${inv.locumName} has confirmed receipt of payment for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}). This invoice is now complete.`, 'payment_confirmed');
-        saveMockData(data);
         return true;
     },
 
-    // Auto-detect and flag overdue invoices, create notifications
     checkOverdue(locumId) {
-        const data = getMockData();
-        if (!data.invoices) return { count: 0, total: 0, invoices: [] };
+        const invoices = DB.Invoices.getForLocum(locumId);
+        if (!invoices.length) return { count: 0, total: 0, invoices: [] };
         const now = new Date();
-        let changed = false;
-        const overdueInvoices = [];
-        data.invoices.forEach(inv => {
-            if (inv.locumId === locumId && inv.status === 'pending' && inv.dueDate) {
+        const notifications = DB.Notifications.getForUser(locumId);
+        invoices.forEach(inv => {
+            if (inv.status === 'pending' && inv.dueDate) {
                 const due = new Date(inv.dueDate);
                 if (due < now) {
-                    inv.status = 'overdue';
-                    changed = true;
-                    overdueInvoices.push(inv);
-                    // Only notify if not already notified (check existing notifications)
-                    const existingNotif = (data.notifications || []).find(n =>
-                        n.userId === locumId && n.type === 'invoice_overdue' && n.message && n.message.includes(inv.invoiceNumber)
+                    DB.Invoices.update(inv.id, { status: 'overdue' });
+                    inv.status = 'overdue'; // Update local copy
+                    const existingNotif = notifications.find(n =>
+                        n.type === 'invoice_overdue' && n.message && n.message.includes(inv.invoiceNumber)
                     );
                     if (!existingNotif) {
-                        Booking.addNotification(data, locumId, 'invoice_overdue', 'Invoice Overdue',
+                        Booking.addNotification(locumId, 'invoice_overdue', 'Invoice Overdue',
                             `Invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) to ${inv.practiceName} is past due. Consider sending a payment reminder.`);
-                        // Also notify the practice
-                        Booking.addNotification(data, inv.practiceId, 'payment_reminder', 'Payment Overdue',
+                        Booking.addNotification(inv.practiceId, 'payment_reminder', 'Payment Overdue',
                             `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} from ${inv.locumName} is overdue.`);
                     }
                 }
             }
         });
-        if (changed) saveMockData(data);
-        // Return all overdue invoices for this locum (including previously flagged)
-        const allOverdue = data.invoices.filter(i => i.locumId === locumId && i.status === 'overdue');
+        const allOverdue = invoices.filter(i => i.status === 'overdue');
         return {
             count: allOverdue.length,
             total: allOverdue.reduce((s, i) => s + i.total, 0),
@@ -1684,26 +1428,16 @@ const FeedbackManager = {
                 return { error: 'invalid_rating_value', message: 'Ratings must be between 1 and 5.' };
             }
         }
-        const data = getMockData();
-        if (!data.feedback) data.feedback = [];
-        data.feedback.push({
+        DB.Feedback.insert({
             id: 'fb-' + Date.now(),
-            fromId,
-            toId,
-            offerId,
-            ratings,
-            comment,
-            fromRole,
+            fromId, toId, offerId, ratings, comment, fromRole,
             timestamp: new Date().toISOString()
         });
-        saveMockData(data);
         return true;
     },
 
     getForUser(userId) {
-        const data = getMockData();
-        if (!data.feedback) return [];
-        return data.feedback.filter(f => f.toId === userId).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        return DB.Feedback.getForUser(userId).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     },
 
     getAverageRating(userId) {
@@ -1715,12 +1449,10 @@ const FeedbackManager = {
     },
 
     hasReviewed(fromId, offerId) {
-        const data = getMockData();
-        if (!data.feedback) return false;
-        return data.feedback.some(f => f.fromId === fromId && f.offerId === offerId);
+        const all = DB.Feedback.getFromUser(fromId);
+        return all.some(f => f.offerId === offerId);
     },
 
-    // GP rates a practice (single 1-5 star + comment up to 200 chars)
     ratePractice(locumId, practiceId, offerId, stars, comment) {
         if (typeof stars !== 'number' || stars < 1 || stars > 5) {
             return { error: 'invalid_rating', message: 'Rating must be between 1 and 5.' };
@@ -1728,14 +1460,10 @@ const FeedbackManager = {
         if (comment && comment.length > 200) {
             return { error: 'comment_too_long', message: 'Comment must be 200 characters or less.' };
         }
-        const data = getMockData();
-        if (!data.feedback) data.feedback = [];
-        const offer = data.offers ? data.offers.find(o => o.id === offerId) : null;
-        data.feedback.push({
+        const offer = DB.Offers.getById(offerId);
+        DB.Feedback.insert({
             id: 'fb-' + Date.now(),
-            fromId: locumId,
-            toId: practiceId,
-            offerId,
+            fromId: locumId, toId: practiceId, offerId,
             ratings: { overall: stars },
             comment: comment || '',
             fromRole: 'locum',
@@ -1743,21 +1471,17 @@ const FeedbackManager = {
             locumName: offer ? offer.locumName : '',
             timestamp: new Date().toISOString()
         });
-        saveMockData(data);
         return true;
     },
 
-    // Practice reports a locum issue (no-show or late cancellation only)
     reportLocumIssue(practiceId, locumId, offerId, issueType) {
         if (!['no_show', 'late_cancellation'].includes(issueType)) {
             return { error: 'invalid_issue', message: 'Issue must be no_show or late_cancellation.' };
         }
-        const data = getMockData();
-        const offer = data.offers ? data.offers.find(o => o.id === offerId) : null;
+        const offer = DB.Offers.getById(offerId);
         if (!offer || offer.status !== 'completed') {
             return { error: 'invalid_offer', message: 'Can only report issues on completed shifts.' };
         }
-        // Late cancellation must be within 24 hours of the shift
         if (issueType === 'late_cancellation') {
             const shiftDate = new Date(offer.sessionDate || offer.shiftDate);
             const hoursSince = (new Date() - shiftDate) / (1000 * 60 * 60);
@@ -1765,36 +1489,23 @@ const FeedbackManager = {
                 return { error: 'too_late', message: 'Late cancellation can only be reported within 24 hours of the shift.' };
             }
         }
-        // Apply weighted reliability penalty
         const penalty = issueType === 'no_show' ? 10 : 5;
-        Booking.applyReliabilityPenalty(data, locumId, penalty);
-        // Record the issue as feedback
-        if (!data.feedback) data.feedback = [];
-        data.feedback.push({
+        Booking.applyReliabilityPenalty(locumId, penalty);
+        DB.Feedback.insert({
             id: 'fb-' + Date.now(),
-            fromId: practiceId,
-            toId: locumId,
-            offerId,
-            ratings: {},
-            comment: '',
-            fromRole: 'practice',
-            type: issueType,
-            timestamp: new Date().toISOString()
+            fromId: practiceId, toId: locumId, offerId,
+            ratings: {}, comment: '', fromRole: 'practice',
+            type: issueType, timestamp: new Date().toISOString()
         });
-        // Notify locum
         const issueLabel = issueType === 'no_show' ? 'No-Show' : 'Late Cancellation';
         const penaltyPts = issueType === 'no_show' ? 10 : 5;
-        Booking.addNotification(data, locumId, issueType, issueLabel + ' Reported',
+        Booking.addNotification(locumId, issueType, issueLabel + ' Reported',
             `${offer.practiceName} has reported a ${issueLabel.toLowerCase()} for your shift on ${DateUtils.format(offer.sessionDate, 'medium')}. Your reliability score has been reduced by ${penaltyPts} points.`);
-        saveMockData(data);
         return true;
     },
 
-    // Get practice ratings (from GPs only)
     getPracticeRatings(practiceId) {
-        const data = getMockData();
-        if (!data.feedback) return [];
-        return data.feedback.filter(f => f.toId === practiceId && f.type === 'practice_rating')
+        return DB.Feedback.getForUser(practiceId).filter(f => f.type === 'practice_rating')
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     },
 
@@ -1809,35 +1520,25 @@ const FeedbackManager = {
 // ---- Barred/Preferred List Manager ----
 const BarredList = {
     bar(practiceId, locumId, reason) {
-        const data = getMockData();
-        if (!data.barredLists) data.barredLists = {};
-        if (!data.barredLists[practiceId]) data.barredLists[practiceId] = [];
         if (!this.isBarred(practiceId, locumId)) {
-            data.barredLists[practiceId].push({ locumId, reason, date: DateUtils.toISO(new Date()) });
-            saveMockData(data);
+            DB.Barred.bar(practiceId, locumId, reason);
         }
     },
 
     unbar(practiceId, locumId) {
-        const data = getMockData();
-        if (!data.barredLists || !data.barredLists[practiceId]) return;
-        data.barredLists[practiceId] = data.barredLists[practiceId].filter(b => b.locumId !== locumId);
-        saveMockData(data);
+        DB.Barred.unbar(practiceId, locumId);
     },
 
     isBarred(practiceId, locumId) {
-        const data = getMockData();
-        if (!data.barredLists || !data.barredLists[practiceId]) return false;
-        return data.barredLists[practiceId].some(b => b.locumId === locumId);
+        return DB.Barred.isBarred(practiceId, locumId);
     },
 
     getBarredList(practiceId) {
-        const data = getMockData();
-        if (!data.barredLists) return [];
-        return data.barredLists[practiceId] || [];
+        return DB.Barred.getList(practiceId);
     },
 
     getBarredPracticesForLocum(locumId) {
+        // Need practice names from blob (profiles not in tables yet)
         const data = getMockData();
         var barredAt = [];
         Object.keys(data.barredLists || {}).forEach(function(practiceId) {
@@ -1852,33 +1553,23 @@ const BarredList = {
     },
 
     getBarReason(practiceId, locumId) {
-        const data = getMockData();
-        if (!data.barredLists || !data.barredLists[practiceId]) return null;
-        const entry = data.barredLists[practiceId].find(b => b.locumId === locumId);
+        const list = DB.Barred.getList(practiceId);
+        const entry = list.find(b => b.locumId === locumId);
         return entry ? entry.reason : null;
     },
 
     addPreferred(practiceId, locumId) {
-        const data = getMockData();
-        if (!data.preferredLists) data.preferredLists = {};
-        if (!data.preferredLists[practiceId]) data.preferredLists[practiceId] = [];
         if (!this.isPreferred(practiceId, locumId)) {
-            data.preferredLists[practiceId].push(locumId);
-            saveMockData(data);
+            DB.Barred.addPreferred(practiceId, locumId);
         }
     },
 
     removePreferred(practiceId, locumId) {
-        const data = getMockData();
-        if (!data.preferredLists || !data.preferredLists[practiceId]) return;
-        data.preferredLists[practiceId] = data.preferredLists[practiceId].filter(id => id !== locumId);
-        saveMockData(data);
+        DB.Barred.removePreferred(practiceId, locumId);
     },
 
     isPreferred(practiceId, locumId) {
-        const data = getMockData();
-        if (!data.preferredLists || !data.preferredLists[practiceId]) return false;
-        return data.preferredLists[practiceId].includes(locumId);
+        return DB.Barred.isPreferred(practiceId, locumId);
     }
 };
 
@@ -1886,68 +1577,34 @@ const BarredList = {
 // Each date stores { am: status, pm: status } where status is 'available', 'unavailable', or 'preferred'
 const Availability = {
     set(locumId, date, session, status) {
-        // session: 'am', 'pm', or 'both'
-        const data = getMockData();
-        if (!data.availability) data.availability = {};
-        if (!data.availability[locumId]) data.availability[locumId] = {};
-
         if (session === 'both') {
-            if (status === 'none') {
-                delete data.availability[locumId][date];
-            } else {
-                data.availability[locumId][date] = { am: status, pm: status };
-            }
+            DB.Availability.set(locumId, date, 'am', status === 'none' ? 'none' : status);
+            DB.Availability.set(locumId, date, 'pm', status === 'none' ? 'none' : status);
         } else {
-            if (!data.availability[locumId][date] || typeof data.availability[locumId][date] === 'string') {
-                // Migrate old format (simple string) to new format
-                const old = data.availability[locumId][date];
-                data.availability[locumId][date] = { am: old || 'none', pm: old || 'none' };
-            }
-            if (status === 'none') {
-                data.availability[locumId][date][session] = 'none';
-                // Clean up if both are none
-                if (data.availability[locumId][date].am === 'none' && data.availability[locumId][date].pm === 'none') {
-                    delete data.availability[locumId][date];
-                }
-            } else {
-                data.availability[locumId][date][session] = status;
-            }
+            DB.Availability.set(locumId, date, session, status);
         }
-        saveMockData(data);
     },
 
     get(locumId, date, session) {
-        const data = getMockData();
-        if (!data.availability || !data.availability[locumId]) return 'none';
-        const entry = data.availability[locumId][date];
-        if (!entry) return 'none';
-        // Handle old string format gracefully
-        if (typeof entry === 'string') {
-            return session ? entry : entry;
-        }
-        if (session) return entry[session] || 'none';
-        // Return combined status: if both same return that, otherwise 'mixed'
-        if (entry.am === entry.pm) return entry.am || 'none';
+        if (session) return DB.Availability.get(locumId, date, session);
+        // Combined status
+        const am = DB.Availability.get(locumId, date, 'am');
+        const pm = DB.Availability.get(locumId, date, 'pm');
+        if (am === pm) return am || 'none';
         return 'mixed';
     },
 
     getSlot(locumId, date) {
-        // Returns the full { am, pm } object for a date
-        const data = getMockData();
-        if (!data.availability || !data.availability[locumId]) return { am: 'none', pm: 'none' };
-        const entry = data.availability[locumId][date];
-        if (!entry) return { am: 'none', pm: 'none' };
-        if (typeof entry === 'string') return { am: entry, pm: entry };
-        return { am: entry.am || 'none', pm: entry.pm || 'none' };
+        return {
+            am: DB.Availability.get(locumId, date, 'am'),
+            pm: DB.Availability.get(locumId, date, 'pm')
+        };
     },
 
     getAll(locumId) {
-        const data = getMockData();
-        if (!data.availability) return {};
-        return data.availability[locumId] || {};
+        return DB.Availability.getForLocum(locumId);
     },
 
-    // Check if locum is available for a specific session type on a date
     isAvailable(locumId, date, sessionType) {
         const slot = this.getSlot(locumId, date);
         if (sessionType === 'AM') return slot.am === 'available' || slot.am === 'preferred';
@@ -1959,7 +1616,6 @@ const Availability = {
         return false;
     },
 
-    // Get all available dates for a locum within a range
     getAvailableDates(locumId, startDate, endDate) {
         const all = this.getAll(locumId);
         const results = [];

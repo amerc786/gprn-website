@@ -40,6 +40,7 @@
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
 <script src="supabase-client.js"></script>
+    <script src="supabase-tables.js"></script>
     <script src="components.js"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
@@ -53,8 +54,7 @@
         if (invoices.length === 0) {
             const completedOffers = data.offers.filter(o => o.locumId === session.id && o.status === 'completed');
             if (completedOffers.length > 0) {
-                completedOffers.forEach(offer => InvoiceManager.generateFromOffer(data, offer));
-                saveMockData(data);
+                completedOffers.forEach(offer => InvoiceManager.generateFromOffer(offer));
                 invoices = InvoiceManager.getForLocum(session.id);
             }
             // If still no invoices, seed some manually

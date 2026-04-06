@@ -92,6 +92,7 @@
     <script src="mock-data.js"></script>
     <script src="app.js"></script>
     <script src="supabase-client.js"></script>
+    <script src="supabase-tables.js"></script>
     <script src="components.js"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
@@ -108,8 +109,7 @@
             // Try from completed offers
             var completedOffers = (d.offers || []).filter(function(o) { return o.practiceId === session.id && o.status === 'completed'; });
             if (completedOffers.length > 0) {
-                completedOffers.forEach(function(offer) { InvoiceManager.generateFromOffer(d, offer); });
-                localStorage.setItem('gprn_data', JSON.stringify(d));
+                completedOffers.forEach(function(offer) { InvoiceManager.generateFromOffer(offer); });
             }
         })();
     </script>
