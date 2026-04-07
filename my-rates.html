@@ -64,7 +64,7 @@
 
             pageContent.innerHTML = `
                 <div style="margin-bottom: 24px;">
-                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Set your session rates. Practices see the most specific rate: practice rate first, then region rate, then your default.</p>
+                    <p style="color: var(--dark-600); font-size: 0.9rem;">Set your session rates. Practices see the most specific rate: practice rate first, then region rate, then your default.</p>
                 </div>
 
                 <!-- Tab Navigation -->
@@ -89,13 +89,13 @@
                 <div class="content-card" style="margin-top: 24px; border-left: 3px solid var(--primary);">
                     <div class="content-card-body" style="padding: 16px 20px;">
                         <div style="font-weight: 700; margin-bottom: 8px; font-size: 0.9rem;">${getIcon('info')} How rate priority works</div>
-                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-secondary);">
+                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--dark-600);">
                             <span style="background: var(--primary); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">1</span>
                             <span>Practice-specific rate (highest priority)</span>
-                            <span style="color: var(--text-tertiary);">&rarr;</span>
+                            <span style="color: var(--gray-400);">&rarr;</span>
                             <span style="background: var(--primary); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">2</span>
                             <span>Region rate</span>
-                            <span style="color: var(--text-tertiary);">&rarr;</span>
+                            <span style="color: var(--gray-400);">&rarr;</span>
                             <span style="background: var(--primary); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">3</span>
                             <span>Default rate</span>
                         </div>
@@ -203,7 +203,7 @@
                             ${isUserRegion ? '<span class="badge badge-success" style="font-size: 0.7rem; margin-left: 6px;">Your region</span>' : ''}
                         </div>
                         <div class="rate-region-values">
-                            <span style="font-size: 0.85rem; color: var(--text-tertiary);">Using default rates</span>
+                            <span style="font-size: 0.85rem; color: var(--gray-400);">Using default rates</span>
                         </div>
                         <div class="rate-region-actions">
                             <button class="btn btn-small btn-secondary" onclick="editRegionRate('${hb}')">${getIcon('plus-circle')} Set Rate</button>
@@ -242,7 +242,7 @@
                     <div class="rate-region-row">
                         <div class="rate-region-name">
                             <strong>${pName}</strong>
-                            ${pRegion ? '<span style="font-size: 0.78rem; color: var(--text-tertiary); display: block;">' + pRegion + '</span>' : ''}
+                            ${pRegion ? '<span style="font-size: 0.78rem; color: var(--gray-400); display: block;">' + pRegion + '</span>' : ''}
                         </div>
                         <div class="rate-region-values">
                             <span class="rate-chip">AM <strong>${formatCurrency(pr.am)}</strong></span>
@@ -319,7 +319,7 @@
                 title: 'Set Rates for ' + hb,
                 size: 'medium',
                 body: `
-                    <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 16px;">These rates will apply to all practices within <strong>${hb}</strong> health board unless overridden by a practice-specific rate.</p>
+                    <p style="font-size: 0.88rem; color: var(--dark-600); margin-bottom: 16px;">These rates will apply to all practices within <strong>${hb}</strong> health board unless overridden by a practice-specific rate.</p>
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">AM Session (&pound;)</label>
@@ -528,7 +528,7 @@
             font-weight: 600;
             font-size: 0.88rem;
             cursor: pointer;
-            color: var(--text-secondary);
+            color: var(--dark-600);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -578,7 +578,7 @@
             border-radius: 6px;
             padding: 3px 10px;
             font-size: 0.78rem;
-            color: var(--text-secondary);
+            color: var(--dark-600);
         }
         .rate-chip strong { color: var(--dark); }
 
