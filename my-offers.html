@@ -48,6 +48,8 @@
         const session = Auth.getSession();
         const pageContent = initAppLayout('locum', 'bookings', 'My Bookings');
         let currentTab = 'active';
+        let _bookingsPage = 0;
+        const _bookingsPageSize = 10;
 
         function getBookings() {
             const data = getMockData();
@@ -143,7 +145,7 @@
             <div class="offer-card" data-offer-id="${offer.id}">
                 <div class="offer-card-header">
                     <div>
-                        <h3 class="offer-card-title">${offer.practiceName}</h3>
+                        <h3 class="offer-card-title"><a href="practice-profile-view.html?id=${offer.practiceId}" style="color:var(--dark);text-decoration:none;font-weight:700;" onmouseover="this.style.color='var(--primary)';this.style.textDecoration='underline'" onmouseout="this.style.color='var(--dark)';this.style.textDecoration='none'">${offer.practiceName}</a></h3>
                         ${practiceRatingHtml ? `<div style="margin-top: 2px;">${practiceRatingHtml}</div>` : ''}
                         <p class="offer-card-location">${offer.healthBoard}</p>
                     </div>
@@ -227,6 +229,23 @@
             // Sort by date descending
             filtered.sort((a, b) => new Date(b.sessionDate || b.shiftDate) - new Date(a.sessionDate || a.shiftDate));
 
+            // Pagination
+            var totalPages = Math.max(1, Math.ceil(filtered.length / _bookingsPageSize));
+            if (_bookingsPage >= totalPages) _bookingsPage = totalPages - 1;
+            var pageStart = _bookingsPage * _bookingsPageSize;
+            var pageSlice = filtered.slice(pageStart, pageStart + _bookingsPageSize);
+
+            var pagerHtml = '';
+            if (totalPages > 1) {
+                var prevDisabled = _bookingsPage === 0;
+                var nextDisabled = _bookingsPage >= totalPages - 1;
+                pagerHtml = `<div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--gray-100);">
+                    <button onclick="pageBookings(-1)" class="btn btn-secondary btn-small" style="opacity:${prevDisabled ? '0.4' : '1'};pointer-events:${prevDisabled ? 'none' : 'auto'};">${getIcon('chevron-left')} Previous</button>
+                    <span style="font-size: 0.85rem; color: var(--dark-600); font-weight: 600;">${_bookingsPage + 1} / ${totalPages}</span>
+                    <button onclick="pageBookings(1)" class="btn btn-secondary btn-small" style="opacity:${nextDisabled ? '0.4' : '1'};pointer-events:${nextDisabled ? 'none' : 'auto'};">Next ${getIcon('chevron-right')}</button>
+                </div>`;
+            }
+
             pageContent.innerHTML = `
                 <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 8px;">My Bookings</h1>
 
@@ -242,10 +261,11 @@
 
                 <div id="bookingsList">
                     ${filtered.length > 0
-                        ? filtered.map(o => renderBookingCard(o)).join('')
+                        ? pageSlice.map(o => renderBookingCard(o)).join('')
                         : renderEmptyState('file-text', 'No bookings found', currentTab === 'active' ? 'No active bookings. Visit your invitations to review pending session offers.' : 'No past bookings.', 'View Invitations', 'available-shifts.html')
                     }
                 </div>
+                ${pagerHtml}
             `;
         }
 
@@ -257,8 +277,16 @@
 
         window.switchTab = function(tab) {
             currentTab = tab;
+            _bookingsPage = 0;
             renderBookings();
             showMobileContactBtns();
+        };
+
+        window.pageBookings = function(dir) {
+            _bookingsPage = Math.max(0, _bookingsPage + dir);
+            renderBookings();
+            showMobileContactBtns();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
         window.cancelBooking = function(offerId, isLate) {
