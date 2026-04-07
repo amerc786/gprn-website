@@ -36,6 +36,69 @@
         } catch (e) { return null; }
     }
 
+    // ---- Token refresh ----
+    var _refreshingToken = false;
+
+    function _getRefreshToken() {
+        try {
+            var raw = localStorage.getItem('gprn_session');
+            if (!raw) return null;
+            var s = JSON.parse(raw);
+            return s && s.refresh_token ? s.refresh_token : null;
+        } catch (e) { return null; }
+    }
+
+    function _isTokenExpired() {
+        var token = _getAccessToken();
+        if (!token) return true;
+        try {
+            var parts = token.split('.');
+            if (parts.length !== 3) return true;
+            var payload = JSON.parse(atob(parts[1]));
+            // Treat as expired if within 60 seconds of expiry
+            return payload.exp && (payload.exp - 60) < (Date.now() / 1000);
+        } catch (e) { return false; }
+    }
+
+    function _refreshToken() {
+        if (_refreshingToken) return false;
+        var rt = _getRefreshToken();
+        if (!rt) return false;
+        _refreshingToken = true;
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', false);
+            xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify({ refresh_token: rt }));
+            if (xhr.status === 200) {
+                var resp = JSON.parse(xhr.responseText);
+                if (resp.access_token) {
+                    // Update session in localStorage with new tokens
+                    var raw = localStorage.getItem('gprn_session');
+                    if (raw) {
+                        var s = JSON.parse(raw);
+                        s.access_token = resp.access_token;
+                        if (resp.refresh_token) s.refresh_token = resp.refresh_token;
+                        localStorage.setItem('gprn_session', JSON.stringify(s));
+                    }
+                    _refreshingToken = false;
+                    return true;
+                }
+            }
+        } catch (e) {
+            console.warn('[Supabase] token refresh error', e);
+        }
+        _refreshingToken = false;
+        return false;
+    }
+
+    function _ensureFreshToken() {
+        if (_isTokenExpired()) {
+            _refreshToken();
+        }
+    }
+
     function _authHeaders(extra) {
         var token = _getAccessToken() || SUPABASE_ANON_KEY;
         var h = {
@@ -54,6 +117,9 @@
     }
 
     function _syncRequest(method, path, payload, headers) {
+        // Ensure token is fresh before making the request
+        if (!headers) _ensureFreshToken();
+
         var xhr = new XMLHttpRequest();
         xhr.open(method, SUPABASE_URL + path, false);
         _applyHeaders(xhr, headers || _authHeaders());
@@ -68,6 +134,26 @@
         }
         var body = null;
         try { body = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch (e) { body = xhr.responseText; }
+
+        // Auto-retry on 401 with token refresh (only for default auth headers)
+        if (xhr.status === 401 && !headers && _refreshToken()) {
+            var xhr2 = new XMLHttpRequest();
+            xhr2.open(method, SUPABASE_URL + path, false);
+            _applyHeaders(xhr2, _authHeaders());
+            try {
+                if (payload === undefined || payload === null) {
+                    xhr2.send();
+                } else {
+                    xhr2.send(JSON.stringify(payload));
+                }
+            } catch (e) {
+                return { status: 0, body: null, error: e };
+            }
+            var body2 = null;
+            try { body2 = xhr2.responseText ? JSON.parse(xhr2.responseText) : null; } catch (e) { body2 = xhr2.responseText; }
+            return { status: xhr2.status, body: body2 };
+        }
+
         return { status: xhr.status, body: body };
     }
 
