@@ -6,6 +6,13 @@
       "runtimeExecutable": "/usr/local/bin/node",
       "runtimeArgs": ["backend/server.js"],
       "port": 3000
+    },
+    {
+      "name": "trial-compass",
+      "runtimeExecutable": "/usr/local/bin/npx",
+      "runtimeArgs": ["vite", "--host"],
+      "port": 5173,
+      "cwd": "/Users/amerchaudhry/Downloads/trial-compass-iros-main"
     }
   ]
 }

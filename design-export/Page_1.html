@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPRN | The Premier Welsh Locum Network</title>
+    
+    <!--
+    /* 
+     * AESTHETIC_DNA: High-End Medical Fintech / Clinical Modernism
+     * UI_PARADIGM: Asymmetrical Storytelling + App Preview + Bento Grid
+     * PALETTE: Clinical Slate (#0F172A), Welsh Emerald (#047857), Crisp Pearl (#F8FAFC)
+     */
+    -->
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Clash Display', 'sans-serif'],
+                        sans: ['Manrope', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            50: '#F8FAFC',
+                            100: '#F1F5F9',
+                            800: '#1E293B',
+                            900: '#0F172A',
+                            950: '#020617',
+                        },
+                        emerald: {
+                            500: '#10B981',
+                            700: '#047857',
+                            900: '#064E3B',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'float-delayed': 'float 6s ease-in-out 3s infinite',
+                        'slide-up': 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'reveal': 'reveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'marquee': 'marquee 30s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-15px)' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: 0, transform: 'translateY(30px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        },
+                        reveal: {
+                            '0%': { clipPath: 'inset(100% 0 0 0)' },
+                            '100%': { clipPath: 'inset(0 0 0 0)' },
+                        },
+                        marquee: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-100%)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F8FAFC; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Utilities */
+        .glass-nav {
+            background: rgba(248, 250, 252, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #0F172A 0%, #047857 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+
+        /* Hide scrollbar for bento container if needed */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .bento-hover {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .bento-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -10px rgba(4, 120, 87, 0.1);
+            border-color: rgba(4, 120, 87, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900 antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- NAVIGATION (Floating Macro-Architecture) -->
+    <nav class="fixed top-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl rounded-full glass-nav z-50 px-6 py-4 flex justify-between items-center transition-all duration-300 shadow-sm border border-slate-200/50">
+        <div class="flex items-center gap-2 cursor-pointer group">
+            <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-display font-bold text-xl group-hover:bg-emerald-700 transition-colors">
+                G
+            </div>
+            <span class="font-display font-semibold text-xl tracking-tight text-slate-900">PRN<span class="text-emerald-700">.</span></span>
+        </div>
+        
+        <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+            <a href="#how-it-works" class="hover:text-slate-900 transition-colors" rel="nofollow">For GPs</a>
+            <a href="#surgeries" class="hover:text-slate-900 transition-colors" rel="nofollow">For Surgeries</a>
+            <a href="#platform" class="hover:text-slate-900 transition-colors" rel="nofollow">Platform</a>
+            <a href="#insights" class="hover:text-slate-900 transition-colors" rel="nofollow">Insights</a>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button class="hidden md:block text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Log In</button>
+            <button class="bg-slate-900 text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-emerald-700 transition-all active:scale-95 flex items-center gap-2">
+                Join Network <i class="ph ph-arrow-right"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION (Asymmetrical Structural Shell) -->
+    <main class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden px-6 lg:px-12 max-w-[100rem] mx-auto">
+        <!-- Background decorative elements -->
+        <div class="absolute top-0 right-0 w-[800px] h-[800px] bg-emerald-50 rounded-full blur-3xl opacity-50 -z-10 translate-x-1/3 -translate-y-1/4"></div>
+        <div class="absolute bottom-0 left-0 w-[600px] h-[600px] bg-sky-50 rounded-full blur-3xl opacity-50 -z-10 -translate-x-1/3 translate-y-1/4"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8 items-center relative z-10">
+            
+            <!-- Left: Typography & Action -->
+            <div class="lg:col-span-5 flex flex-col gap-8 opacity-0 animate-slide-up">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 w-fit">
+                    <span class="flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                    <span class="text-xs font-semibold text-emerald-800 tracking-wide uppercase">Wales' Top Locum Booking Engine</span>
+                </div>
+                
+                <h1 class="font-display text-5xl lg:text-7xl font-semibold leading-[1.05] tracking-tight text-slate-950">
+                    Smarter locum matching across <span class="text-gradient">Wales.</span>
+                </h1>
+                
+                <p class="text-lg lg:text-xl text-slate-600 font-medium leading-relaxed max-w-lg">
+                    We synchronize top-tier General Practitioners with high-demand surgeries. Zero agency friction, transparent rates, and instant compliance processing.
+                </p>
+                
+                <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                    <button class="bg-slate-900 group text-white px-8 py-4 rounded-full text-base font-semibold hover:bg-slate-800 transition-all flex items-center justify-center gap-3">
+                        Find Shifts Now
+                        <div class="bg-white/20 rounded-full p-1 group-hover:translate-x-1 transition-transform">
+                            <i class="ph ph-arrow-right text-white"></i>
+                        </div>
+                    </button>
+                    <button class="bg-white border-2 border-slate-200 text-slate-900 px-8 py-4 rounded-full text-base font-semibold hover:border-slate-300 hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+                        Post a Vacancy
+                    </button>
+                </div>
+                
+                <div class="flex items-center gap-4 pt-6 pb-2 border-t border-slate-200 mt-2">
+                    <div class="flex -space-x-3">
+                        <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=100&q=80" alt="Doctor profile" class="w-10 h-10 rounded-full border-2 border-white object-cover">
+                        <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&q=80" alt="Doctor profile" class="w-10 h-10 rounded-full border-2 border-white object-cover">
+                        <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZG9jdG9yfGVufDB8fDB8fHww" alt="Doctor profile" class="w-10 h-10 rounded-full border-2 border-white object-cover">
+                        <div class="w-10 h-10 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">+2k</div>
+                    </div>
+                    <div class="text-sm font-medium text-slate-600">
+                        <span class="text-slate-900 font-bold">2,104</span> GPs registered.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Immersive Composition & Visual Tension -->
+            <div class="lg:col-span-7 relative h-[600px] w-full hidden lg:block opacity-0 animate-reveal delay-200">
+                <!-- Main Image Mask -->
+                <div class="absolute right-0 top-1/2 -translate-y-1/2 w-[85%] h-[90%] rounded-[2.5rem] overflow-hidden shadow-2xl z-10">
+                    <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80" alt="Modern Medical Professional" class="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-1000">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
+                </div>
+
+                <!-- Floating UI Element 1: Shift Alert -->
+                <div class="absolute left-0 top-[15%] glass-card p-4 rounded-2xl w-64 animate-float z-20">
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-emerald-100 rounded-lg text-emerald-700">
+                            <i class="ph-fill ph-bell-ringing text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-emerald-700 mb-1">New Shift Match</p>
+                            <p class="text-sm font-semibold text-slate-900">Cardiff Bay Surgery</p>
+                            <p class="text-xs text-slate-500 mt-1">Tomorrow • 09:00 - 17:00</p>
+                            <p class="text-sm font-display font-bold text-slate-900 mt-2">£85.00 <span class="text-xs font-sans text-slate-500 font-normal">/ hr</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Floating UI Element 2: Compliance -->
+                <div class="absolute right-[-2rem] bottom-[15%] glass-card p-4 rounded-2xl w-56 animate-float-delayed z-20 flex items-center gap-3">
+                    <div class="relative w-10 h-10 flex items-center justify-center">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                            <path class="text-slate-200" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path class="text-emerald-500" stroke-width="3" stroke-dasharray="100, 100" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        </svg>
+                        <i class="ph-fill ph-check-circle text-emerald-500 absolute bg-white rounded-full"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-900">Compliance</p>
+                        <p class="text-xs text-slate-500">100% Verified</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- TRUST STRIP (Meso-Architecture & Micro-interaction) -->
+    <div class="border-y border-slate-200 bg-white overflow-hidden py-6">
+        <div class="max-w-7xl mx-auto px-6 flex items-center">
+            <p class="text-sm font-semibold text-slate-400 whitespace-nowrap mr-8 shrink-0">Trusted across Health Boards</p>
+            <div class="relative flex overflow-x-hidden w-full mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent)">
+                <!-- Duplicated for smooth marquee -->
+                <div class="py-2 animate-marquee whitespace-nowrap flex gap-16 items-center">
+                    <span class="font-display text-xl font-bold text-slate-300">Aneurin Bevan</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Cardiff & Vale</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Cwm Taf Morgannwg</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Hywel Dda</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Swansea Bay</span>
+                </div>
+                <div class="absolute top-0 py-2 animate-marquee whitespace-nowrap flex gap-16 items-center" style="animation-delay: -15s;">
+                    <span class="font-display text-xl font-bold text-slate-300">Aneurin Bevan</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Cardiff & Vale</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Cwm Taf Morgannwg</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Hywel Dda</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Swansea Bay</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BENTO GRID SYSTEM (Data Density & Vibe) -->
+    <section class="py-24 px-6 lg:px-12 max-w-[100rem] mx-auto bg-slate-50" id="how-it-works">
+        <div class="mb-16 max-w-2xl">
+            <h2 class="font-display text-3xl lg:text-4xl font-semibold text-slate-900 mb-4">Re-engineering Locum Work.</h2>
+            <p class="text-lg text-slate-600">We stripped away agency bloat to build a platform that respects your time (and your bank account). High-density architecture for medical professionals.</p>
+        </div>
+
+        <!-- Bento Layout -->
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 auto-rows-[280px]">
+            
+            <!-- Large Card: Financials -->
+            <div class="md:col-span-2 lg:col-span-2 bg-white rounded-3xl p-8 border border-slate-200 bento-hover relative overflow-hidden flex flex-col justify-between group">
+                <div class="absolute -right-10 -top-10 w-64 h-64 bg-emerald-50 rounded-full blur-3xl opacity-50 group-hover:bg-emerald-100 transition-colors"></div>
+                <div class="relative z-10">
+                    <div class="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center mb-6">
+                        <i class="ph ph-wallet text-2xl"></i>
+                    </div>
+                    <h3 class="font-display text-2xl font-bold text-slate-900 mb-2">Market-Leading Rates</h3>
+                    <p class="text-slate-600">By removing middlemen, surgeries pay less while you earn more. Automated invoicing and swift payments within 72 hours of shift completion.</p>
+                </div>
+                <!-- Mini visualization -->
+                <div class="relative z-10 w-full mt-6 flex items-end gap-2 h-16">
+                    <div class="w-1/6 bg-slate-100 rounded-t-sm h-[30%]"></div>
+                    <div class="w-1/6 bg-slate-100 rounded-t-sm h-[50%]"></div>
+                    <div class="w-1/6 bg-slate-100 rounded-t-sm h-[40%]"></div>
+                    <div class="w-1/6 bg-slate-100 rounded-t-sm h-[70%]"></div>
+                    <div class="w-1/6 bg-slate-200 rounded-t-sm h-[60%]"></div>
+                    <div class="w-1/6 bg-emerald-500 rounded-t-md h-[100%] shadow-[0_0_15px_rgba(16,185,129,0.4)] relative">
+                        <span class="absolute -top-7 left-1/2 -translate-x-1/2 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">GPRN</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Square Card: Tech -->
+            <div class="bg-white rounded-3xl p-8 border border-slate-200 bento-hover flex flex-col justify-between group">
+                <div>
+                    <div class="w-12 h-12 bg-slate-50 border border-slate-100 text-slate-900 rounded-xl flex items-center justify-center mb-6 group-hover:bg-sky-50 group-hover:border-sky-100 transition-colors">
+                        <i class="ph ph-lightning text-2xl group-hover:text-sky-600 transition-colors"></i>
+                    </div>
+                    <h3 class="font-display text-xl font-bold text-slate-900 mb-2">Instant Booking</h3>
+                    <p class="text-slate-600 text-sm">No phone calls required. See a shift, review the details, and tap to claim. Schedule instantly.</p>
+                </div>
+                <div class="mt-4 p-3 bg-slate-900 rounded-xl text-white flex justify-between items-center group-hover:scale-[1.02] transition-transform">
+                    <span class="text-xs font-medium">Claim Shift</span>
+                    <i class="ph-fill ph-check-circle text-emerald-400"></i>
+                </div>
+            </div>
+
+            <!-- Tall Card: Location (Takes 2 rows vertically if needed, but let's keep it 1 for structure, adjust spans) -->
+            <div class="md:col-span-3 lg:col-span-1 md:row-span-2 bg-[#0F172A] rounded-3xl p-8 border border-slate-800 relative overflow-hidden bento-hover group flex flex-col justify-between">
+                <!-- Abstract Map Pattern -->
+                <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 24px 24px;"></div>
+                <div class="relative z-10 flex flex-col h-full">
+                    <div>
+                        <div class="w-12 h-12 bg-white/10 text-white rounded-xl flex items-center justify-center mb-6 backdrop-blur-sm">
+                            <i class="ph ph-map-pin text-2xl"></i>
+                        </div>
+                        <h3 class="font-display text-2xl font-bold text-white mb-2">Built for Wales</h3>
+                        <p class="text-slate-300 text-sm opacity-80">From urban clusters in Cardiff and Newport to rural practices in Powys. Filter specific health boards instantly.</p>
+                    </div>
+                    
+                    <!-- Location Tags -->
+                    <div class="flex flex-wrap gap-2 mt-auto pt-8">
+                        <span class="px-3 py-1 bg-white/10 border border-white/10 rounded-full text-xs text-white backdrop-blur-sm">Cardiff</span>
+                        <span class="px-3 py-1 bg-white/10 border border-white/10 rounded-full text-xs text-white backdrop-blur-sm">Swansea</span>
+                        <span class="px-3 py-1 bg-white/10 border border-white/10 rounded-full text-xs text-white backdrop-blur-sm">Wrexham</span>
+                        <span class="px-3 py-1 bg-white/10 border border-white/10 rounded-full text-xs text-slate-400 backdrop-blur-sm">+ 12 More</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Square Card: Compliance -->
+            <div class="bg-white rounded-3xl p-8 border border-slate-200 bento-hover flex flex-col justify-between">
+                <div class="flex justify-between items-start mb-6">
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-700 rounded-xl flex items-center justify-center">
+                        <i class="ph ph-shield-check text-2xl"></i>
+                    </div>
+                    <span class="flex h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                </div>
+                <div>
+                    <h3 class="font-display text-xl font-bold text-slate-900 mb-2">Digital Passport</h3>
+                    <p class="text-slate-600 text-sm mb-4">Upload documents once. Our smart system keeps you compliant and notifies you before expiry.</p>
+                </div>
+            </div>
+
+            <!-- Wide Card: Calendar/Control -->
+            <div class="md:col-span-2 lg:col-span-2 bg-white rounded-3xl p-8 border border-slate-200 bento-hover flex items-center gap-6">
+                <div class="hidden sm:flex flex-col gap-2 w-1/3 border-r border-slate-100 pr-6">
+                     <div class="h-2 w-full bg-slate-100 rounded-full"></div>
+                     <div class="h-2 w-3/4 bg-slate-100 rounded-full"></div>
+                     <div class="h-2 w-5/6 bg-slate-100 rounded-full"></div>
+                     <div class="mt-4 p-2 bg-emerald-50 border border-emerald-100 rounded text-center">
+                        <span class="text-xs font-bold text-emerald-700">Auto-Invoicing Active</span>
+                     </div>
+                </div>
+                <div class="w-full sm:w-2/3">
+                    <h3 class="font-display text-xl font-bold text-slate-900 mb-2">Total Control Workflow</h3>
+                    <p class="text-slate-600 text-sm">Manage your entire locum lifestyle from one dashboard. Set availability blocks, track upcoming revenue, and export tax-ready statements with a single click.</p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- REAL-TIME PLATFORM PREVIEW (Meso-Architecture Shell) -->
+    <section class="py-24 bg-white" id="platform">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <h2 class="font-display text-3xl lg:text-4xl font-semibold text-slate-900 mb-4">Inside the Workspace.</h2>
+                <p class="text-lg text-slate-600">Stop scrolling through endless WhatsApp groups. This is what an optimized locum dashboard looks like.</p>
+            </div>
+
+            <!-- The Mock UI Shell -->
+            <div class="w-full max-w-5xl mx-auto bg-slate-50 rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden flex flex-col md:flex-row">
+                
+                <!-- Sidebar Nav (Mock) -->
+                <div class="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-6 flex flex-col gap-8 hidden md:block">
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded bg-slate-900 text-white flex items-center justify-center text-xs font-bold">G</div>
+                        <span class="font-bold text-slate-900 tracking-tight">GPRN</span>
+                    </div>
+                    
+                    <div class="flex flex-col gap-1">
+                        <div class="px-3 py-2 bg-slate-100 text-slate-900 rounded-lg text-sm font-semibold flex items-center gap-3">
+                            <i class="ph ph-magnifying-glass"></i> Find Shifts
+                        </div>
+                        <div class="px-3 py-2 text-slate-500 hover:bg-slate-50 rounded-lg text-sm font-medium flex items-center gap-3 transition-colors">
+                            <i class="ph ph-calendar-blank"></i> My Roster
+                        </div>
+                        <div class="px-3 py-2 text-slate-500 hover:bg-slate-50 rounded-lg text-sm font-medium flex items-center gap-3 transition-colors">
+                            <i class="ph ph-file-text"></i> Invoices
+                        </div>
+                        <div class="px-3 py-2 text-slate-500 hover:bg-slate-50 rounded-lg text-sm font-medium flex items-center gap-3 transition-colors">
+                            <i class="ph ph-shield-check"></i> Compliance
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Content Area (Mock) -->
+                <div class="flex-1 p-6 md:p-8 overflow-hidden flex flex-col">
+                    
+                    <!-- Top Bar Filter Mock -->
+                    <div class="flex justify-between items-center mb-8 pb-4 border-b border-slate-200">
+                        <h3 class="font-display font-semibold text-xl text-slate-900">Available Shifts</h3>
+                        <div class="flex gap-2">
+                            <div class="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600 flex items-center gap-2">
+                                Cardiff <i class="ph ph-caret-down"></i>
+                            </div>
+                            <div class="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600 flex items-center gap-2">
+                                Dates <i class="ph ph-caret-down"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Density: Shift List -->
+                    <div class="flex flex-col gap-3 overflow-y-auto no-scrollbar pr-2 pb-4">
+                        
+                        <!-- Shift Row 1 -->
+                        <div class="group bg-white border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 hover:shadow-md transition-all cursor-pointer">
+                            <div class="flex gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-700 flex flex-col items-center justify-center flex-shrink-0">
+                                    <span class="text-xs font-bold leading-none">OCT</span>
+                                    <span class="text-lg font-display font-bold leading-none mt-1">24</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-slate-900 text-sm">Riverside Medical Centre</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><i class="ph ph-map-pin"></i> Cardiff • 08:30 - 18:30 (10 hrs)</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                                <div class="text-right">
+                                    <div class="font-display font-bold text-slate-900">£850</div>
+                                    <div class="text-[10px] text-slate-400 font-medium">£85/hr</div>
+                                </div>
+                                <button class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors">Apply</button>
+                            </div>
+                        </div>
+
+                        <!-- Shift Row 2 -->
+                        <div class="group bg-white border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 hover:shadow-md transition-all cursor-pointer relative overflow-hidden">
+                            <!-- High Demand Badge -->
+                            <div class="absolute top-0 right-0 bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">URGENT</div>
+                            <div class="flex gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-rose-50 text-rose-700 flex flex-col items-center justify-center flex-shrink-0 border border-rose-100">
+                                    <span class="text-xs font-bold leading-none">OCT</span>
+                                    <span class="text-lg font-display font-bold leading-none mt-1">25</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-slate-900 text-sm">St. David's Clinic</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><i class="ph ph-map-pin"></i> Newport • 08:00 - 13:00 (5 hrs)</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                                <div class="text-right">
+                                    <div class="font-display font-bold text-slate-900">£500</div>
+                                    <div class="text-[10px] text-slate-400 font-medium">£100/hr</div>
+                                </div>
+                                <button class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors">Apply</button>
+                            </div>
+                        </div>
+
+                        <!-- Shift Row 3 -->
+                        <div class="group bg-white border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 hover:shadow-md transition-all cursor-pointer">
+                            <div class="flex gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-slate-100 text-slate-600 flex flex-col items-center justify-center flex-shrink-0">
+                                    <span class="text-xs font-bold leading-none">NOV</span>
+                                    <span class="text-lg font-display font-bold leading-none mt-1">02</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-slate-900 text-sm">Afon Valley Practice</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><i class="ph ph-map-pin"></i> Swansea • 09:00 - 17:00 (8 hrs)</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                                <div class="text-right">
+                                    <div class="font-display font-bold text-slate-900">£720</div>
+                                    <div class="text-[10px] text-slate-400 font-medium">£90/hr</div>
+                                </div>
+                                <button class="px-4 py-2 bg-white border border-slate-200 text-slate-900 text-xs font-bold rounded-lg hover:border-slate-900 transition-colors">Apply</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- IMMERSIVE CTA (Anti-Boredom Visual Tension) -->
+    <section class="py-24 relative overflow-hidden bg-[#0F172A]">
+        <!-- Background Image overlaying dark bg -->
+        <div class="absolute inset-0 z-0 opacity-20 object-cover w-full h-full">
+            <img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1600&q=80" alt="Clinical Environment Abstract" class="w-full h-full object-cover">
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-[#0F172A] z-0"></div>
+
+        <div class="max-w-4xl mx-auto px-6 relative z-10 text-center">
+            <div class="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm">
+                <i class="ph ph-stethoscope text-3xl text-emerald-400"></i>
+            </div>
+            <h2 class="font-display text-4xl lg:text-6xl font-semibold text-white mb-6 tracking-tight">Your practice, elevated.</h2>
+            <p class="text-xl text-slate-300 font-medium mb-10 max-w-2xl mx-auto">Join the fastest-growing network of independent GPs in Wales. Registration takes 3 minutes. Zero commitments.</p>
+            
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <button class="w-full sm:w-auto bg-emerald-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-emerald-500 transition-colors shadow-[0_0_20px_rgba(4,120,87,0.4)]">
+                    Create GP Account
+                </button>
+                <div class="text-slate-400 text-sm hidden sm:block">or</div>
+                <button class="w-full sm:w-auto bg-white/5 border border-white/10 text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-white/10 transition-colors backdrop-blur-sm">
+                    Surgeries: Find Coverage
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ARCHITECTURAL FOOTER -->
+    <footer class="bg-slate-50 border-t border-slate-200 pt-16 pb-8">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                <div class="col-span-1 md:col-span-1">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-6 h-6 rounded bg-slate-900 flex items-center justify-center text-white font-display font-bold text-xs">G</div>
+                        <span class="font-display font-bold text-lg text-slate-900">GPRN<span class="text-emerald-700">.</span>co.uk</span>
+                    </div>
+                    <p class="text-sm text-slate-500 leading-relaxed pr-4">The modern infrastructure for Locum GPs and Surgeries across Wales.</p>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">For GPs</h4>
+                    <ul class="space-y-3 text-sm text-slate-600">
+                        <li><a href="#" class="hover:text-emerald-700 transition-colors" rel="nofollow">Find Shifts</a></li>
+                        <li><a href="#" class="hover:text-emerald-700 transition-colors" rel="nofollow">Rates & Billing</a></li>
+                        <li><a href="#" class="hover:text-emerald-700 transition-colors" rel="nofollow">Compliance Guide</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">For Surgeries</h4>
+                    <ul class="space-y-3 text-sm text-slate-600">
+                        <li><a href="#" class="hover:text-emerald-700 transition-colors" rel="nofollow">Post Vacancy</a></li>
+                        <li><a href="#" class="hover:text-emerald-700 transition-colors" rel="nofollow">Pricing Structure</a></li>
+                        <li><a href="#" class="hover:text-emerald-700 transition-colors" rel="nofollow">Roster Management</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">Legal</h4>
+                    <ul class="space-y-3 text-sm text-slate-600">
+                        <li><a href="#" class="hover:text-emerald-700 transition-colors" rel="nofollow">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-emerald-700 transition-colors" rel="nofollow">Terms of Service</a></li>
+                        <li><a href="#" class="hover:text-emerald-700 transition-colors" rel="nofollow">Contact Support</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-slate-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+                <p class="text-xs text-slate-400 font-medium">© 2024 GPRN Wales. All rights reserved.</p>
+                <div class="flex items-center gap-4">
+                    <a href="#" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors" rel="nofollow"><i class="ph-fill ph-twitter-logo"></i></a>
+                    <a href="#" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors" rel="nofollow"><i class="ph-fill ph-linkedin-logo"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
