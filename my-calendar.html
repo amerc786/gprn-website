@@ -104,10 +104,10 @@
     </div>
     <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     <script src="mock-data.js"></script>
-    <script src="app.js?v=20260407b"></script>
-<script src="supabase-client.js?v=20260407b"></script>
-    <script src="supabase-tables.js?v=20260407b"></script>
-    <script src="components.js?v=20260407b"></script>
+    <script src="app.js?v=20260407c"></script>
+<script src="supabase-client.js?v=20260407c"></script>
+    <script src="supabase-tables.js?v=20260407c"></script>
+    <script src="components.js?v=20260407c"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -181,7 +181,7 @@
             if (!_cachedOffers) _refreshCache();
             const events = [];
 
-            _cachedOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['accepted', 'confirmed'].includes(o.status)).forEach(o => {
+            _cachedOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['accepted', 'confirmed', 'completed'].includes(o.status)).forEach(o => {
                 events.push({ type: 'booked', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
             });
 

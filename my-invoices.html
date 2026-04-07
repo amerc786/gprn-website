@@ -38,10 +38,10 @@
 </head>
 <body class="app-layout">
     <script src="mock-data.js"></script>
-    <script src="app.js?v=20260407b"></script>
-<script src="supabase-client.js?v=20260407b"></script>
-    <script src="supabase-tables.js?v=20260407b"></script>
-    <script src="components.js?v=20260407b"></script>
+    <script src="app.js?v=20260407c"></script>
+<script src="supabase-client.js?v=20260407c"></script>
+    <script src="supabase-tables.js?v=20260407c"></script>
+    <script src="components.js?v=20260407c"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -49,58 +49,19 @@
         const data = getMockData();
         const pageContent = initAppLayout('locum', 'invoices', 'My Invoices');
 
+        // Clean up any previously-seeded phantom invoices
+        if (data.invoices && data.invoices.length) {
+            const before = data.invoices.length;
+            data.invoices = data.invoices.filter(inv => !inv.id || !inv.id.startsWith('inv-seed-'));
+            if (data.invoices.length < before) saveMockData(data);
+        }
+
         // Seed invoices from completed offers if none exist for this locum
         let invoices = InvoiceManager.getForLocum(session.id);
         if (invoices.length === 0) {
             const completedOffers = data.offers.filter(o => o.locumId === session.id && o.status === 'completed');
             if (completedOffers.length > 0) {
                 completedOffers.forEach(offer => InvoiceManager.generateFromOffer(offer));
-                invoices = InvoiceManager.getForLocum(session.id);
-            }
-            // If still no invoices, seed some manually
-            if (invoices.length === 0) {
-                const today = new Date();
-                const practices = data.practices;
-                const locum = data.locums.find(l => l.id === session.id);
-                const seedStatuses = ['paid', 'pending', 'paid', 'overdue', 'paid', 'paid', 'pending', 'paid'];
-                const sessionTypes = ['AM', 'PM', 'Full Day'];
-                if (!data.invoices) data.invoices = [];
-                for (let i = 0; i < 8; i++) {
-                    const genDate = new Date(today);
-                    genDate.setDate(today.getDate() - (i * 7 + 3));
-                    const shiftDate = new Date(genDate);
-                    shiftDate.setDate(genDate.getDate() - 1);
-                    const dueDate = new Date(genDate);
-                    dueDate.setDate(genDate.getDate() + 30);
-                    const practice = practices[i % practices.length];
-                    const sType = sessionTypes[i % 3];
-                    const rate = sType === 'Full Day' ? locum.rates.fullDay : (sType === 'AM' ? locum.rates.am : locum.rates.pm);
-                    const housecallFee = i % 3 === 0 ? 0 : (locum.rates.housecall || 0);
-                    const total = rate + housecallFee;
-                    const status = seedStatuses[i];
-                    data.invoices.push({
-                        id: 'inv-seed-' + Date.now() + '-' + i,
-                        invoiceNumber: 'INV-' + String(data.invoices.length + 1001).padStart(4, '0'),
-                        offerId: null,
-                        locumId: session.id,
-                        locumName: locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : session.name,
-                        practiceId: practice.id,
-                        practiceName: practice.practiceName,
-                        shiftDate: shiftDate.toISOString().split('T')[0],
-                        sessionType: sType,
-                        startTime: sType === 'PM' ? '13:00' : '08:30',
-                        endTime: sType === 'AM' ? '12:30' : '17:00',
-                        sessionRate: rate,
-                        housecallFee: housecallFee,
-                        total: total,
-                        status: status,
-                        generatedDate: genDate.toISOString().split('T')[0],
-                        dueDate: dueDate.toISOString().split('T')[0],
-                        paidDate: status === 'paid' ? genDate.toISOString().split('T')[0] : null,
-                        disputeReason: null
-                    });
-                }
-                saveMockData(data);
                 invoices = InvoiceManager.getForLocum(session.id);
             }
         }
