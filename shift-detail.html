@@ -104,6 +104,25 @@
                                     ${offer.sentDate ? `<div style="font-size: 0.8rem; color: var(--dark-600); margin-top: 4px;">Sent: ${DateUtils.relative(offer.sentDate)}</div>` : ''}
                                 </div>
                             </div>
+                            ${(['accepted', 'confirmed'].includes(offer.status) && practice && practice.phone) ? `
+                            <div id="mobileContactBtns" style="display: none; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--gray-200);">
+                                <a href="tel:${practice.phone}" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; background: var(--success); color: white; border-radius: 8px; font-size: 0.88rem; font-weight: 700; text-decoration: none;">
+                                    ${getIcon('phone')} Call Practice
+                                </a>
+                                <a href="sms:${practice.phone}" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; background: var(--primary); color: white; border-radius: 8px; font-size: 0.88rem; font-weight: 700; text-decoration: none;">
+                                    ${getIcon('chat-circle-text')} Text Practice
+                                </a>
+                            </div>
+                            <script>
+                                (function() {
+                                    var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+                                    if (isMobile) {
+                                        var el = document.getElementById('mobileContactBtns');
+                                        if (el) el.style.display = 'flex';
+                                    }
+                                })();
+                            </script>
+                            ` : ''}
                         </div>
 
                         <!-- Location Card -->

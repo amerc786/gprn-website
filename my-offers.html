@@ -125,6 +125,20 @@
                 }
             }
 
+            // Mobile contact buttons for booked shifts
+            const practiceData = getMockData().practices.find(p => p.id === offer.practiceId);
+            const practicePhone = practiceData ? (practiceData.phone || practiceData.contactPhone) : '';
+            const showMobileContact = ['accepted', 'confirmed'].includes(offer.status) && practicePhone;
+            const mobileContactHtml = showMobileContact ? `
+                <div class="mobile-contact-btns" style="display: none; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--gray-200);">
+                    <a href="tel:${practicePhone}" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; background: var(--success); color: white; border-radius: 8px; font-size: 0.85rem; font-weight: 700; text-decoration: none;">
+                        ${getIcon('phone')} Call
+                    </a>
+                    <a href="sms:${practicePhone}" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; background: var(--primary); color: white; border-radius: 8px; font-size: 0.85rem; font-weight: 700; text-decoration: none;">
+                        ${getIcon('chat-circle-text')} Text
+                    </a>
+                </div>` : '';
+
             return `
             <div class="offer-card" data-offer-id="${offer.id}">
                 <div class="offer-card-header">
@@ -147,6 +161,7 @@
                     <span class="offer-date">${offer.sentDate ? 'Invited: ' + DateUtils.format(offer.sentDate, 'medium') : ''}</span>
                 </div>
                 ${actionsHtml}
+                ${mobileContactHtml}
             </div>`;
         }
 
@@ -234,9 +249,16 @@
             `;
         }
 
+        function showMobileContactBtns() {
+            var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+            if (!isMobile) return;
+            document.querySelectorAll('.mobile-contact-btns').forEach(function(el) { el.style.display = 'flex'; });
+        }
+
         window.switchTab = function(tab) {
             currentTab = tab;
             renderBookings();
+            showMobileContactBtns();
         };
 
         window.cancelBooking = function(offerId, isLate) {
@@ -318,6 +340,7 @@
         };
 
         renderBookings();
+        showMobileContactBtns();
     </script>
 </body>
 </html>
