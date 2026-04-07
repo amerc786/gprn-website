@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>My Invitations - GPRN</title>
+    <title>Invitations - GPRN</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,7 +46,7 @@
         if (!initPage('locum')) throw new Error('Auth required');
 
         const session = Auth.getSession();
-        const pageContent = initAppLayout('locum', 'invitations', 'My Shifts');
+        const pageContent = initAppLayout('locum', 'invitations', 'Invitations');
 
         // Auto-expire old offers
         Booking.expireOffers();
@@ -98,7 +98,7 @@
 
             pageContent.innerHTML = `
                 <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 8px;">
-                    My Shifts
+                    Invitations
                 </h1>
                 <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 20px;">
                     Review session offers from practices. Accept or decline.
