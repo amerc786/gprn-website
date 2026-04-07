@@ -78,10 +78,9 @@
         // Greeting
         const greeting = `${getGreeting()}, ${session.firstName}`;
 
-        // Upcoming shifts (next 3 accepted/confirmed future offers)
+        // Upcoming shifts (all accepted/confirmed future offers, sorted)
         const upcomingShifts = upcomingAccepted
-            .sort((a, b) => new Date(a.sessionDate || a.shiftDate) - new Date(b.sessionDate || b.shiftDate))
-            .slice(0, 3);
+            .sort((a, b) => new Date(a.sessionDate || a.shiftDate) - new Date(b.sessionDate || b.shiftDate));
 
         // Notifications - filtered for current user
         const notifications = (data.notifications || []).filter(n => n.userId === session.id || !n.userId);
@@ -263,33 +262,12 @@
                         <a href="my-calendar.html" class="btn btn-ghost btn-small">View Calendar</a>
                     </div>
                     <div class="content-card-body">
-                        ${upcomingShifts.length === 0
-                            ? renderEmptyState('calendar', 'No upcoming sessions', 'You have no confirmed sessions coming up. Check your invitations for new offers from practices.', 'View Invitations', 'available-shifts.html')
-                            : upcomingShifts.map(offer => `
-                                <div class="shift-card-full" style="margin-bottom: 12px;">
-                                    <div class="shift-card-header">
-                                        <div>
-                                            <h3 class="shift-card-title">${offer.practiceName}</h3>
-                                            <p class="shift-card-location">${offer.healthBoard}</p>
-                                        </div>
-                                        <div class="shift-card-badges">
-                                            <span class="badge badge-success">${offer.status === 'confirmed' ? 'Confirmed' : 'Accepted'}</span>
-                                            <span class="badge badge-primary">${offer.sessionType}</span>
-                                        </div>
-                                    </div>
-                                    <div class="shift-card-details">
-                                        <div class="shift-card-detail">
-                                            ${getIcon('calendar')}
-                                            <span>${DateUtils.format(offer.sessionDate || offer.shiftDate, 'full')}</span>
-                                        </div>
-                                        <div class="shift-card-detail">
-                                            ${getIcon('clock')}
-                                            <span>${offer.startTime} - ${offer.endTime}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')
-                        }
+                        <div id="upcomingSessionsList"></div>
+                        <div id="upcomingSessionsPager" style="display:none; justify-content:center; align-items:center; gap:12px; margin-top:12px;">
+                            <button onclick="pageUpcoming(-1)" id="upcomingPrev" class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors" style="cursor:pointer;"><i class="ph-bold ph-caret-left text-sm"></i></button>
+                            <span id="upcomingPageInfo" style="font-size:0.82rem; font-weight:600; color:var(--dark-600);"></span>
+                            <button onclick="pageUpcoming(1)" id="upcomingNext" class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors" style="cursor:pointer;"><i class="ph-bold ph-caret-right text-sm"></i></button>
+                        </div>
                     </div>
                 </div>
 
@@ -382,27 +360,12 @@
                         <h2>Recent Notifications</h2>
                     </div>
                     <div class="content-card-body">
-                        ${notifications.length === 0
-                            ? '<p style="color: var(--dark-600); font-size: 0.88rem;">No notifications.</p>'
-                            : notifications.slice(0, 6).map(n => {
-                                const dotColor = n.type === 'offer_accepted' || n.type === 'booking_confirmed' || n.type === 'payment_received' || n.type === 'payment_confirmed' || n.type === 'revision_approved' ? 'var(--success)' :
-                                    n.type === 'shift_cancelled' || n.type === 'cancellation' || n.type === 'no_show' || n.type === 'offer_withdrawn' || n.type === 'invoice_disputed' || n.type === 'revision_rejected' ? 'var(--danger)' :
-                                    n.type === 'invoice_overdue' || n.type === 'payment_reminder' ? 'var(--danger)' :
-                                    n.type === 'payment_awaiting_confirmation' ? 'var(--warning)' :
-                                    n.type === 'new_offer' || n.type === 'offer_received' ? 'var(--primary)' :
-                                    n.type === 'counter_offer' ? 'var(--warning)' :
-                                    'var(--coral)';
-                                return `
-                                <div class="notif-item">
-                                    <div class="notif-dot ${n.read ? 'read' : 'unread'}" style="background: ${dotColor};"></div>
-                                    <div>
-                                        <div class="notif-title">${n.title}</div>
-                                        <div class="notif-message">${n.message}</div>
-                                        <div class="notif-time">${DateUtils.relative(n.date)}</div>
-                                    </div>
-                                </div>
-                            `}).join('')
-                        }
+                        <div id="notifList"></div>
+                        <div id="notifPager" style="display:none; justify-content:center; align-items:center; gap:12px; margin-top:12px;">
+                            <button onclick="pageNotifs(-1)" id="notifPrev" class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors" style="cursor:pointer;"><i class="ph-bold ph-caret-left text-sm"></i></button>
+                            <span id="notifPageInfo" style="font-size:0.82rem; font-weight:600; color:var(--dark-600);"></span>
+                            <button onclick="pageNotifs(1)" id="notifNext" class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors" style="cursor:pointer;"><i class="ph-bold ph-caret-right text-sm"></i></button>
+                        </div>
                     </div>
                 </div>
 
@@ -470,6 +433,120 @@
                 </div>
             </div>
         `;
+
+        // ===== PAGINATION: Upcoming Sessions =====
+        var _upcomingPage = 0;
+        var _upcomingPageSize = 4;
+        var _isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+
+        function renderUpcomingSessions() {
+            var el = document.getElementById('upcomingSessionsList');
+            var pager = document.getElementById('upcomingSessionsPager');
+            if (!el) return;
+            if (upcomingShifts.length === 0) {
+                el.innerHTML = renderEmptyState('calendar', 'No upcoming sessions', 'You have no confirmed sessions coming up. Check your invitations for new offers from practices.', 'View Invitations', 'available-shifts.html');
+                pager.style.display = 'none';
+                return;
+            }
+            var start = _upcomingPage * _upcomingPageSize;
+            var page = upcomingShifts.slice(start, start + _upcomingPageSize);
+            var totalPages = Math.ceil(upcomingShifts.length / _upcomingPageSize);
+
+            el.innerHTML = page.map(function(offer) {
+                var practice = data.practices.find(function(p) { return p.id === offer.practiceId; });
+                var phone = practice ? (practice.phone || practice.contactPhone || '') : '';
+                var mobileBtns = (_isMobile && phone) ? '<div style="display:flex;gap:8px;margin-top:10px;">'
+                    + '<a href="tel:' + phone + '" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--success);color:white;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;">' + getIcon('phone') + ' Call</a>'
+                    + '<a href="sms:' + phone + '" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--primary);color:white;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;">' + getIcon('chat-circle-text') + ' Text</a>'
+                    + '</div>' : '';
+                return '<div class="shift-card-full" style="margin-bottom: 12px;">'
+                    + '<div class="shift-card-header">'
+                    + '<div>'
+                    + '<h3 class="shift-card-title"><a href="shift-detail.html?id=' + offer.id + '" style="color:var(--dark);text-decoration:none;font-weight:700;" onmouseover="this.style.color=\'var(--primary)\';this.style.textDecoration=\'underline\'" onmouseout="this.style.color=\'var(--dark)\';this.style.textDecoration=\'none\'">' + offer.practiceName + '</a></h3>'
+                    + '<p class="shift-card-location">' + offer.healthBoard + '</p>'
+                    + '</div>'
+                    + '<div class="shift-card-badges">'
+                    + '<span class="badge badge-success">' + (offer.status === 'confirmed' ? 'Confirmed' : 'Accepted') + '</span>'
+                    + '<span class="badge badge-primary">' + offer.sessionType + '</span>'
+                    + '</div></div>'
+                    + '<div class="shift-card-details">'
+                    + '<div class="shift-card-detail">' + getIcon('calendar') + ' <span>' + DateUtils.format(offer.sessionDate || offer.shiftDate, 'full') + '</span></div>'
+                    + '<div class="shift-card-detail">' + getIcon('clock') + ' <span>' + offer.startTime + ' - ' + offer.endTime + '</span></div>'
+                    + '</div>'
+                    + mobileBtns
+                    + '</div>';
+            }).join('');
+
+            if (totalPages > 1) {
+                pager.style.display = 'flex';
+                document.getElementById('upcomingPageInfo').textContent = (_upcomingPage + 1) + ' / ' + totalPages;
+                document.getElementById('upcomingPrev').style.opacity = _upcomingPage === 0 ? '0.4' : '1';
+                document.getElementById('upcomingPrev').style.pointerEvents = _upcomingPage === 0 ? 'none' : 'auto';
+                document.getElementById('upcomingNext').style.opacity = _upcomingPage >= totalPages - 1 ? '0.4' : '1';
+                document.getElementById('upcomingNext').style.pointerEvents = _upcomingPage >= totalPages - 1 ? 'none' : 'auto';
+            } else {
+                pager.style.display = 'none';
+            }
+        }
+        window.pageUpcoming = function(dir) {
+            var totalPages = Math.ceil(upcomingShifts.length / _upcomingPageSize);
+            _upcomingPage = Math.max(0, Math.min(totalPages - 1, _upcomingPage + dir));
+            renderUpcomingSessions();
+        };
+        renderUpcomingSessions();
+
+        // ===== PAGINATION: Notifications =====
+        var _notifPage = 0;
+        var _notifPageSize = 4;
+
+        function getNotifDotColor(type) {
+            if (['offer_accepted','booking_confirmed','payment_received','payment_confirmed','revision_approved'].includes(type)) return 'var(--success)';
+            if (['shift_cancelled','cancellation','no_show','offer_withdrawn','invoice_disputed','revision_rejected','invoice_overdue','payment_reminder'].includes(type)) return 'var(--danger)';
+            if (['payment_awaiting_confirmation','counter_offer'].includes(type)) return 'var(--warning)';
+            if (['new_offer','offer_received'].includes(type)) return 'var(--primary)';
+            return 'var(--coral)';
+        }
+
+        function renderNotifications() {
+            var el = document.getElementById('notifList');
+            var pager = document.getElementById('notifPager');
+            if (!el) return;
+            if (notifications.length === 0) {
+                el.innerHTML = '<p style="color: var(--dark-600); font-size: 0.88rem;">No notifications.</p>';
+                pager.style.display = 'none';
+                return;
+            }
+            var start = _notifPage * _notifPageSize;
+            var page = notifications.slice(start, start + _notifPageSize);
+            var totalPages = Math.ceil(notifications.length / _notifPageSize);
+
+            el.innerHTML = page.map(function(n) {
+                return '<div class="notif-item">'
+                    + '<div class="notif-dot ' + (n.read ? 'read' : 'unread') + '" style="background:' + getNotifDotColor(n.type) + ';"></div>'
+                    + '<div>'
+                    + '<div class="notif-title">' + n.title + '</div>'
+                    + '<div class="notif-message">' + n.message + '</div>'
+                    + '<div class="notif-time">' + DateUtils.relative(n.date) + '</div>'
+                    + '</div></div>';
+            }).join('');
+
+            if (totalPages > 1) {
+                pager.style.display = 'flex';
+                document.getElementById('notifPageInfo').textContent = (_notifPage + 1) + ' / ' + totalPages;
+                document.getElementById('notifPrev').style.opacity = _notifPage === 0 ? '0.4' : '1';
+                document.getElementById('notifPrev').style.pointerEvents = _notifPage === 0 ? 'none' : 'auto';
+                document.getElementById('notifNext').style.opacity = _notifPage >= totalPages - 1 ? '0.4' : '1';
+                document.getElementById('notifNext').style.pointerEvents = _notifPage >= totalPages - 1 ? 'none' : 'auto';
+            } else {
+                pager.style.display = 'none';
+            }
+        }
+        window.pageNotifs = function(dir) {
+            var totalPages = Math.ceil(notifications.length / _notifPageSize);
+            _notifPage = Math.max(0, Math.min(totalPages - 1, _notifPage + dir));
+            renderNotifications();
+        };
+        renderNotifications();
 
         // Add barred practices section if applicable
         (function() {
