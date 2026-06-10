@@ -366,7 +366,7 @@ function renderOfferCard(offer) {
                 <span>Offered rate: ${formatCurrency(rate)}/${offer.sessionType} session</span>
                 ${offer.locumPublishedRate && offer.locumPublishedRate !== rate ? `<span style="font-size:0.75rem;color:var(--dark-600);margin-left:8px;">(Your rate: ${formatCurrency(offer.locumPublishedRate)})</span>` : ''}
             </div>
-            <span class="offer-date">Sent: ${DateUtils.format(sentDate, 'medium')}</span>
+            ${sentDate ? `<span class="offer-date">Sent: ${DateUtils.format(sentDate, 'medium')}</span>` : ''}
         </div>
         ${offer.practiceMessage ? `<div class="offer-comment"><strong>Message:</strong> ${sanitizeHTML(offer.practiceMessage)}</div>` : ''}
         ${['sent', 'viewed'].includes(offer.status) ? `

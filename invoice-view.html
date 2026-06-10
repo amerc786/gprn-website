@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js"></script>
-    <script src="app.js?v=20260407c"></script>
-<script src="supabase-client.js?v=20260407c"></script>
-    <script src="supabase-tables.js?v=20260407c"></script>
-    <script src="components.js?v=20260407c"></script>
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
     <script>
         if (!initPage()) throw new Error('Auth required');
 
@@ -407,18 +407,18 @@
                                 <h4>From</h4>
                                 <p><strong>${invoice.locumName}</strong></p>
                                 ${locum ? `
-                                    <p>GMC: ${locum.gmcNumber}</p>
-                                    <p>${locum.email}</p>
-                                    <p>${locum.phone}</p>
+                                    ${locum.gmcNumber ? `<p>GMC: ${locum.gmcNumber}</p>` : ''}
+                                    ${locum.email ? `<p>${locum.email}</p>` : ''}
+                                    ${locum.phone ? `<p>${locum.phone}</p>` : ''}
                                 ` : ''}
                             </div>
                             <div class="invoice-party">
                                 <h4>To</h4>
                                 <p><strong>${invoice.practiceName}</strong></p>
                                 ${practice ? `
-                                    <p>${practice.address}</p>
-                                    <p>${practice.city} ${practice.postcode}</p>
-                                    <p>${practice.phone}</p>
+                                    ${practice.address ? `<p>${practice.address}</p>` : ''}
+                                    ${(practice.city || practice.postcode) ? `<p>${practice.city || ''} ${practice.postcode || ''}</p>` : ''}
+                                    ${practice.phone ? `<p>${practice.phone}</p>` : ''}
                                 ` : ''}
                             </div>
                         </div>

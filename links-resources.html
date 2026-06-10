@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <script src="mock-data.js"></script>
-    <script src="app.js?v=20260407c"></script>
-<script src="supabase-client.js?v=20260407c"></script>
-    <script src="supabase-tables.js?v=20260407c"></script>
-    <script src="components.js?v=20260407c"></script>
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
     <script>
         if (!initPage()) throw new Error('Auth required');
 
@@ -98,32 +98,32 @@
             <div class="content-card-body" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;">
                 <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
                     <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('phone')} NHS 111 Wales</div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Non-emergency medical advice, out-of-hours GP access</div>
+                    <div style="font-size: 0.85rem; color: var(--dark-600);">Non-emergency medical advice, out-of-hours GP access</div>
                     <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">111</div>
                 </div>
                 <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
                     <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('heartbeat')} Mental Health Crisis Line (C.A.L.L.)</div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Community Advice & Listening Line — 24/7 mental health support</div>
+                    <div style="font-size: 0.85rem; color: var(--dark-600);">Community Advice & Listening Line — 24/7 mental health support</div>
                     <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">0800 132 737</div>
                 </div>
                 <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
                     <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('shield')} Wales Safeguarding</div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">National safeguarding helpline for adults and children</div>
+                    <div style="font-size: 0.85rem; color: var(--dark-600);">National safeguarding helpline for adults and children</div>
                     <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">0808 100 2500</div>
                 </div>
                 <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
                     <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('warning')} National Poisons Information Service</div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">NPIS — poisoning/overdose advice for healthcare professionals</div>
+                    <div style="font-size: 0.85rem; color: var(--dark-600);">NPIS — poisoning/overdose advice for healthcare professionals</div>
                     <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">0344 892 0111</div>
                 </div>
                 <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
                     <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('users')} Social Services (Wales)</div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Dewis Cymru — directory of social services and wellbeing resources</div>
+                    <div style="font-size: 0.85rem; color: var(--dark-600);">Dewis Cymru — directory of social services and wellbeing resources</div>
                     <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">dewis.wales</div>
                 </div>
                 <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
                     <div style="font-weight: 700; margin-bottom: 4px;">${getIcon('first-aid')} Welsh Ambulance Service</div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Emergency ambulance, NEPTS, clinical contact</div>
+                    <div style="font-size: 0.85rem; color: var(--dark-600);">Emergency ambulance, NEPTS, clinical contact</div>
                     <div style="font-weight: 700; color: var(--primary); margin-top: 6px; font-size: 1.1rem;">999 / 0345 602 0100</div>
                 </div>
             </div>
@@ -135,7 +135,7 @@
                 <h2>${getIcon('map-pin')} Referral Pathways by Health Board</h2>
             </div>
             <div class="content-card-body">
-                <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9rem;">Key referral contacts for each Welsh health board. Select a health board to view its referral numbers and pathways.</p>
+                <p style="color: var(--dark-600); margin-bottom: 16px; font-size: 0.9rem;">Key referral contacts for each Welsh health board. Select a health board to view its referral numbers and pathways.</p>
 
                 <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;" id="hbTabs">
                     <button class="btn btn-small hb-tab active" onclick="showHB('abuhb', event)">Aneurin Bevan</button>
@@ -281,7 +281,7 @@
                 <tr style="border-bottom: 1px solid var(--border);">
                     <td style="padding: 10px 12px; font-weight: 600; white-space: nowrap; vertical-align: top;">${c.cat}</td>
                     <td style="padding: 10px 12px; font-weight: 700; color: var(--primary); white-space: nowrap; vertical-align: top;">${c.number}</td>
-                    <td style="padding: 10px 12px; font-size: 0.85rem; color: var(--text-secondary); vertical-align: top;">${c.note}</td>
+                    <td style="padding: 10px 12px; font-size: 0.85rem; color: var(--dark-600); vertical-align: top;">${c.note}</td>
                 </tr>
             `).join('');
 
@@ -295,9 +295,9 @@
                         <table style="width: 100%; border-collapse: collapse;">
                             <thead>
                                 <tr style="border-bottom: 2px solid var(--border); background: var(--bg-main);">
-                                    <th style="padding: 10px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Service</th>
-                                    <th style="padding: 10px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Contact</th>
-                                    <th style="padding: 10px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600;">Notes</th>
+                                    <th style="padding: 10px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--dark-600); font-weight: 600;">Service</th>
+                                    <th style="padding: 10px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--dark-600); font-weight: 600;">Contact</th>
+                                    <th style="padding: 10px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--dark-600); font-weight: 600;">Notes</th>
                                 </tr>
                             </thead>
                             <tbody>${rows}</tbody>

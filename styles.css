@@ -2006,7 +2006,7 @@ body.gprn-app .content-card-header h2 {
     transition: all 0.2s;
 }
 .calendar-nav button:hover { border-color: var(--primary); color: var(--primary); }
-.calendar-title { font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--dark); line-height: 1; display: flex; align-items: center; min-width: 180px; justify-content: center; }
+.calendar-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--dark); line-height: 1; display: flex; align-items: center; min-width: 180px; justify-content: center; }
 
 .calendar-grid-full {
     display: grid;

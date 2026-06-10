@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js"></script>
-    <script src="app.js?v=20260407c"></script>
-<script src="supabase-client.js?v=20260407c"></script>
-    <script src="supabase-tables.js?v=20260407c"></script>
-    <script src="components.js?v=20260407c"></script>
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -97,7 +97,7 @@
             }
 
             pageContent.innerHTML = `
-                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 8px;">
+                <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 8px;">
                     Invitations
                 </h1>
                 <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 20px;">
@@ -165,6 +165,12 @@
         }
 
         // Action handlers called by renderOfferCard
+        window.respondToInvitation = function(offerId, action) {
+            if (action === 'accept') window.acceptOffer(offerId);
+            else if (action === 'decline') window.declineOffer(offerId);
+            else if (action === 'counter') window.counterOffer(offerId);
+        };
+
         window.acceptOffer = function(offerId) {
             const result = Booking.respondToOffer(offerId, 'accept');
             if (result && !result.error) {

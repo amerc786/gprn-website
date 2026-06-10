@@ -37,23 +37,48 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js"></script>
-    <script src="app.js?v=20260407c"></script>
-<script src="supabase-client.js?v=20260407c"></script>
-    <script src="supabase-tables.js?v=20260407c"></script>
-    <script src="components.js?v=20260407c"></script>
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
         const pageContent = initAppLayout('locum', 'report', 'Log External Sessions');
 
         function getReportedShifts() {
-            const raw = localStorage.getItem('gprn_reported_shifts_' + Auth.getSession().id);
-            return raw ? JSON.parse(raw) : [];
+            const userId = Auth.getSession().id;
+            const data = getMockData();
+            let shifts = (data.reportedShifts || []).filter(s => s.userId === userId);
+            // One-time migration of entries saved under the old browser-only storage
+            const legacyRaw = localStorage.getItem('gprn_reported_shifts_' + userId);
+            if (legacyRaw) {
+                try {
+                    const legacy = JSON.parse(legacyRaw);
+                    if (legacy.length) {
+                        if (!data.reportedShifts) data.reportedShifts = [];
+                        legacy.forEach(s => {
+                            s.userId = userId;
+                            if (!data.reportedShifts.some(x => x.id === s.id)) data.reportedShifts.push(s);
+                        });
+                        saveMockData(data);
+                        shifts = data.reportedShifts.filter(s => s.userId === userId);
+                    }
+                } catch (e) {}
+                localStorage.removeItem('gprn_reported_shifts_' + userId);
+            }
+            return shifts;
         }
 
         function saveReportedShifts(shifts) {
-            localStorage.setItem('gprn_reported_shifts_' + Auth.getSession().id, JSON.stringify(shifts));
+            const userId = Auth.getSession().id;
+            const data = getMockData();
+            if (!data.reportedShifts) data.reportedShifts = [];
+            shifts.forEach(s => { s.userId = userId; });
+            // Replace this user's entries with the updated list, keep other users' entries
+            data.reportedShifts = data.reportedShifts.filter(s => s.userId !== userId).concat(shifts);
+            saveMockData(data);
         }
 
         function renderPage() {

@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js"></script>
-    <script src="app.js?v=20260407c"></script>
-<script src="supabase-client.js?v=20260407c"></script>
-    <script src="supabase-tables.js?v=20260407c"></script>
-    <script src="components.js?v=20260407c"></script>
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -247,7 +247,7 @@
             }
 
             pageContent.innerHTML = `
-                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 8px;">My Bookings</h1>
+                <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 8px;">My Bookings</h1>
 
                 <div class="tabs">
                     <button class="tab-item ${currentTab === 'active' ? 'active' : ''}" onclick="switchTab('active')">Active Bookings</button>

@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js"></script>
-    <script src="app.js?v=20260407c"></script>
-<script src="supabase-client.js?v=20260407c"></script>
-    <script src="supabase-tables.js?v=20260407c"></script>
-    <script src="components.js?v=20260407c"></script>
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
 
@@ -143,7 +143,7 @@
                                 ${getInitials(locum.firstName + ' ' + locum.lastName)}
                             </div>
                             <div style="flex: 1;">
-                                <h1 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">
+                                <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">
                                     ${locumName}
                                 </h1>
                                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
@@ -337,7 +337,7 @@
                             </div>
                             <div class="content-card-body">
                                 <div style="text-align: center; margin-bottom: 16px;">
-                                    <span style="font-family: 'Space Grotesk', sans-serif; font-size: 2.5rem; font-weight: 800; color: ${reliabilityColor};">${locum.bookingReliability}%</span>
+                                    <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2.5rem; font-weight: 800; color: ${reliabilityColor};">${locum.bookingReliability}%</span>
                                 </div>
                                 <div class="coverage-bar" style="height: 12px;">
                                     <div class="coverage-fill" style="width: ${locum.bookingReliability}%; background: ${reliabilityColor};"></div>
@@ -385,12 +385,12 @@
                                 <div class="content-card">
                                     <div class="content-card-header"><h2>Rates</h2></div>
                                     <div class="content-card-body">
-                                        <p style="font-size: 0.88rem; color: var(--text-secondary); text-align: center; padding: 20px 0;">This locum has not set rates for your practice or region.</p>
+                                        <p style="font-size: 0.88rem; color: var(--dark-600); text-align: center; padding: 20px 0;">This locum has not set rates for your practice or region.</p>
                                     </div>
                                 </div>`;
                             const r = eff.rates;
                             const sourceLabel = eff.source === 'practice' ? 'Rate set for your practice' : eff.source === 'region' ? 'Rate set for your region' : 'Default rate';
-                            const sourceColor = eff.source === 'practice' ? 'var(--primary)' : eff.source === 'region' ? 'var(--info)' : 'var(--text-tertiary)';
+                            const sourceColor = eff.source === 'practice' ? 'var(--primary)' : eff.source === 'region' ? 'var(--info)' : 'var(--gray-400)';
                             return `
                                 <div class="content-card">
                                     <div class="content-card-header">

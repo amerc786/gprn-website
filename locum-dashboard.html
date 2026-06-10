@@ -44,11 +44,11 @@
         </div>
     </div>
     <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-    <script src="mock-data.js"></script>
-    <script src="app.js?v=20260407c"></script>
-<script src="supabase-client.js?v=20260407c"></script>
-    <script src="supabase-tables.js?v=20260407c"></script>
-    <script src="components.js?v=20260407c"></script>
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -73,7 +73,7 @@
             .filter(o => o.status === 'completed' && new Date(o.sessionDate || o.shiftDate).getMonth() === currentMonth && new Date(o.sessionDate || o.shiftDate).getFullYear() === currentYear)
             .reduce((sum, o) => sum + (o.agreedRate || o.proposedRate || 0), 0);
 
-        const reliability = user ? user.bookingReliability : 98;
+        const reliability = (user && typeof user.bookingReliability === 'number') ? user.bookingReliability : 100;
 
         // Greeting
         const greeting = `${getGreeting()}, ${session.firstName}`;
@@ -463,7 +463,7 @@
                     + '<div class="shift-card-header">'
                     + '<div>'
                     + '<h3 class="shift-card-title"><a href="practice-profile-view.html?id=' + offer.practiceId + '" style="color:var(--dark);text-decoration:none;font-weight:700;" onmouseover="this.style.color=\'var(--primary)\';this.style.textDecoration=\'underline\'" onmouseout="this.style.color=\'var(--dark)\';this.style.textDecoration=\'none\'">' + offer.practiceName + '</a></h3>'
-                    + '<p class="shift-card-location">' + offer.healthBoard + '</p>'
+                    + '<p class="shift-card-location">' + (offer.healthBoard || '') + '</p>'
                     + '</div>'
                     + '<div class="shift-card-badges">'
                     + '<span class="badge badge-success">' + (offer.status === 'confirmed' ? 'Confirmed' : 'Accepted') + '</span>'

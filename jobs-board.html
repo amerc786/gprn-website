@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <script src="mock-data.js"></script>
-    <script src="app.js?v=20260407c"></script>
-<script src="supabase-client.js?v=20260407c"></script>
-    <script src="supabase-tables.js?v=20260407c"></script>
-    <script src="components.js?v=20260407c"></script>
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
     <script>
         if (!initPage()) throw new Error('Auth required');
 
@@ -203,12 +203,12 @@
                             read: false
                         });
 
+                        saveMockData(freshData);
+
                         // Log email to practice contact
-                        EmailManager.send(freshData, job.practiceId || session.id, 'Job Interest: ' + job.title,
+                        EmailManager.send(job.practiceId || session.id, 'Job Interest: ' + job.title,
                             session.name + ' has expressed interest in the "' + job.title + '" position at ' + job.practiceName + '. Cover message: ' + coverMsg,
                             'job_interest');
-
-                        saveMockData(freshData);
                         Modal.close(overlay);
                         Toast.show('Your interest has been sent to ' + job.practiceName + '!', 'success');
 
