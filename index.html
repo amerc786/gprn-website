@@ -309,6 +309,88 @@
             .neon-node { animation: none; opacity: 0.4; }
         }
 
+        /* ===== Self-drawing underline under "Wales." ===== */
+        .hero-wales { position: relative; display: inline-block; }
+        .hero-wales svg {
+            position: absolute; left: 0; bottom: -0.12em; width: 100%; height: 0.28em;
+            overflow: visible; pointer-events: none;
+        }
+        .hero-wales svg path {
+            fill: none; stroke: #10B981; stroke-width: 7; stroke-linecap: round;
+            stroke-dasharray: 320; stroke-dashoffset: 320; opacity: 0.85;
+            filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.5));
+            animation: drawUnderline 1.1s cubic-bezier(0.65, 0, 0.35, 1) 0.9s forwards;
+        }
+        @keyframes drawUnderline { to { stroke-dashoffset: 0; } }
+
+        /* ===== Neon back-to-top button ===== */
+        #backToTop {
+            position: fixed; right: 22px; bottom: 22px; z-index: 58;
+            width: 52px; height: 52px; border-radius: 50%;
+            background: #0F172A; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            color: #34D399; font-size: 1.3rem;
+            opacity: 0; transform: translateY(16px) scale(0.9); pointer-events: none;
+            transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.25);
+        }
+        #backToTop.visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+        #backToTop:hover { box-shadow: 0 4px 24px rgba(16, 185, 129, 0.45); }
+        #backToTop svg { position: absolute; inset: -3px; width: 58px; height: 58px; transform: rotate(-90deg); }
+        #backToTop svg circle {
+            fill: none; stroke-width: 2.5;
+        }
+        #backToTop svg .ring-track { stroke: rgba(16, 185, 129, 0.15); }
+        #backToTop svg .ring-fill {
+            stroke: #10B981; stroke-linecap: round;
+            stroke-dasharray: 163; stroke-dashoffset: 163;
+            filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.8));
+            transition: stroke-dashoffset 0.15s linear;
+        }
+
+        /* ===== Bento card cursor spotlight ===== */
+        .bento-hover { position: relative; }
+        @media (hover: hover) and (pointer: fine) {
+            .bento-hover::after {
+                content: ''; position: absolute; inset: 0; border-radius: inherit;
+                background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(16, 185, 129, 0.08), transparent 65%);
+                opacity: 0; transition: opacity 0.35s ease; pointer-events: none; z-index: 1;
+            }
+            .bento-hover:hover::after { opacity: 1; }
+        }
+
+        /* ===== Dark CTA cursor spotlight ===== */
+        .cta-spotlight {
+            position: absolute; inset: 0; z-index: 2; pointer-events: none;
+            background: radial-gradient(560px circle at var(--mx, 50%) var(--my, 40%), rgba(16, 185, 129, 0.12), transparent 70%);
+            opacity: 0; transition: opacity 0.4s ease;
+        }
+        #surgeries:hover .cta-spotlight { opacity: 1; }
+
+        /* ===== Nav elevation when scrolled ===== */
+        nav.nav-scrolled {
+            box-shadow: 0 10px 36px -12px rgba(15, 23, 42, 0.18) !important;
+            background: rgba(248, 250, 252, 0.92) !important;
+        }
+
+        /* ===== Marquee: pause + light up on hover ===== */
+        .border-y:hover .animate-marquee { animation-play-state: paused; }
+        .animate-marquee span { transition: color 0.25s ease; cursor: default; }
+        .animate-marquee span:hover { color: #10B981; }
+
+        /* ===== Logo dot heartbeat ===== */
+        @keyframes logoDotPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(15, 139, 90, 0.5); }
+            50% { box-shadow: 0 0 8px 2px rgba(15, 139, 90, 0.45); }
+        }
+        nav .logo-dot { animation: logoDotPulse 3.2s ease-in-out infinite; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .hero-wales svg path { animation: none; stroke-dashoffset: 0; }
+            nav .logo-dot { animation: none; }
+            .bento-hover::after, .cta-spotlight { display: none; }
+        }
+
         /* ===== Scroll-reveal ===== */
         .reveal-on-scroll {
             opacity: 0; transform: translateY(28px);
@@ -345,7 +427,7 @@
             </div>
             <div class="flex items-baseline pt-1">
                 <span class="text-[#101524] font-black text-[26px] md:text-[32px] leading-[0.8] tracking-[-0.05em]">PRN</span>
-                <div class="w-[7px] h-[7px] md:w-[9px] md:h-[9px] bg-[#0F8B5A] ml-[3px] md:ml-[4px] mb-[2px] md:mb-[3px]"></div>
+                <div class="logo-dot w-[7px] h-[7px] md:w-[9px] md:h-[9px] bg-[#0F8B5A] ml-[3px] md:ml-[4px] mb-[2px] md:mb-[3px]"></div>
             </div>
         </a>
 
@@ -498,7 +580,7 @@
                 </div>
 
                 <h1 class="font-display text-[2.25rem] md:text-5xl lg:text-7xl font-semibold leading-[1.08] tracking-tight text-slate-950">
-                    Smarter locum matching across <span class="text-gradient">Wales.</span>
+                    Smarter locum matching across <span class="text-gradient hero-wales">Wales.<svg viewBox="0 0 300 24" preserveAspectRatio="none" aria-hidden="true"><path d="M6,16 C60,6 150,20 294,9"/></svg></span>
                 </h1>
 
                 <p class="text-base md:text-lg lg:text-xl text-slate-600 font-medium leading-relaxed max-w-lg">
@@ -1055,6 +1137,9 @@
             </svg>
         </div>
 
+        <!-- Cursor-following emerald spotlight -->
+        <div class="cta-spotlight" aria-hidden="true"></div>
+
         <div class="max-w-4xl mx-auto px-6 relative z-10 text-center">
             <div class="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm">
                 <i class="ph ph-stethoscope text-3xl text-emerald-400"></i>
@@ -1130,6 +1215,15 @@
         </div>
     </footer>
 
+    <!-- Neon back-to-top -->
+    <button id="backToTop" aria-label="Back to top">
+        <svg viewBox="0 0 58 58" aria-hidden="true">
+            <circle class="ring-track" cx="29" cy="29" r="26"/>
+            <circle class="ring-fill" cx="29" cy="29" r="26"/>
+        </svg>
+        <i class="ph-bold ph-arrow-up"></i>
+    </button>
+
     <!-- Scroll experience: neon tracker, scroll-spy, reveals, counter -->
     <script>
         (function() {
@@ -1147,6 +1241,36 @@
                 { id: '#platform', el: document.getElementById('platform') },
                 { id: '#surgeries', el: document.getElementById('surgeries') }
             ];
+
+            // ---- Back-to-top, nav, spotlight elements ----
+            var topBtn = document.getElementById('backToTop');
+            var topRing = topBtn ? topBtn.querySelector('.ring-fill') : null;
+            var navEl = document.querySelector('nav.glass-nav');
+            if (topBtn) {
+                topBtn.addEventListener('click', function() {
+                    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+                });
+            }
+
+            // Cursor spotlights (desktop pointers only)
+            if (window.matchMedia('(hover: hover) and (pointer: fine)').matches && !reduceMotion) {
+                document.querySelectorAll('.bento-hover').forEach(function(card) {
+                    card.addEventListener('mousemove', function(e) {
+                        var r = card.getBoundingClientRect();
+                        card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+                        card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+                    });
+                });
+                var ctaSection = document.getElementById('surgeries');
+                var ctaSpot = document.querySelector('.cta-spotlight');
+                if (ctaSection && ctaSpot) {
+                    ctaSection.addEventListener('mousemove', function(e) {
+                        var r = ctaSection.getBoundingClientRect();
+                        ctaSpot.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+                        ctaSpot.style.setProperty('--my', (e.clientY - r.top) + 'px');
+                    });
+                }
+            }
 
             // ---- Reveal + counter state (driven from the scroll handler below) ----
             var pendingReveals = [];
@@ -1189,6 +1313,15 @@
                 var p = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
                 if (bar) bar.style.width = (p * 100) + '%';
                 if (glow) glow.style.top = (p * 100) + '%';
+
+                // Back-to-top: show after 600px, ring fills with progress
+                if (topBtn) {
+                    topBtn.classList.toggle('visible', window.scrollY > 600);
+                    if (topRing) topRing.style.strokeDashoffset = (163 - 163 * p);
+                }
+
+                // Nav elevation
+                if (navEl) navEl.classList.toggle('nav-scrolled', window.scrollY > 50);
 
                 // Scroll-spy: which section are we in?
                 var mid = window.scrollY + window.innerHeight * 0.4;
