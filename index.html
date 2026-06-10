@@ -391,6 +391,51 @@
             .bento-hover::after, .cta-spotlight { display: none; }
         }
 
+        /* ===== Live workspace demo (animated mock navigation) ===== */
+        .mock-cursor {
+            position: absolute; z-index: 40; width: 22px; height: 22px;
+            left: 60%; top: 30%; opacity: 0; pointer-events: none;
+            transition: left 1.1s cubic-bezier(0.45, 0, 0.25, 1), top 1.1s cubic-bezier(0.45, 0, 0.25, 1), opacity 0.5s ease;
+            filter: drop-shadow(0 2px 5px rgba(15, 23, 42, 0.35));
+        }
+        .mock-cursor.show { opacity: 1; }
+        .mock-cursor svg { width: 100%; height: 100%; }
+        .mock-ripple {
+            position: absolute; z-index: 39; width: 14px; height: 14px;
+            border-radius: 50%; border: 2px solid #10B981; pointer-events: none;
+            transform: translate(-50%, -50%) scale(0.4); opacity: 0;
+        }
+        .mock-ripple.go { animation: mockRipple 0.7s ease-out forwards; }
+        @keyframes mockRipple {
+            0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0.9; }
+            100% { transform: translate(-50%, -50%) scale(3.2); opacity: 0; }
+        }
+        .mock-toast {
+            position: absolute; top: 76px; right: 16px; z-index: 41;
+            background: #0F172A; color: #F8FAFC; border-radius: 12px;
+            padding: 10px 14px; font-size: 11px; font-weight: 600;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 8px 30px rgba(15, 23, 42, 0.3), 0 0 14px rgba(16, 185, 129, 0.25);
+            opacity: 0; transform: translateY(-8px); pointer-events: none;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            max-width: 240px;
+        }
+        .mock-toast.show { opacity: 1; transform: translateY(0); }
+        .mock-toast i { color: #34D399; font-size: 14px; flex-shrink: 0; }
+        .mock-activity-enter { animation: mockActivityIn 0.55s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes mockActivityIn {
+            from { opacity: 0; transform: translateY(-10px); max-height: 0; }
+            to { opacity: 1; transform: translateY(0); max-height: 80px; }
+        }
+        .mock-stat-pop { animation: mockStatPop 0.5s ease; }
+        @keyframes mockStatPop {
+            0%, 100% { transform: scale(1); }
+            40% { transform: scale(1.18); color: #059669; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .mock-cursor, .mock-ripple, .mock-toast { display: none !important; }
+        }
+
         /* ===== Scroll-reveal ===== */
         .reveal-on-scroll {
             opacity: 0; transform: translateY(28px);
@@ -841,7 +886,7 @@
             </div>
 
             <!-- The Mock UI Shell (Practice Manager View) -->
-            <div class="w-full max-w-[1200px] mx-auto bg-white rounded-2xl md:rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden flex flex-col md:flex-row h-auto md:h-[700px] relative group pointer-events-auto">
+            <div id="mockShell" class="w-full max-w-[1200px] mx-auto bg-white rounded-2xl md:rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden flex flex-col md:flex-row h-auto md:h-[700px] relative group pointer-events-auto">
 
                 <!-- Overlay glow effect -->
                 <div class="absolute -inset-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-slate-200/10 rounded-[2.2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none z-[-1]"></div>
@@ -947,14 +992,14 @@
                                 <div class="w-8 h-8 rounded-full bg-[#101524] flex items-center justify-center text-white">
                                     <i class="ph-fill ph-envelope text-sm"></i>
                                 </div>
-                                <div class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">5</div>
+                                <div id="mockStatOffers" class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">5</div>
                                 <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Pending Offers</div>
                             </div>
                             <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col gap-2">
                                 <div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-[#0F8B5A] border border-emerald-100">
                                     <i class="ph ph-trend-up text-sm"></i>
                                 </div>
-                                <div class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">92%</div>
+                                <div id="mockStatFill" class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">92%</div>
                                 <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Fill Rate (30d)</div>
                             </div>
                             <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col gap-2">
@@ -999,7 +1044,7 @@
                                             <div class="font-extrabold text-[#101524] text-sm">07</div>
                                         </div>
                                         <div class="flex-1 flex gap-1.5">
-                                            <div class="h-6 px-2.5 bg-rose-50 border border-dashed border-rose-300 rounded-md flex items-center gap-1.5">
+                                            <div id="mockTueChip" class="h-6 px-2.5 bg-rose-50 border border-dashed border-rose-300 rounded-md flex items-center gap-1.5" style="transition: all 0.45s ease;">
                                                 <i class="ph-fill ph-warning-circle text-rose-500 text-[10px]"></i>
                                                 <span class="text-[10px] font-bold text-rose-700">1 Unfilled</span>
                                             </div>
@@ -1055,9 +1100,9 @@
                             <div class="col-span-1 md:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col">
                                 <div class="px-5 py-4 flex justify-between items-center border-b border-slate-100">
                                     <h3 class="text-[13px] font-bold text-[#101524]">Activity Box</h3>
-                                    <span class="text-[9px] font-bold bg-rose-500 text-white px-1.5 py-0.5 rounded-full">3 new</span>
+                                    <span id="mockActivityBadge" class="text-[9px] font-bold bg-rose-500 text-white px-1.5 py-0.5 rounded-full">3 new</span>
                                 </div>
-                                <div class="flex flex-col divide-y divide-slate-100">
+                                <div id="mockActivityList" class="flex flex-col divide-y divide-slate-100">
                                     <div class="px-4 py-3 flex items-start gap-2.5">
                                         <div class="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center text-[#0F8B5A] shrink-0">
                                             <i class="ph-fill ph-check-circle text-xs"></i>
@@ -1272,6 +1317,115 @@
                 }
             }
 
+            // ---- Live workspace demo loop ----
+            var mockStarted = false;
+            function startMockDemo() {
+                if (mockStarted || reduceMotion) return;
+                var shell = document.getElementById('mockShell');
+                var chip = document.getElementById('mockTueChip');
+                var statOffers = document.getElementById('mockStatOffers');
+                var statFill = document.getElementById('mockStatFill');
+                var actList = document.getElementById('mockActivityList');
+                var actBadge = document.getElementById('mockActivityBadge');
+                if (!shell || !chip || !statOffers || !statFill || !actList) return;
+                mockStarted = true;
+
+                // Build cursor, ripple, toast inside the shell
+                var cursor = document.createElement('div');
+                cursor.className = 'mock-cursor';
+                cursor.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 3.2L19 11.5l-6.3 1.4-3.2 5.7z" fill="#0F172A" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+                var ripple = document.createElement('div');
+                ripple.className = 'mock-ripple';
+                var toast = document.createElement('div');
+                toast.className = 'mock-toast';
+                shell.appendChild(cursor); shell.appendChild(ripple); shell.appendChild(toast);
+
+                var chipOriginal = chip.innerHTML;
+                var chipOriginalClass = chip.className;
+
+                function posOf(el, ax, ay) {
+                    var s = shell.getBoundingClientRect(), r = el.getBoundingClientRect();
+                    return { x: r.left - s.left + r.width * (ax === undefined ? 0.5 : ax), y: r.top - s.top + r.height * (ay === undefined ? 0.5 : ay) };
+                }
+                function moveTo(p) { cursor.style.left = p.x + 'px'; cursor.style.top = p.y + 'px'; }
+                function clickAt(p) {
+                    ripple.style.left = p.x + 'px'; ripple.style.top = p.y + 'px';
+                    ripple.classList.remove('go'); void ripple.offsetWidth; ripple.classList.add('go');
+                }
+                function showToast(icon, text) {
+                    toast.innerHTML = '<i class="ph-fill ph-' + icon + '"></i><span>' + text + '</span>';
+                    toast.classList.add('show');
+                }
+                function hideToast() { toast.classList.remove('show'); }
+                function pop(el) { el.classList.remove('mock-stat-pop'); void el.offsetWidth; el.classList.add('mock-stat-pop'); }
+
+                var newActivity = null, trimmedActivity = null;
+                function runDemo() {
+                    var t = function(ms, fn) { setTimeout(fn, ms); };
+
+                    // 0s: cursor appears mid-screen
+                    moveTo(posOf(statFill, 0.5, 1.4));
+                    cursor.classList.add('show');
+
+                    // 0.6s: glide to the unfilled Tuesday chip
+                    t(600, function() { moveTo(posOf(chip, 0.7, 0.6)); });
+
+                    // 1.9s: click it — invitation goes out
+                    t(1900, function() {
+                        clickAt(posOf(chip, 0.7, 0.6));
+                        chip.className = 'h-6 px-2.5 bg-amber-50 border border-amber-300 rounded-md flex items-center gap-1.5';
+                        chip.style.transition = 'all 0.45s ease';
+                        chip.innerHTML = '<i class="ph-fill ph-paper-plane-tilt text-amber-600 text-[10px]"></i><span class="text-[10px] font-bold text-amber-700">Invited · Dr S. Khan</span>';
+                        showToast('paper-plane-tilt', 'Invitation sent to Dr S. Khan');
+                    });
+
+                    // 3.8s: toast away
+                    t(3800, function() { hideToast(); });
+
+                    // 4.4s: Dr Khan accepts — new activity slides in
+                    t(4400, function() {
+                        newActivity = document.createElement('div');
+                        newActivity.className = 'px-4 py-3 flex items-start gap-2.5 mock-activity-enter';
+                        newActivity.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center text-[#0F8B5A] shrink-0"><i class="ph-fill ph-check-circle text-xs"></i></div><div class="flex-1 min-w-0"><p class="text-[11px] font-bold text-[#101524] leading-tight">Offer accepted</p><p class="text-[10px] text-slate-500 mt-0.5 truncate">Dr S. Khan · Tue 07 Apr</p></div>';
+                        actList.insertBefore(newActivity, actList.firstChild);
+                        if (actBadge) { actBadge.textContent = '4 new'; pop(actBadge); }
+                        if (actList.children.length > 4) {
+                            trimmedActivity = actList.lastElementChild;
+                            actList.removeChild(trimmedActivity);
+                        }
+                    });
+
+                    // 5.2s: Tuesday fills, stats tick over
+                    t(5200, function() {
+                        chip.className = 'h-6 px-2.5 bg-emerald-50 border border-emerald-200 rounded-md flex items-center gap-1.5';
+                        chip.style.transition = 'all 0.45s ease';
+                        chip.innerHTML = '<div class="w-1 h-1 rounded-full bg-[#0F8B5A]"></div><span class="text-[10px] font-bold text-emerald-800">Dr S. Khan</span>';
+                        statOffers.textContent = '4'; pop(statOffers);
+                        statFill.textContent = '96%'; pop(statFill);
+                        moveTo(posOf(statFill, 0.5, 0.5));
+                    });
+
+                    // 6.4s: success toast
+                    t(6400, function() { showToast('check-circle', 'Tuesday filled — schedule complete ✓'); });
+
+                    // 8.6s: wrap up
+                    t(8600, function() { hideToast(); cursor.classList.remove('show'); });
+
+                    // 10.6s: quiet reset, then loop
+                    t(10600, function() {
+                        chip.className = chipOriginalClass;
+                        chip.innerHTML = chipOriginal;
+                        statOffers.textContent = '5';
+                        statFill.textContent = '92%';
+                        if (actBadge) actBadge.textContent = '3 new';
+                        if (newActivity && newActivity.parentNode) newActivity.parentNode.removeChild(newActivity);
+                        if (trimmedActivity) { actList.appendChild(trimmedActivity); trimmedActivity = null; }
+                    });
+                    t(11800, runDemo);
+                }
+                runDemo();
+            }
+
             // ---- Reveal + counter state (driven from the scroll handler below) ----
             var pendingReveals = [];
             var counterEl = null, counterTarget = 0, counterDone = false;
@@ -1301,6 +1455,12 @@
                     });
                 }
                 if (counterEl && !counterDone && counterEl.getBoundingClientRect().top < vh - 20) runCounter();
+
+                // Start the live workspace demo when it scrolls into view
+                if (!mockStarted) {
+                    var shellEl = document.getElementById('mockShell');
+                    if (shellEl && shellEl.getBoundingClientRect().top < vh - 80) startMockDemo();
+                }
             }
 
             var lastRun = 0;
