@@ -985,7 +985,7 @@
                                 <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
                                     <i class="ph ph-calendar text-sm"></i>
                                 </div>
-                                <div class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">3</div>
+                                <div id="mockStatOpen" class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">3</div>
                                 <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Open Sessions</div>
                             </div>
                             <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col gap-2">
@@ -1006,7 +1006,7 @@
                                 <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
                                     <i class="ph ph-currency-gbp text-sm"></i>
                                 </div>
-                                <div class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">£6,840</div>
+                                <div id="mockStatSpend" class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">£6,840</div>
                                 <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Spend (This Mo)</div>
                             </div>
                         </div>
@@ -1074,7 +1074,7 @@
                                                 <div class="w-1 h-1 rounded-full bg-[#0F8B5A]"></div>
                                                 <span class="text-[10px] font-bold text-emerald-800">Dr E. Morgan</span>
                                             </div>
-                                            <div class="h-6 px-2.5 bg-slate-50 border border-dashed border-slate-300 rounded-md flex items-center gap-1.5">
+                                            <div id="mockThuChip" class="h-6 px-2.5 bg-slate-50 border border-dashed border-slate-300 rounded-md flex items-center gap-1.5" style="transition: all 0.45s ease;">
                                                 <i class="ph ph-plus text-slate-400 text-[10px]"></i>
                                                 <span class="text-[10px] font-bold text-slate-500">Add Session</span>
                                             </div>
@@ -1323,8 +1323,11 @@
                 if (mockStarted || reduceMotion) return;
                 var shell = document.getElementById('mockShell');
                 var chip = document.getElementById('mockTueChip');
+                var thuChip = document.getElementById('mockThuChip');
                 var statOffers = document.getElementById('mockStatOffers');
                 var statFill = document.getElementById('mockStatFill');
+                var statOpen = document.getElementById('mockStatOpen');
+                var statSpend = document.getElementById('mockStatSpend');
                 var actList = document.getElementById('mockActivityList');
                 var actBadge = document.getElementById('mockActivityBadge');
                 if (!shell || !chip || !statOffers || !statFill || !actList) return;
@@ -1342,6 +1345,8 @@
 
                 var chipOriginal = chip.innerHTML;
                 var chipOriginalClass = chip.className;
+                var thuOriginal = thuChip ? thuChip.innerHTML : '';
+                var thuOriginalClass = thuChip ? thuChip.className : '';
 
                 function posOf(el, ax, ay) {
                     var s = shell.getBoundingClientRect(), r = el.getBoundingClientRect();
@@ -1359,10 +1364,23 @@
                 function hideToast() { toast.classList.remove('show'); }
                 function pop(el) { el.classList.remove('mock-stat-pop'); void el.offsetWidth; el.classList.add('mock-stat-pop'); }
 
-                var newActivity = null, trimmedActivity = null;
+                var addedActivities = [], trimmedActivities = [];
+                function addActivity(iconBg, iconColor, icon, title, detail) {
+                    var item = document.createElement('div');
+                    item.className = 'px-4 py-3 flex items-start gap-2.5 mock-activity-enter';
+                    item.innerHTML = '<div class="w-7 h-7 rounded-full ' + iconBg + ' flex items-center justify-center ' + iconColor + ' shrink-0"><i class="ph-fill ph-' + icon + ' text-xs"></i></div><div class="flex-1 min-w-0"><p class="text-[11px] font-bold text-[#101524] leading-tight">' + title + '</p><p class="text-[10px] text-slate-500 mt-0.5 truncate">' + detail + '</p></div>';
+                    actList.insertBefore(item, actList.firstChild);
+                    addedActivities.push(item);
+                    if (actList.children.length > 4) {
+                        trimmedActivities.push(actList.lastElementChild);
+                        actList.removeChild(actList.lastElementChild);
+                    }
+                }
+
                 function runDemo() {
                     var t = function(ms, fn) { setTimeout(fn, ms); };
 
+                    // ===== Chapter 1: fill the unfilled Tuesday slot =====
                     // 0s: cursor appears mid-screen
                     moveTo(posOf(statFill, 0.5, 1.4));
                     cursor.classList.add('show');
@@ -1379,24 +1397,17 @@
                         showToast('paper-plane-tilt', 'Invitation sent to Dr S. Khan');
                     });
 
-                    // 3.8s: toast away
-                    t(3800, function() { hideToast(); });
+                    // 3.6s: toast away
+                    t(3600, function() { hideToast(); });
 
-                    // 4.4s: Dr Khan accepts — new activity slides in
-                    t(4400, function() {
-                        newActivity = document.createElement('div');
-                        newActivity.className = 'px-4 py-3 flex items-start gap-2.5 mock-activity-enter';
-                        newActivity.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center text-[#0F8B5A] shrink-0"><i class="ph-fill ph-check-circle text-xs"></i></div><div class="flex-1 min-w-0"><p class="text-[11px] font-bold text-[#101524] leading-tight">Offer accepted</p><p class="text-[10px] text-slate-500 mt-0.5 truncate">Dr S. Khan · Tue 07 Apr</p></div>';
-                        actList.insertBefore(newActivity, actList.firstChild);
+                    // 4.2s: Dr Khan accepts — new activity slides in
+                    t(4200, function() {
+                        addActivity('bg-emerald-50', 'text-[#0F8B5A]', 'check-circle', 'Offer accepted', 'Dr S. Khan · Tue 07 Apr');
                         if (actBadge) { actBadge.textContent = '4 new'; pop(actBadge); }
-                        if (actList.children.length > 4) {
-                            trimmedActivity = actList.lastElementChild;
-                            actList.removeChild(trimmedActivity);
-                        }
                     });
 
-                    // 5.2s: Tuesday fills, stats tick over
-                    t(5200, function() {
+                    // 5.0s: Tuesday fills, stats tick over
+                    t(5000, function() {
                         chip.className = 'h-6 px-2.5 bg-emerald-50 border border-emerald-200 rounded-md flex items-center gap-1.5';
                         chip.style.transition = 'all 0.45s ease';
                         chip.innerHTML = '<div class="w-1 h-1 rounded-full bg-[#0F8B5A]"></div><span class="text-[10px] font-bold text-emerald-800">Dr S. Khan</span>';
@@ -1405,23 +1416,62 @@
                         moveTo(posOf(statFill, 0.5, 0.5));
                     });
 
-                    // 6.4s: success toast
-                    t(6400, function() { showToast('check-circle', 'Tuesday filled — schedule complete ✓'); });
+                    // 6.0s: success toast
+                    t(6000, function() { showToast('check-circle', 'Tuesday filled — schedule complete ✓'); });
 
-                    // 8.6s: wrap up
-                    t(8600, function() { hideToast(); cursor.classList.remove('show'); });
+                    // ===== Chapter 2: post a new session for Thursday =====
+                    // 7.6s: toast away, glide down to Thursday's "Add Session"
+                    t(7600, function() {
+                        hideToast();
+                        if (thuChip) moveTo(posOf(thuChip, 0.6, 0.6));
+                    });
 
-                    // 10.6s: quiet reset, then loop
-                    t(10600, function() {
+                    // 8.9s: click — new session posted
+                    t(8900, function() {
+                        if (thuChip) {
+                            clickAt(posOf(thuChip, 0.6, 0.6));
+                            thuChip.className = 'h-6 px-2.5 bg-white border border-emerald-300 rounded-md flex items-center gap-1.5 shadow-sm';
+                            thuChip.style.transition = 'all 0.45s ease';
+                            thuChip.innerHTML = '<i class="ph-fill ph-clock text-[#0F8B5A] text-[10px]"></i><span class="text-[10px] font-bold text-emerald-800">AM Session · Open</span>';
+                        }
+                        if (statOpen) { statOpen.textContent = '4'; pop(statOpen); }
+                        showToast('calendar-plus', 'New session posted — Thu 09 Apr');
+                    });
+
+                    // 10.6s: toast away
+                    t(10600, function() { hideToast(); });
+
+                    // ===== Chapter 3: an invoice arrives, spend updates =====
+                    // 11.2s: invoice slides into the Activity Box
+                    t(11200, function() {
+                        addActivity('bg-slate-50', 'text-slate-600', 'receipt', 'Invoice received', 'Dr M. Jones · £360.00');
+                        if (actBadge) { actBadge.textContent = '5 new'; pop(actBadge); }
+                        if (statSpend) { statSpend.textContent = '£7,200'; pop(statSpend); }
+                        if (actList.firstChild) moveTo(posOf(actList.firstChild, 0.5, 0.5));
+                    });
+
+                    // 12.6s: closing toast
+                    t(12600, function() { showToast('check-circle', 'All caught up — week fully covered ✓'); });
+
+                    // 14.6s: wrap up
+                    t(14600, function() { hideToast(); cursor.classList.remove('show'); });
+
+                    // 16.4s: quiet reset, then loop
+                    t(16400, function() {
                         chip.className = chipOriginalClass;
                         chip.innerHTML = chipOriginal;
+                        if (thuChip) { thuChip.className = thuOriginalClass; thuChip.innerHTML = thuOriginal; }
                         statOffers.textContent = '5';
                         statFill.textContent = '92%';
+                        if (statOpen) statOpen.textContent = '3';
+                        if (statSpend) statSpend.textContent = '£6,840';
                         if (actBadge) actBadge.textContent = '3 new';
-                        if (newActivity && newActivity.parentNode) newActivity.parentNode.removeChild(newActivity);
-                        if (trimmedActivity) { actList.appendChild(trimmedActivity); trimmedActivity = null; }
+                        addedActivities.forEach(function(a) { if (a.parentNode) a.parentNode.removeChild(a); });
+                        addedActivities = [];
+                        trimmedActivities.reverse().forEach(function(a) { actList.appendChild(a); });
+                        trimmedActivities = [];
                     });
-                    t(11800, runDemo);
+                    t(17600, runDemo);
                 }
                 runDemo();
             }
