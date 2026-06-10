@@ -222,9 +222,86 @@
             cursor: pointer;
         }
         body.mobile-menu-open { overflow: hidden; }
+
+        /* ===== Neon scroll progress bar (top edge) ===== */
+        #scrollProgress {
+            position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+            z-index: 60; pointer-events: none;
+            background: linear-gradient(90deg, #047857, #10B981 60%, #34D399);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.85), 0 0 24px rgba(16, 185, 129, 0.45);
+            border-radius: 0 3px 3px 0;
+        }
+
+        /* ===== Neon scroll rail (left edge, desktop) ===== */
+        #scrollRail {
+            position: fixed; left: 22px; top: 50%; transform: translateY(-50%);
+            z-index: 55; display: none;
+        }
+        @media (min-width: 1100px) { #scrollRail { display: block; } }
+        #scrollRail .rail-track {
+            position: relative; width: 2px; height: 240px;
+            background: rgba(15, 23, 42, 0.08); border-radius: 2px;
+        }
+        #scrollRail .rail-glow {
+            position: absolute; left: 50%; top: 0%;
+            transform: translate(-50%, -50%);
+            width: 4px; height: 48px; border-radius: 4px;
+            background: linear-gradient(180deg, rgba(16,185,129,0), #10B981 35%, #6EE7B7 50%, #10B981 65%, rgba(16,185,129,0));
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.9), 0 0 30px rgba(16, 185, 129, 0.45);
+            transition: top 0.18s ease-out;
+        }
+        #scrollProgress { transition: width 0.12s linear; }
+        #scrollRail .rail-dot {
+            position: absolute; left: 50%; transform: translate(-50%, -50%);
+            width: 9px; height: 9px; border-radius: 50%;
+            background: #CBD5E1; border: 2px solid #F8FAFC;
+            cursor: pointer; transition: all 0.3s ease;
+        }
+        #scrollRail .rail-dot:hover { background: #10B981; transform: translate(-50%, -50%) scale(1.3); }
+        #scrollRail .rail-dot.active {
+            background: #10B981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.9), 0 0 18px rgba(16, 185, 129, 0.5);
+            transform: translate(-50%, -50%) scale(1.25);
+        }
+        #scrollRail .rail-label {
+            position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
+            background: #0F172A; color: #F8FAFC;
+            font-size: 0.7rem; font-weight: 600; letter-spacing: 0.03em;
+            padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        #scrollRail .rail-dot:hover .rail-label { opacity: 1; transform: translateY(-50%) translateX(4px); }
+
+        /* ===== Scroll-spy nav highlight ===== */
+        nav .nav-spy-active { color: #047857 !important; }
+
+        /* ===== Scroll-reveal ===== */
+        .reveal-on-scroll {
+            opacity: 0; transform: translateY(28px);
+            transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1), transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal-on-scroll.revealed { opacity: 1; transform: translateY(0); }
+        @media (prefers-reduced-motion: reduce) {
+            .reveal-on-scroll { opacity: 1 !important; transform: none !important; transition: none !important; }
+            #scrollRail .rail-glow { transition: none !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-900 antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- Neon scroll progress (top edge) -->
+    <div id="scrollProgress" aria-hidden="true"></div>
+
+    <!-- Neon scroll rail (left edge, desktop) -->
+    <div id="scrollRail" aria-hidden="true">
+        <div class="rail-track">
+            <div class="rail-glow"></div>
+            <div class="rail-dot" data-target="top" style="top: 0%;"><span class="rail-label">Home</span></div>
+            <div class="rail-dot" data-target="#how-it-works" style="top: 33%;"><span class="rail-label">For GPs</span></div>
+            <div class="rail-dot" data-target="#platform" style="top: 66%;"><span class="rail-label">Platform</span></div>
+            <div class="rail-dot" data-target="#surgeries" style="top: 100%;"><span class="rail-label">For Surgeries</span></div>
+        </div>
+    </div>
 
     <!-- NAVIGATION (Floating Macro-Architecture) -->
     <nav class="fixed top-3 md:top-6 left-1/2 -translate-x-1/2 w-[94%] max-w-7xl rounded-full glass-nav z-50 px-4 md:px-6 py-3 md:py-4 flex justify-between items-center transition-all duration-300 shadow-sm border border-slate-200/50">
@@ -993,6 +1070,129 @@
             </div>
         </div>
     </footer>
+
+    <!-- Scroll experience: neon tracker, scroll-spy, reveals, counter -->
+    <script>
+        (function() {
+            var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            // ---- Neon progress bar + rail glow ----
+            var bar = document.getElementById('scrollProgress');
+            var glow = document.querySelector('#scrollRail .rail-glow');
+            var dots = Array.prototype.slice.call(document.querySelectorAll('#scrollRail .rail-dot'));
+            var navLinks = Array.prototype.slice.call(document.querySelectorAll('nav a[href^="#"]'));
+
+            var sections = [
+                { id: 'top', el: document.body },
+                { id: '#how-it-works', el: document.getElementById('how-it-works') },
+                { id: '#platform', el: document.getElementById('platform') },
+                { id: '#surgeries', el: document.getElementById('surgeries') }
+            ];
+
+            // ---- Reveal + counter state (driven from the scroll handler below) ----
+            var pendingReveals = [];
+            var counterEl = null, counterTarget = 0, counterDone = false;
+
+            function runCounter() {
+                if (counterDone || !counterEl) return;
+                counterDone = true;
+                if (reduceMotion) { counterEl.textContent = counterTarget.toLocaleString('en-GB'); return; }
+                var start = Date.now(), dur = 1400;
+                var timer = setInterval(function() {
+                    var t = Math.min((Date.now() - start) / dur, 1);
+                    var eased = 1 - Math.pow(1 - t, 3);
+                    counterEl.textContent = Math.round(counterTarget * eased).toLocaleString('en-GB');
+                    if (t >= 1) clearInterval(timer);
+                }, 16);
+            }
+
+            function checkVisibles() {
+                var vh = window.innerHeight;
+                if (pendingReveals.length) {
+                    pendingReveals = pendingReveals.filter(function(el) {
+                        if (el.getBoundingClientRect().top < vh - 40) {
+                            el.classList.add('revealed');
+                            return false;
+                        }
+                        return true;
+                    });
+                }
+                if (counterEl && !counterDone && counterEl.getBoundingClientRect().top < vh - 20) runCounter();
+            }
+
+            var lastRun = 0;
+            function onScroll() {
+                var now = Date.now();
+                if (now - lastRun < 40) return;
+                lastRun = now;
+
+                var max = document.documentElement.scrollHeight - window.innerHeight;
+                var p = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
+                if (bar) bar.style.width = (p * 100) + '%';
+                if (glow) glow.style.top = (p * 100) + '%';
+
+                // Scroll-spy: which section are we in?
+                var mid = window.scrollY + window.innerHeight * 0.4;
+                var active = 'top';
+                for (var i = 1; i < sections.length; i++) {
+                    if (sections[i].el && sections[i].el.offsetTop <= mid) active = sections[i].id;
+                }
+                dots.forEach(function(d) { d.classList.toggle('active', d.getAttribute('data-target') === active); });
+                navLinks.forEach(function(a) { a.classList.toggle('nav-spy-active', a.getAttribute('href') === active); });
+
+                checkVisibles();
+            }
+            window.addEventListener('scroll', onScroll, { passive: true });
+            window.addEventListener('resize', onScroll, { passive: true });
+            onScroll();
+
+            // Rail dots scroll to their section
+            dots.forEach(function(d) {
+                d.addEventListener('click', function() {
+                    var t = d.getAttribute('data-target');
+                    if (t === 'top') { window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }); return; }
+                    var el = document.querySelector(t);
+                    if (el) el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+                });
+            });
+
+            // ---- Scroll-reveal setup (elements below the initial viewport) ----
+            if (!reduceMotion) {
+                var candidates = [];
+                document.querySelectorAll('section').forEach(function(sec) {
+                    sec.querySelectorAll(':scope > div > h2, :scope > div > p').forEach(function(el) { candidates.push(el); });
+                    sec.querySelectorAll('.bento-hover').forEach(function(el) { candidates.push(el); });
+                });
+                document.querySelectorAll('#surgeries .max-w-4xl > *').forEach(function(el) { candidates.push(el); });
+
+                candidates.forEach(function(el, idx) {
+                    // Don't hide elements already in the initial viewport
+                    if (el.getBoundingClientRect().top < window.innerHeight) return;
+                    el.classList.add('reveal-on-scroll');
+                    el.style.transitionDelay = (idx % 4) * 70 + 'ms';
+                    pendingReveals.push(el);
+                });
+            }
+
+            // ---- Animated GP counter setup ----
+            document.querySelectorAll('main span.font-bold, main span.text-slate-900').forEach(function(el) {
+                if (/^[\d,]+$/.test(el.textContent.trim()) && !counterEl) counterEl = el;
+            });
+            if (counterEl) {
+                counterTarget = parseInt(counterEl.textContent.replace(/,/g, ''), 10) || 0;
+                if (counterTarget > 0 && !reduceMotion) {
+                    if (counterEl.getBoundingClientRect().top < window.innerHeight) {
+                        runCounter(); // already visible on load
+                    } else {
+                        counterEl.textContent = '0';
+                    }
+                } else {
+                    counterDone = true;
+                }
+            }
+            checkVisibles();
+        })();
+    </script>
 
 </body>
 </html>
