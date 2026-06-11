@@ -678,10 +678,11 @@
 
             <!-- Right: Immersive Composition & Visual Tension -->
             <div class="lg:col-span-7 relative h-[560px] w-full hidden lg:block opacity-0 animate-reveal delay-200">
-                <!-- Main Image Mask -->
-                <div class="absolute right-0 top-0 w-[85%] h-full rounded-[2.5rem] overflow-hidden shadow-2xl z-10 animate-float-soft">
-                    <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80" alt="Modern Medical Professional" class="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-1000">
-                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
+                <!-- Main Image Mask: hover spotlight reveals the doctor -->
+                <div id="heroReveal" class="absolute right-0 top-0 w-[85%] h-full rounded-[2.5rem] overflow-hidden shadow-2xl z-10 animate-float-soft">
+                    <img src="Images/hero-base.jpg" alt="Professional checking the GPRN app" class="w-full h-full object-cover">
+                    <div id="heroRevealLayer" class="absolute inset-0 pointer-events-none" style="background-image: url('Images/hero-reveal.jpg'); background-size: cover; background-position: center; background-repeat: no-repeat; -webkit-mask-image: radial-gradient(circle 260px at -999px -999px, black 0%, transparent 100%); mask-image: radial-gradient(circle 260px at -999px -999px, black 0%, transparent 100%);" aria-hidden="true"></div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent pointer-events-none"></div>
                 </div>
 
                 <!-- Floating UI Element 1: Shift Alert -->
@@ -1313,6 +1314,42 @@
                         var r = ctaSection.getBoundingClientRect();
                         ctaSpot.style.setProperty('--mx', (e.clientX - r.left) + 'px');
                         ctaSpot.style.setProperty('--my', (e.clientY - r.top) + 'px');
+                    });
+                }
+
+                // Hero image: cursor spotlight reveal (plain clothes -> doctor)
+                var revealBox = document.getElementById('heroReveal');
+                var revealLayer = document.getElementById('heroRevealLayer');
+                if (revealBox && revealLayer) {
+                    var SPOTLIGHT_R = 260;
+                    var mouse = { x: -999, y: -999 };
+                    var smooth = { x: -999, y: -999 };
+                    var revealTimer = null;
+
+                    function applyMask() {
+                        smooth.x += (mouse.x - smooth.x) * 0.1;
+                        smooth.y += (mouse.y - smooth.y) * 0.1;
+                        var g = 'radial-gradient(circle ' + SPOTLIGHT_R + 'px at ' + smooth.x.toFixed(1) + 'px ' + smooth.y.toFixed(1) + 'px, ' +
+                            'rgba(0,0,0,1) 0%, rgba(0,0,0,1) 40%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0.4) 75%, rgba(0,0,0,0.12) 88%, rgba(0,0,0,0) 100%)';
+                        revealLayer.style.webkitMaskImage = g;
+                        revealLayer.style.maskImage = g;
+                        // Stop the loop once the spotlight has fully glided off-screen
+                        if (mouse.x === -999 && Math.abs(smooth.x - mouse.x) < 1 && Math.abs(smooth.y - mouse.y) < 1) {
+                            clearInterval(revealTimer); revealTimer = null;
+                        }
+                    }
+                    function ensureLoop() {
+                        if (!revealTimer) revealTimer = setInterval(applyMask, 16);
+                    }
+                    revealBox.addEventListener('mousemove', function(e) {
+                        var r = revealBox.getBoundingClientRect();
+                        mouse.x = e.clientX - r.left;
+                        mouse.y = e.clientY - r.top;
+                        ensureLoop();
+                    });
+                    revealBox.addEventListener('mouseleave', function() {
+                        mouse.x = -999; mouse.y = -999;
+                        ensureLoop();
                     });
                 }
             }
