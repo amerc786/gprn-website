@@ -677,7 +677,7 @@
             </div>
 
             <!-- Right: Immersive Composition & Visual Tension -->
-            <div class="lg:col-span-7 relative h-[560px] w-full hidden lg:block opacity-0 animate-reveal delay-200">
+            <div class="lg:col-span-7 relative h-[340px] sm:h-[440px] lg:h-[560px] w-full block opacity-0 animate-reveal delay-200">
                 <!-- Main Image Mask: hover spotlight reveals the doctor -->
                 <div id="heroReveal" class="absolute right-0 top-0 w-[85%] h-full rounded-[2.5rem] overflow-hidden shadow-2xl z-10 animate-float-soft">
                     <img src="Images/hero-base.jpg" alt="Professional checking the GPRN app" class="w-full h-full object-cover">
@@ -701,7 +701,7 @@
                 </div>
 
                 <!-- Floating UI Element 2: Compliance -->
-                <div class="absolute right-[-2rem] bottom-[15%] glass-card p-4 rounded-2xl w-56 animate-float-delayed z-20 flex items-center gap-3">
+                <div class="absolute right-0 lg:right-[-2rem] bottom-[15%] glass-card p-4 rounded-2xl w-56 animate-float-delayed z-20 flex items-center gap-3">
                     <div class="relative w-10 h-10 flex items-center justify-center">
                         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                             <path class="text-slate-200" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -1317,41 +1317,55 @@
                     });
                 }
 
-                // Hero image: cursor spotlight reveal (plain clothes -> doctor)
-                var revealBox = document.getElementById('heroReveal');
-                var revealLayer = document.getElementById('heroRevealLayer');
-                if (revealBox && revealLayer) {
-                    var SPOTLIGHT_R = 260;
-                    var mouse = { x: -999, y: -999 };
-                    var smooth = { x: -999, y: -999 };
-                    var revealTimer = null;
+            }
 
-                    function applyMask() {
-                        smooth.x += (mouse.x - smooth.x) * 0.1;
-                        smooth.y += (mouse.y - smooth.y) * 0.1;
-                        var g = 'radial-gradient(circle ' + SPOTLIGHT_R + 'px at ' + smooth.x.toFixed(1) + 'px ' + smooth.y.toFixed(1) + 'px, ' +
-                            'rgba(0,0,0,1) 0%, rgba(0,0,0,1) 40%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0.4) 75%, rgba(0,0,0,0.12) 88%, rgba(0,0,0,0) 100%)';
-                        revealLayer.style.webkitMaskImage = g;
-                        revealLayer.style.maskImage = g;
-                        // Stop the loop once the spotlight has fully glided off-screen
-                        if (mouse.x === -999 && Math.abs(smooth.x - mouse.x) < 1 && Math.abs(smooth.y - mouse.y) < 1) {
-                            clearInterval(revealTimer); revealTimer = null;
-                        }
+            // Hero image: spotlight reveal (plain clothes -> doctor).
+            // Follows the mouse on desktop and the finger on touch devices.
+            var revealBox = document.getElementById('heroReveal');
+            var revealLayer = document.getElementById('heroRevealLayer');
+            if (revealBox && revealLayer && !reduceMotion) {
+                var SPOTLIGHT_R = 260;
+                var revealMouse = { x: -999, y: -999 };
+                var revealSmooth = { x: -999, y: -999 };
+                var revealTimer = null;
+
+                function applyRevealMask() {
+                    revealSmooth.x += (revealMouse.x - revealSmooth.x) * 0.1;
+                    revealSmooth.y += (revealMouse.y - revealSmooth.y) * 0.1;
+                    var g = 'radial-gradient(circle ' + SPOTLIGHT_R + 'px at ' + revealSmooth.x.toFixed(1) + 'px ' + revealSmooth.y.toFixed(1) + 'px, ' +
+                        'rgba(0,0,0,1) 0%, rgba(0,0,0,1) 40%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0.4) 75%, rgba(0,0,0,0.12) 88%, rgba(0,0,0,0) 100%)';
+                    revealLayer.style.webkitMaskImage = g;
+                    revealLayer.style.maskImage = g;
+                    // Stop the loop once the spotlight has fully glided off-screen
+                    if (revealMouse.x === -999 && Math.abs(revealSmooth.x - revealMouse.x) < 1 && Math.abs(revealSmooth.y - revealMouse.y) < 1) {
+                        clearInterval(revealTimer); revealTimer = null;
                     }
-                    function ensureLoop() {
-                        if (!revealTimer) revealTimer = setInterval(applyMask, 16);
-                    }
-                    revealBox.addEventListener('mousemove', function(e) {
-                        var r = revealBox.getBoundingClientRect();
-                        mouse.x = e.clientX - r.left;
-                        mouse.y = e.clientY - r.top;
-                        ensureLoop();
-                    });
-                    revealBox.addEventListener('mouseleave', function() {
-                        mouse.x = -999; mouse.y = -999;
-                        ensureLoop();
-                    });
                 }
+                function ensureRevealLoop() {
+                    if (!revealTimer) revealTimer = setInterval(applyRevealMask, 16);
+                }
+                function revealPoint(clientX, clientY) {
+                    var r = revealBox.getBoundingClientRect();
+                    revealMouse.x = clientX - r.left;
+                    revealMouse.y = clientY - r.top;
+                    ensureRevealLoop();
+                }
+                function revealOff() {
+                    revealMouse.x = -999; revealMouse.y = -999;
+                    ensureRevealLoop();
+                }
+                // Desktop: mouse
+                revealBox.addEventListener('mousemove', function(e) { revealPoint(e.clientX, e.clientY); });
+                revealBox.addEventListener('mouseleave', revealOff);
+                // Mobile: finger
+                revealBox.addEventListener('touchstart', function(e) {
+                    if (e.touches.length) revealPoint(e.touches[0].clientX, e.touches[0].clientY);
+                }, { passive: true });
+                revealBox.addEventListener('touchmove', function(e) {
+                    if (e.touches.length) revealPoint(e.touches[0].clientX, e.touches[0].clientY);
+                }, { passive: true });
+                revealBox.addEventListener('touchend', revealOff);
+                revealBox.addEventListener('touchcancel', revealOff);
             }
 
             // ---- Live workspace demo loop ----
