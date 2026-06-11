@@ -1331,37 +1331,10 @@
                 if (!tracerSvg) return;
                 var W = document.documentElement.clientWidth;
                 var H = document.documentElement.scrollHeight;
-                var hero = document.querySelector('main');
-                var bento = document.getElementById('how-it-works');
-                var platform = document.getElementById('platform');
-                var cta = document.getElementById('surgeries');
-                var footer = document.querySelector('footer');
-                if (!hero || !bento || !platform || !cta || !footer) return;
 
-                function mid(el) { return el.offsetTop + el.offsetHeight / 2; }
-
-                // Waypoints weaving left and right through each section
-                var pts = [
-                    [W * 0.66, 0],
-                    [W * 0.86, mid(hero)],
-                    [W * 0.30, hero.offsetTop + hero.offsetHeight + 40],
-                    [W * 0.08, bento.offsetTop + bento.offsetHeight * 0.35],
-                    [W * 0.55, bento.offsetTop + bento.offsetHeight * 0.95],
-                    [W * 0.92, platform.offsetTop + platform.offsetHeight * 0.4],
-                    [W * 0.25, platform.offsetTop + platform.offsetHeight + 30],
-                    [W * 0.60, mid(cta)],
-                    [W * 0.45, footer.offsetTop + 60],
-                    [W * 0.52, H]
-                ];
-
-                // Catmull-Rom -> cubic bezier for a smooth curve through the waypoints
-                var d = 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
-                for (var i = 0; i < pts.length - 1; i++) {
-                    var p0 = pts[Math.max(i - 1, 0)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(i + 2, pts.length - 1)];
-                    var c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
-                    var c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
-                    d += 'C' + c1x.toFixed(1) + ',' + c1y.toFixed(1) + ' ' + c2x.toFixed(1) + ',' + c2y.toFixed(1) + ' ' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1);
-                }
+                // Straight vertical line down the left edge, spanning the full page
+                var x = W >= 1024 ? 26 : 12;
+                var d = 'M' + x + ',0 L' + x + ',' + H;
 
                 tracerSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
                 tracerSvg.setAttribute('width', W);
