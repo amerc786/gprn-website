@@ -232,45 +232,29 @@
             border-radius: 0 3px 3px 0;
         }
 
-        /* ===== Neon scroll rail (left edge, desktop) ===== */
-        #scrollRail {
-            position: fixed; left: 22px; top: 50%; transform: translateY(-50%);
-            z-index: 55; display: none;
-        }
-        @media (min-width: 1100px) { #scrollRail { display: block; } }
-        #scrollRail .rail-track {
-            position: relative; width: 2px; height: 240px;
-            background: rgba(15, 23, 42, 0.08); border-radius: 2px;
-        }
-        #scrollRail .rail-glow {
-            position: absolute; left: 50%; top: 0%;
-            transform: translate(-50%, -50%);
-            width: 4px; height: 48px; border-radius: 4px;
-            background: linear-gradient(180deg, rgba(16,185,129,0), #10B981 35%, #6EE7B7 50%, #10B981 65%, rgba(16,185,129,0));
-            box-shadow: 0 0 12px rgba(16, 185, 129, 0.9), 0 0 30px rgba(16, 185, 129, 0.45);
-            transition: top 0.18s ease-out;
-        }
         #scrollProgress { transition: width 0.12s linear; }
-        #scrollRail .rail-dot {
-            position: absolute; left: 50%; transform: translate(-50%, -50%);
-            width: 9px; height: 9px; border-radius: 50%;
-            background: #CBD5E1; border: 2px solid #F8FAFC;
-            cursor: pointer; transition: all 0.3s ease;
+
+        /* ===== Full-page neon tracer (curved line behind the content) ===== */
+        #scrollTracer {
+            position: absolute; top: 0; left: 0; width: 100%;
+            z-index: 0; pointer-events: none;
+            filter: blur(1.6px);
         }
-        #scrollRail .rail-dot:hover { background: #10B981; transform: translate(-50%, -50%) scale(1.3); }
-        #scrollRail .rail-dot.active {
-            background: #10B981;
-            box-shadow: 0 0 8px rgba(16, 185, 129, 0.9), 0 0 18px rgba(16, 185, 129, 0.5);
-            transform: translate(-50%, -50%) scale(1.25);
+        #scrollTracer .tracer-track {
+            fill: none; stroke: rgba(16, 185, 129, 0.15); stroke-width: 3;
         }
-        #scrollRail .rail-label {
-            position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
-            background: #0F172A; color: #F8FAFC;
-            font-size: 0.7rem; font-weight: 600; letter-spacing: 0.03em;
-            padding: 4px 10px; border-radius: 999px; white-space: nowrap;
-            opacity: 0; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease;
+        #scrollTracer .tracer-drawn {
+            fill: none; stroke: rgba(16, 185, 129, 0.5); stroke-width: 3.5; stroke-linecap: round;
+            filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.5));
         }
-        #scrollRail .rail-dot:hover .rail-label { opacity: 1; transform: translateY(-50%) translateX(4px); }
+        #scrollTracer .tracer-head {
+            fill: none; stroke: #34D399; stroke-width: 4; stroke-linecap: round;
+            filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.95)) drop-shadow(0 0 22px rgba(16, 185, 129, 0.5));
+        }
+        #scrollTracer .tracer-comet {
+            fill: #6EE7B7;
+            filter: drop-shadow(0 0 7px rgba(110, 231, 183, 1)) drop-shadow(0 0 20px rgba(16, 185, 129, 0.7));
+        }
 
         /* ===== Scroll-spy nav highlight ===== */
         nav .nav-spy-active { color: #047857 !important; }
@@ -476,7 +460,6 @@
         .reveal-on-scroll.revealed { opacity: 1; transform: translateY(0); }
         @media (prefers-reduced-motion: reduce) {
             .reveal-on-scroll { opacity: 1 !important; transform: none !important; transition: none !important; }
-            #scrollRail .rail-glow { transition: none !important; }
         }
     </style>
 </head>
@@ -485,16 +468,13 @@
     <!-- Neon scroll progress (top edge) -->
     <div id="scrollProgress" aria-hidden="true"></div>
 
-    <!-- Neon scroll rail (left edge, desktop) -->
-    <div id="scrollRail" aria-hidden="true">
-        <div class="rail-track">
-            <div class="rail-glow"></div>
-            <div class="rail-dot" data-target="top" style="top: 0%;"><span class="rail-label">Home</span></div>
-            <div class="rail-dot" data-target="#how-it-works" style="top: 33%;"><span class="rail-label">For GPs</span></div>
-            <div class="rail-dot" data-target="#platform" style="top: 66%;"><span class="rail-label">Platform</span></div>
-            <div class="rail-dot" data-target="#surgeries" style="top: 100%;"><span class="rail-label">For Surgeries</span></div>
-        </div>
-    </div>
+    <!-- Full-page neon tracer: curved line behind the content, drawn by scroll -->
+    <svg id="scrollTracer" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+        <path class="tracer-track" d=""/>
+        <path class="tracer-drawn" d=""/>
+        <path class="tracer-head" d=""/>
+        <circle class="tracer-comet" r="5" cx="-99" cy="-99"/>
+    </svg>
 
     <!-- NAVIGATION (Floating Macro-Architecture) -->
     <nav class="fixed top-3 md:top-6 left-1/2 -translate-x-1/2 w-[94%] max-w-7xl rounded-full glass-nav z-50 px-4 md:px-6 py-3 md:py-4 flex justify-between items-center transition-all duration-300 shadow-sm border border-slate-200/50">
@@ -1326,10 +1306,8 @@
         (function() {
             var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-            // ---- Neon progress bar + rail glow ----
+            // ---- Neon progress bar + scroll-spy elements ----
             var bar = document.getElementById('scrollProgress');
-            var glow = document.querySelector('#scrollRail .rail-glow');
-            var dots = Array.prototype.slice.call(document.querySelectorAll('#scrollRail .rail-dot'));
             var navLinks = Array.prototype.slice.call(document.querySelectorAll('nav a[href^="#"]'));
 
             var sections = [
@@ -1338,6 +1316,77 @@
                 { id: '#platform', el: document.getElementById('platform') },
                 { id: '#surgeries', el: document.getElementById('surgeries') }
             ];
+
+            // ---- Full-page neon tracer: curve through the sections, drawn by scroll ----
+            var tracerSvg = document.getElementById('scrollTracer');
+            var tracerTrack = tracerSvg ? tracerSvg.querySelector('.tracer-track') : null;
+            var tracerDrawn = tracerSvg ? tracerSvg.querySelector('.tracer-drawn') : null;
+            var tracerHead = tracerSvg ? tracerSvg.querySelector('.tracer-head') : null;
+            var tracerComet = tracerSvg ? tracerSvg.querySelector('.tracer-comet') : null;
+            var tracerLen = 0, tracerBuiltW = 0;
+
+            function buildTracer() {
+                if (!tracerSvg) return;
+                var W = document.documentElement.clientWidth;
+                var H = document.documentElement.scrollHeight;
+                var hero = document.querySelector('main');
+                var bento = document.getElementById('how-it-works');
+                var platform = document.getElementById('platform');
+                var cta = document.getElementById('surgeries');
+                var footer = document.querySelector('footer');
+                if (!hero || !bento || !platform || !cta || !footer) return;
+
+                function mid(el) { return el.offsetTop + el.offsetHeight / 2; }
+
+                // Waypoints weaving left and right through each section
+                var pts = [
+                    [W * 0.66, 0],
+                    [W * 0.86, mid(hero)],
+                    [W * 0.30, hero.offsetTop + hero.offsetHeight + 40],
+                    [W * 0.08, bento.offsetTop + bento.offsetHeight * 0.35],
+                    [W * 0.55, bento.offsetTop + bento.offsetHeight * 0.95],
+                    [W * 0.92, platform.offsetTop + platform.offsetHeight * 0.4],
+                    [W * 0.25, platform.offsetTop + platform.offsetHeight + 30],
+                    [W * 0.60, mid(cta)],
+                    [W * 0.45, footer.offsetTop + 60],
+                    [W * 0.52, H]
+                ];
+
+                // Catmull-Rom -> cubic bezier for a smooth curve through the waypoints
+                var d = 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
+                for (var i = 0; i < pts.length - 1; i++) {
+                    var p0 = pts[Math.max(i - 1, 0)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(i + 2, pts.length - 1)];
+                    var c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+                    var c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+                    d += 'C' + c1x.toFixed(1) + ',' + c1y.toFixed(1) + ' ' + c2x.toFixed(1) + ',' + c2y.toFixed(1) + ' ' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1);
+                }
+
+                tracerSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+                tracerSvg.setAttribute('width', W);
+                tracerSvg.setAttribute('height', H);
+                tracerSvg.style.height = H + 'px';
+                tracerTrack.setAttribute('d', d);
+                tracerDrawn.setAttribute('d', d);
+                tracerHead.setAttribute('d', d);
+                tracerLen = tracerDrawn.getTotalLength();
+                tracerDrawn.style.strokeDasharray = tracerLen + ' ' + tracerLen;
+                tracerHead.style.strokeDasharray = '150 ' + tracerLen;
+                tracerBuiltW = W;
+                updateTracer();
+            }
+
+            function updateTracer() {
+                if (!tracerLen) return;
+                var max = document.documentElement.scrollHeight - window.innerHeight;
+                var p = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
+                var drawn = tracerLen * p;
+                tracerDrawn.style.strokeDashoffset = tracerLen - drawn;
+                // Bright head segment ending at the drawn tip
+                tracerHead.style.strokeDashoffset = 150 - drawn;
+                var pt = tracerDrawn.getPointAtLength(drawn);
+                tracerComet.setAttribute('cx', pt.x);
+                tracerComet.setAttribute('cy', pt.y);
+            }
 
             // ---- Back-to-top, nav, spotlight elements ----
             var topBtn = document.getElementById('backToTop');
@@ -1624,7 +1673,12 @@
                 var max = document.documentElement.scrollHeight - window.innerHeight;
                 var p = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
                 if (bar) bar.style.width = (p * 100) + '%';
-                if (glow) glow.style.top = (p * 100) + '%';
+
+                // Rebuild the tracer if the layout width changed, then trace to the scroll position
+                if (tracerSvg) {
+                    if (document.documentElement.clientWidth !== tracerBuiltW) buildTracer();
+                    else updateTracer();
+                }
 
                 // Back-to-top: show after 600px, ring fills with progress
                 if (topBtn) {
@@ -1641,24 +1695,16 @@
                 for (var i = 1; i < sections.length; i++) {
                     if (sections[i].el && sections[i].el.offsetTop <= mid) active = sections[i].id;
                 }
-                dots.forEach(function(d) { d.classList.toggle('active', d.getAttribute('data-target') === active); });
                 navLinks.forEach(function(a) { a.classList.toggle('nav-spy-active', a.getAttribute('href') === active); });
 
                 checkVisibles();
             }
             window.addEventListener('scroll', onScroll, { passive: true });
             window.addEventListener('resize', onScroll, { passive: true });
+            buildTracer();
             onScroll();
-
-            // Rail dots scroll to their section
-            dots.forEach(function(d) {
-                d.addEventListener('click', function() {
-                    var t = d.getAttribute('data-target');
-                    if (t === 'top') { window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }); return; }
-                    var el = document.querySelector(t);
-                    if (el) el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
-                });
-            });
+            // Rebuild once everything (fonts/images) has settled the layout
+            window.addEventListener('load', buildTracer);
 
             // ---- Scroll-reveal setup (elements below the initial viewport) ----
             if (!reduceMotion) {
