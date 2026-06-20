@@ -223,41 +223,6 @@
         }
         body.mobile-menu-open { overflow: hidden; }
 
-        /* ===== Neon scroll progress bar (top edge) ===== */
-        #scrollProgress {
-            position: fixed; top: 0; left: 0; height: 3px; width: 0%;
-            z-index: 60; pointer-events: none;
-            background: linear-gradient(90deg, #047857, #10B981 60%, #34D399);
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.85), 0 0 24px rgba(16, 185, 129, 0.45);
-            border-radius: 0 3px 3px 0;
-        }
-
-        #scrollProgress { transition: width 0.12s linear; }
-
-        /* ===== Full-page neon tracer (curved line behind the content) ===== */
-        #scrollTracer {
-            position: absolute; top: 0; left: 0; width: 100%;
-            z-index: 0; pointer-events: none;
-            filter: blur(1.6px);
-        }
-        #scrollTracer .tracer-track {
-            fill: none; stroke: rgba(16, 185, 129, 0.15); stroke-width: 3;
-        }
-        #scrollTracer .tracer-drawn {
-            fill: none; stroke: rgba(16, 185, 129, 0.5); stroke-width: 3.5; stroke-linecap: round;
-            filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.5));
-        }
-        #scrollTracer .tracer-head {
-            fill: none; stroke: #34D399; stroke-width: 4; stroke-linecap: round;
-            filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.95)) drop-shadow(0 0 22px rgba(16, 185, 129, 0.5));
-        }
-        #scrollTracer .tracer-comet {
-            fill: #6EE7B7;
-            filter: drop-shadow(0 0 7px rgba(110, 231, 183, 1)) drop-shadow(0 0 20px rgba(16, 185, 129, 0.7));
-        }
-        /* Content wrappers lifted above the tracer so the line stays behind everything */
-        .tracer-above { position: relative; z-index: 1; }
-
         /* ===== Scroll-spy nav highlight ===== */
         nav .nav-spy-active { color: #047857 !important; }
 
@@ -466,17 +431,6 @@
     </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-900 antialiased selection:bg-emerald-500 selection:text-white">
-
-    <!-- Neon scroll progress (top edge) -->
-    <div id="scrollProgress" aria-hidden="true"></div>
-
-    <!-- Full-page neon tracer: curved line behind the content, drawn by scroll -->
-    <svg id="scrollTracer" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-        <path class="tracer-track" d=""/>
-        <path class="tracer-drawn" d=""/>
-        <path class="tracer-head" d=""/>
-        <circle class="tracer-comet" r="5" cx="-99" cy="-99"/>
-    </svg>
 
     <!-- NAVIGATION (Floating Macro-Architecture) -->
     <nav class="fixed top-3 md:top-6 left-1/2 -translate-x-1/2 w-[94%] max-w-7xl rounded-full glass-nav z-50 px-4 md:px-6 py-3 md:py-4 flex justify-between items-center transition-all duration-300 shadow-sm border border-slate-200/50">
@@ -735,7 +689,7 @@
 
     <!-- TRUST STRIP (Meso-Architecture & Micro-interaction) -->
     <div class="border-y border-slate-200 bg-white overflow-hidden py-6">
-        <div class="max-w-7xl mx-auto px-6 flex items-center tracer-above">
+        <div class="max-w-7xl mx-auto px-6 flex items-center">
             <p class="text-sm font-semibold text-slate-400 whitespace-nowrap mr-8 shrink-0">Trusted across Health Boards</p>
             <div class="relative flex overflow-hidden w-full">
                 <div class="flex shrink-0 animate-marquee whitespace-nowrap gap-16 items-center pr-16">
@@ -758,13 +712,13 @@
 
     <!-- BENTO GRID SYSTEM (Data Density & Vibe) -->
     <section class="py-14 md:py-24 px-5 md:px-6 lg:px-12 max-w-[100rem] mx-auto bg-slate-50" id="how-it-works">
-        <div class="mb-10 md:mb-16 max-w-2xl tracer-above">
+        <div class="mb-10 md:mb-16 max-w-2xl">
             <h2 class="font-display text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-900 mb-3 md:mb-4">Re-engineering Locum Work.</h2>
             <p class="text-base md:text-lg text-slate-600">We stripped away agency bloat to build a platform that respects your time (and your bank account). High-density architecture for medical professionals.</p>
         </div>
 
         <!-- Bento Layout -->
-        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-auto md:auto-rows-[280px] tracer-above">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-auto md:auto-rows-[280px]">
 
             <!-- Large Card: Financials -->
             <div class="md:col-span-2 lg:col-span-2 bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 border border-slate-200 bento-hover relative overflow-hidden flex flex-col justify-between group">
@@ -915,7 +869,7 @@
 
     <!-- REAL-TIME PLATFORM PREVIEW (Meso-Architecture Shell) -->
     <section class="py-14 md:py-24 bg-white" id="platform">
-        <div class="max-w-7xl mx-auto px-6 tracer-above">
+        <div class="max-w-7xl mx-auto px-6">
             <div class="text-center max-w-2xl mx-auto mb-8 md:mb-16 px-2">
                 <h2 class="font-display text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-900 mb-3 md:mb-4">Inside the Workspace.</h2>
                 <p class="text-base md:text-lg text-slate-600">Stop scrolling through endless WhatsApp groups. This is what an optimized locum dashboard looks like.</p>
@@ -1242,7 +1196,7 @@
 
     <!-- ARCHITECTURAL FOOTER -->
     <footer class="bg-slate-50 border-t border-slate-200 pt-16 pb-8">
-        <div class="max-w-7xl mx-auto px-6 tracer-above">
+        <div class="max-w-7xl mx-auto px-6">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                 <div class="col-span-1 md:col-span-1">
                     <div class="flex items-center gap-[8px] mb-4 select-none">
@@ -1310,8 +1264,7 @@
         (function() {
             var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-            // ---- Neon progress bar + scroll-spy elements ----
-            var bar = document.getElementById('scrollProgress');
+            // ---- Scroll-spy elements ----
             var navLinks = Array.prototype.slice.call(document.querySelectorAll('nav a[href^="#"]'));
 
             var sections = [
@@ -1320,62 +1273,6 @@
                 { id: '#platform', el: document.getElementById('platform') },
                 { id: '#surgeries', el: document.getElementById('surgeries') }
             ];
-
-            // ---- Full-page neon tracer: curve through the sections, drawn by scroll ----
-            var tracerSvg = document.getElementById('scrollTracer');
-            var tracerTrack = tracerSvg ? tracerSvg.querySelector('.tracer-track') : null;
-            var tracerDrawn = tracerSvg ? tracerSvg.querySelector('.tracer-drawn') : null;
-            var tracerHead = tracerSvg ? tracerSvg.querySelector('.tracer-head') : null;
-            var tracerComet = tracerSvg ? tracerSvg.querySelector('.tracer-comet') : null;
-            var tracerLen = 0, tracerBuiltW = 0;
-
-            function buildTracer() {
-                if (!tracerSvg) return;
-                var W = document.documentElement.clientWidth;
-                var H = document.documentElement.scrollHeight;
-
-                // Straight vertical line down the left edge, spanning the full page
-                var x = W >= 1024 ? 26 : 12;
-                var d = 'M' + x + ',0 L' + x + ',' + H;
-
-                tracerSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-                tracerSvg.setAttribute('width', W);
-                tracerSvg.setAttribute('height', H);
-                tracerSvg.style.height = H + 'px';
-                tracerTrack.setAttribute('d', d);
-                tracerDrawn.setAttribute('d', d);
-                tracerHead.setAttribute('d', d);
-                tracerLen = tracerDrawn.getTotalLength();
-                tracerDrawn.style.strokeDasharray = tracerLen + ' ' + tracerLen;
-                tracerHead.style.strokeDasharray = '150 ' + tracerLen;
-                tracerBuiltW = W;
-                updateTracer();
-            }
-
-            // Smoothed tracer: the drawn tip eases toward the scroll position
-            var tracerTargetP = 0, tracerSmoothP = 0, tracerTimer = null;
-
-            function tracerStep() {
-                tracerSmoothP += (tracerTargetP - tracerSmoothP) * 0.14;
-                if (Math.abs(tracerTargetP - tracerSmoothP) < 0.0005) {
-                    tracerSmoothP = tracerTargetP;
-                    clearInterval(tracerTimer); tracerTimer = null;
-                }
-                var drawn = tracerLen * tracerSmoothP;
-                tracerDrawn.style.strokeDashoffset = tracerLen - drawn;
-                // Bright head segment ending at the drawn tip
-                tracerHead.style.strokeDashoffset = 150 - drawn;
-                var pt = tracerDrawn.getPointAtLength(drawn);
-                tracerComet.setAttribute('cx', pt.x);
-                tracerComet.setAttribute('cy', pt.y);
-            }
-
-            function updateTracer() {
-                if (!tracerLen) return;
-                var max = document.documentElement.scrollHeight - window.innerHeight;
-                tracerTargetP = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
-                if (!tracerTimer) tracerTimer = setInterval(tracerStep, 16);
-            }
 
             // ---- Back-to-top, nav, spotlight elements ----
             var topBtn = document.getElementById('backToTop');
@@ -1661,13 +1558,6 @@
 
                 var max = document.documentElement.scrollHeight - window.innerHeight;
                 var p = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
-                if (bar) bar.style.width = (p * 100) + '%';
-
-                // Rebuild the tracer if the layout width changed, then trace to the scroll position
-                if (tracerSvg) {
-                    if (document.documentElement.clientWidth !== tracerBuiltW) buildTracer();
-                    else updateTracer();
-                }
 
                 // Back-to-top: show after 600px, ring fills with progress
                 if (topBtn) {
@@ -1690,10 +1580,7 @@
             }
             window.addEventListener('scroll', onScroll, { passive: true });
             window.addEventListener('resize', onScroll, { passive: true });
-            buildTracer();
             onScroll();
-            // Rebuild once everything (fonts/images) has settled the layout
-            window.addEventListener('load', buildTracer);
 
             // ---- Scroll-reveal setup (elements below the initial viewport) ----
             if (!reduceMotion) {
