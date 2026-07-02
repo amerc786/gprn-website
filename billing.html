@@ -84,24 +84,23 @@
         }
 
         .inv-row { display: grid; grid-template-columns: 1.1fr 1.6fr 1.2fr 1fr 1fr 1.4fr; gap: 16px; align-items: center; }
-        @media (max-width: 900px) { .inv-row { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 767px) { .inv-row { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body class="pm-billing bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
 
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-    <script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+    <script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
         const session = Auth.getSession();
 
         // Seed invoices if none exist for this practice (preserves original seeding logic)
         (function seedInvoices() {
-            var raw = localStorage.getItem('gprn_data');
-            var d = JSON.parse(raw);
+            var d = getMockData();
             if (!d.invoices) d.invoices = [];
             var practiceInvoices = d.invoices.filter(function(i) { return i.practiceId === session.id; });
             if (practiceInvoices.length > 0) return;
@@ -305,10 +304,6 @@
                         <div class="flex items-center gap-2 flex-wrap">
                             <select id="filterMonth" onchange="applyBillingFilter()" class="bg-slate-50 border border-slate-200 rounded-full px-4 py-2 text-[13px] font-semibold text-navy focus:outline-none focus:ring-2 focus:ring-slate-200">
                                 <option value="">All Months</option>
-                                <option value="0">January</option><option value="1">February</option><option value="2">March</option>
-                                <option value="3">April</option><option value="4">May</option><option value="5">June</option>
-                                <option value="6">July</option><option value="7">August</option><option value="8">September</option>
-                                <option value="9">October</option><option value="10">November</option><option value="11">December</option>
                             </select>
                             <select id="filterInvStatus" onchange="applyBillingFilter()" class="bg-slate-50 border border-slate-200 rounded-full px-4 py-2 text-[13px] font-semibold text-navy focus:outline-none focus:ring-2 focus:ring-slate-200">
                                 <option value="">All Statuses</option>
@@ -316,6 +311,7 @@
                                 <option value="paid_pending">Awaiting Confirmation</option>
                                 <option value="pending">Pending</option>
                                 <option value="overdue">Overdue</option>
+                                <option value="revised">Under Review</option>
                                 <option value="disputed">Disputed</option>
                             </select>
                         </div>
@@ -367,10 +363,10 @@
 
         var billingFilterMonth = '';
         var billingFilterStatus = '';
+        var billingSearchTerm = '';
 
         function readInvoicesFromStorage() {
-            var raw = localStorage.getItem('gprn_data');
-            var d = JSON.parse(raw);
+            var d = getMockData();
             if (!d || !d.invoices) return [];
             return d.invoices.filter(function(i) { return i.practiceId === session.id; })
                 .sort(function(a, b) { return new Date(b.generatedDate) - new Date(a.generatedDate); });
@@ -400,8 +396,7 @@
         }
 
         function handleMarkPaid(invoiceId) {
-            var raw = localStorage.getItem('gprn_data');
-            var d = JSON.parse(raw);
+            var d = getMockData();
             var inv = null;
             for (var i = 0; i < d.invoices.length; i++) {
                 if (d.invoices[i].id === invoiceId) { inv = d.invoices[i]; break; }
@@ -412,10 +407,10 @@
                 title: 'Confirm Payment',
                 size: 'medium',
                 body: '<div style="padding:8px 0;">'
-                    + '<p style="font-size:0.9rem;color:var(--dark-600);margin-bottom:16px;">Are you sure you want to mark invoice <strong>' + inv.invoiceNumber + '</strong> as paid?</p>'
+                    + '<p style="font-size:0.9rem;color:var(--dark-600);margin-bottom:16px;">Are you sure you want to mark invoice <strong>' + escapeHtml(inv.invoiceNumber) + '</strong> as paid?</p>'
                     + '<div style="padding:12px;background:var(--gray-50);border-radius:var(--radius);margin-bottom:16px;">'
                     + '<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span>Amount:</span><strong>' + formatCurrency(inv.total) + '</strong></div>'
-                    + '<div style="display:flex;justify-content:space-between;"><span>Locum:</span><strong>' + (inv.locumName || 'Unknown') + '</strong></div>'
+                    + '<div style="display:flex;justify-content:space-between;"><span>Locum:</span><strong>' + escapeHtml(inv.locumName || 'Unknown') + '</strong></div>'
                     + '</div>'
                     + '<div class="form-group"><label class="form-label">Payment Reference (e.g. BACS reference) <span style="color:var(--danger);">*</span></label>'
                     + '<input type="text" id="paymentRefInput" class="form-input" placeholder="e.g. BACS-20240404-001" required></div>'
@@ -427,18 +422,21 @@
                         var paymentRef = overlay.querySelector('#paymentRefInput').value.trim();
                         if (!paymentRef) { Toast.show('Please enter a payment reference.', 'warning'); return; }
 
-                        var raw2 = localStorage.getItem('gprn_data');
-                        var d2 = JSON.parse(raw2);
-                        var inv2 = null;
-                        for (var j = 0; j < d2.invoices.length; j++) {
-                            if (d2.invoices[j].id === invoiceId) { inv2 = d2.invoices[j]; break; }
+                        // InvoiceManager.updateStatus persists via the data layer and
+                        // sends the confirm-receipt message, notification and email.
+                        if (!InvoiceManager.updateStatus(invoiceId, 'paid_pending')) {
+                            Toast.show('Invoice not found. Please refresh and try again.', 'error');
+                            return;
                         }
-                        if (!inv2) return;
 
-                        inv2.status = 'paid_pending';
-                        inv2.practiceMarkedPaidDate = new Date().toISOString().split('T')[0];
-                        inv2.paymentReference = paymentRef;
-
+                        // Record the payment reference and audit log entry via the data layer
+                        var d2 = getMockData();
+                        for (var j = 0; j < d2.invoices.length; j++) {
+                            if (d2.invoices[j].id === invoiceId) {
+                                d2.invoices[j].paymentReference = paymentRef;
+                                break;
+                            }
+                        }
                         if (!d2.auditLog) d2.auditLog = [];
                         d2.auditLog.push({
                             invoiceId: invoiceId,
@@ -447,48 +445,7 @@
                             date: new Date().toISOString(),
                             by: session.id
                         });
-
-                        // Send notification to locum to confirm receipt
-                        if (!d2.messages) d2.messages = [];
-                        var locumId = inv2.locumId;
-                        var practiceId = inv2.practiceId;
-                        var threadId = null;
-                        if (d2.messages && d2.messages.length > 0) {
-                            for (var k = d2.messages.length - 1; k >= 0; k--) {
-                                var msg = d2.messages[k];
-                                if ((msg.fromId === practiceId && msg.toId === locumId) || (msg.fromId === locumId && msg.toId === practiceId)) {
-                                    threadId = msg.threadId;
-                                    break;
-                                }
-                            }
-                        }
-                        if (!threadId) threadId = 'thread-' + Date.now();
-                        d2.messages.push({
-                            id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
-                            threadId: threadId,
-                            fromId: practiceId,
-                            toId: locumId,
-                            subject: '',
-                            body: inv2.practiceName + ' has marked invoice ' + inv2.invoiceNumber + ' (' + formatCurrency(inv2.total) + ') as paid (Ref: ' + paymentRef + '). Please confirm you have received the payment.',
-                            shiftId: null,
-                            timestamp: new Date().toISOString(),
-                            read: false,
-                            _deletedFor: [],
-                            _system: true,
-                            _invoiceId: inv2.id
-                        });
-                        if (!d2.notifications) d2.notifications = [];
-                        d2.notifications.push({
-                            id: 'notif-' + Date.now() + Math.random().toString(36).substr(2, 5),
-                            userId: locumId,
-                            type: 'payment_awaiting_confirmation',
-                            title: 'Payment Awaiting Confirmation',
-                            message: inv2.practiceName + ' has marked invoice ' + inv2.invoiceNumber + ' (' + formatCurrency(inv2.total) + ') as paid. Please confirm receipt.',
-                            date: new Date().toISOString(),
-                            read: false
-                        });
-
-                        localStorage.setItem('gprn_data', JSON.stringify(d2));
+                        saveMockData(d2);
                         Modal.close(overlay);
 
                         renderBillingTable();
@@ -510,49 +467,12 @@
                         var reason = overlay.querySelector('#disputeReason').value.trim();
                         if (!reason) { Toast.show('Please provide a dispute reason.', 'warning'); return; }
 
-                        var raw = localStorage.getItem('gprn_data');
-                        var d = JSON.parse(raw);
-                        var disputedInv = null;
-                        for (var i = 0; i < d.invoices.length; i++) {
-                            if (d.invoices[i].id === invoiceId) {
-                                d.invoices[i].status = 'disputed';
-                                d.invoices[i].disputeReason = reason;
-                                disputedInv = d.invoices[i];
-                                break;
-                            }
+                        // InvoiceManager.updateStatus persists via the data layer and
+                        // sends the dispute message, notification and email to the locum.
+                        if (!InvoiceManager.updateStatus(invoiceId, 'disputed', reason)) {
+                            Toast.show('Invoice not found. Please refresh and try again.', 'error');
+                            return;
                         }
-
-                        if (disputedInv && disputedInv.locumId) {
-                            if (!d.notifications) d.notifications = [];
-                            d.notifications.push({
-                                id: 'notif-' + Date.now() + Math.random().toString(36).substr(2, 5),
-                                userId: disputedInv.locumId,
-                                type: 'invoice_disputed',
-                                title: 'Invoice Disputed',
-                                message: 'Invoice ' + disputedInv.invoiceNumber + ' for ' + formatCurrency(disputedInv.total) + ' on ' + DateUtils.format(disputedInv.shiftDate, 'medium') + ' has been disputed by ' + disputedInv.practiceName + '. Reason: ' + reason,
-                                date: new Date().toISOString(),
-                                read: false
-                            });
-                            if (!d.emailLog) d.emailLog = [];
-                            var locum = null;
-                            for (var li = 0; li < d.locums.length; li++) {
-                                if (d.locums[li].id === disputedInv.locumId) { locum = d.locums[li]; break; }
-                            }
-                            if (locum) {
-                                d.emailLog.push({
-                                    id: 'email-' + Date.now() + Math.random().toString(36).substr(2, 5),
-                                    toUserId: locum.id,
-                                    toEmail: locum.email,
-                                    toName: locum.title + ' ' + locum.firstName + ' ' + locum.lastName,
-                                    subject: 'Invoice Disputed',
-                                    body: 'Invoice ' + disputedInv.invoiceNumber + ' has been disputed. Reason: ' + reason,
-                                    type: 'invoice_disputed',
-                                    timestamp: new Date().toISOString(),
-                                    status: 'sent'
-                                });
-                            }
-                        }
-                        localStorage.setItem('gprn_data', JSON.stringify(d));
                         Modal.close(overlay);
 
                         renderBillingTable();
@@ -579,7 +499,7 @@
                 if (gd.getFullYear() === now.getFullYear() && gd.getMonth() === now.getMonth()) {
                     totalThisMonth += inv.total;
                 }
-                if (inv.status === 'pending' || inv.status === 'overdue') {
+                if (inv.status === 'pending' || inv.status === 'overdue' || inv.status === 'revised') {
                     outstanding += inv.total;
                     outstandingCount++;
                 }
@@ -620,17 +540,56 @@
             });
         }
 
-        function renderBillingTable() {
-            var allInvoices = readInvoicesFromStorage();
-            var filtered = allInvoices;
+        function getFilteredInvoices() {
+            var filtered = readInvoicesFromStorage();
 
             if (billingFilterMonth !== '') {
-                var fm = parseInt(billingFilterMonth);
-                filtered = filtered.filter(function(inv) { return new Date(inv.generatedDate).getMonth() === fm; });
+                var parts = billingFilterMonth.split('-');
+                var fy = parseInt(parts[0]);
+                var fm = parseInt(parts[1]);
+                filtered = filtered.filter(function(inv) {
+                    var gd = new Date(inv.generatedDate);
+                    return gd.getFullYear() === fy && gd.getMonth() === fm;
+                });
             }
             if (billingFilterStatus) {
                 filtered = filtered.filter(function(inv) { return inv.status === billingFilterStatus; });
             }
+            if (billingSearchTerm) {
+                var q = billingSearchTerm.toLowerCase();
+                filtered = filtered.filter(function(inv) {
+                    return String(inv.invoiceNumber || '').toLowerCase().indexOf(q) !== -1
+                        || String(inv.locumName || '').toLowerCase().indexOf(q) !== -1
+                        || String(inv.total || '').indexOf(q) !== -1;
+                });
+            }
+            return filtered;
+        }
+
+        function populateMonthFilter() {
+            var sel = document.getElementById('filterMonth');
+            if (!sel) return;
+            var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            var seen = {};
+            readInvoicesFromStorage().forEach(function(inv) {
+                var gd = new Date(inv.generatedDate);
+                if (isNaN(gd)) return;
+                seen[gd.getFullYear() + '-' + gd.getMonth()] = true;
+            });
+            Object.keys(seen).sort(function(a, b) {
+                var pa = a.split('-'), pb = b.split('-');
+                return (pb[0] - pa[0]) || (pb[1] - pa[1]);
+            }).forEach(function(key) {
+                var parts = key.split('-');
+                var opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = monthNames[parseInt(parts[1])] + ' ' + parts[0];
+                sel.appendChild(opt);
+            });
+        }
+
+        function renderBillingTable() {
+            var filtered = getFilteredInvoices();
 
             var listEl = document.getElementById('invoiceList');
             var emptyEl = document.getElementById('invoiceEmptyState');
@@ -641,7 +600,7 @@
                 headerEl.classList.add('hidden');
                 emptyEl.classList.remove('hidden');
                 var msgEl = document.getElementById('invoiceEmptyMsg');
-                var hasFilter = billingFilterMonth !== '' || billingFilterStatus !== '';
+                var hasFilter = billingFilterMonth !== '' || billingFilterStatus !== '' || billingSearchTerm !== '';
                 if (msgEl) msgEl.textContent = hasFilter ? 'No invoices match the current filter.' : 'Invoices are generated automatically when completed sessions are confirmed.';
                 return;
             }
@@ -679,7 +638,7 @@
         }
 
         function exportInvoicesCSV() {
-            var allInvoices = readInvoicesFromStorage();
+            var allInvoices = getFilteredInvoices();
             var csv = 'Invoice Number,Date,Locum/Practice,Session Type,Amount,Status,Payment Reference\n';
             allInvoices.forEach(function(inv) {
                 csv += [
@@ -702,7 +661,29 @@
             Toast.show('Invoice data exported successfully', 'success');
         }
 
+        // Flip past-due pending invoices to overdue via the data layer before rendering
+        (function sweepOverdue() {
+            var d = getMockData();
+            if (!d.invoices) return;
+            var changed = false;
+            var now = new Date();
+            d.invoices.forEach(function(inv) {
+                if (inv.practiceId === session.id && inv.status === 'pending' && inv.dueDate && new Date(inv.dueDate) < now) {
+                    inv.status = 'overdue';
+                    changed = true;
+                }
+            });
+            if (changed) saveMockData(d);
+        })();
+
+        // Header search — filters the invoice table by number, locum or amount
+        document.getElementById('billingSearch').addEventListener('input', function() {
+            billingSearchTerm = this.value.trim();
+            renderBillingTable();
+        });
+
         // Initial render
+        populateMonthFilter();
         updateBillingSummary();
         renderBillingTable();
     </script>

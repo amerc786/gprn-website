@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Log External Sessions - GPRN</title>
+    <title>Log Outside Work - GPRN</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,15 +37,15 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
-        const pageContent = initAppLayout('locum', 'report', 'Log External Sessions');
+        const pageContent = initAppLayout('locum', 'report', 'Log Outside Work');
 
         function getReportedShifts() {
             const userId = Auth.getSession().id;
@@ -105,7 +105,7 @@
                                 <label class="form-label">Practice</label>
                                 <select class="form-select" id="reportPractice" required>
                                     <option value="">Select a practice...</option>
-                                    ${practices.map(p => `<option value="${p.id}">${p.practiceName} - ${p.healthBoard}</option>`).join('')}
+                                    ${practices.map(p => `<option value="${p.id}">${sanitizeHTML(p.practiceName)} - ${sanitizeHTML(p.healthBoard)}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="form-row">
@@ -150,7 +150,7 @@
                                 <tbody>
                                     ${reported.map(r => `
                                         <tr>
-                                            <td style="font-weight: 600;">${r.practiceName}</td>
+                                            <td style="font-weight: 600;">${sanitizeHTML(r.practiceName)}</td>
                                             <td>${DateUtils.format(r.date, 'medium')}</td>
                                             <td><span class="badge badge-primary">${r.sessionType}</span></td>
                                             <td>${DateUtils.format(r.reportedOn, 'medium')}</td>
@@ -191,9 +191,13 @@
 
             const reported = getReportedShifts();
 
-            const duplicate = reported.find(r => r.practiceId === practiceId && r.date === date && r.sessionType === sessionType);
+            // Full Day overlaps both AM and PM (matches the platform's double-booking rule)
+            const duplicate = reported.find(r => r.practiceId === practiceId && r.date === date &&
+                (r.sessionType === sessionType || r.sessionType === 'Full Day' || sessionType === 'Full Day'));
             if (duplicate) {
-                Toast.show('You have already logged a ' + sessionType + ' session at this practice on this date.', 'warning');
+                Toast.show(duplicate.sessionType === sessionType
+                    ? 'You have already logged a ' + sessionType + ' session at this practice on this date.'
+                    : 'This overlaps the ' + duplicate.sessionType + ' session you already logged at this practice on this date.', 'warning');
                 return;
             }
 

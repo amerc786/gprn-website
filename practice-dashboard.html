@@ -94,11 +94,11 @@
 </head>
 <body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
 
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-    <script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+    <script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
         Booking.expireOffers();
@@ -247,23 +247,27 @@
         const openSessions = sessionNeeds.filter(n => n.status === 'open');
         const practiceOffers = data.offers.filter(o => o.practiceId === session.id);
         const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        const filledThisMonth = practiceOffers.filter(o =>
-            (o.status === 'accepted' || o.status === 'completed' || o.status === 'confirmed') &&
-            new Date(o.sessionDate || o.shiftDate) >= monthStart && new Date(o.sessionDate || o.shiftDate) <= monthEnd
-        );
+        // Compare ISO date strings (avoids UTC-vs-local drift during BST)
+        const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const monthStartStr = monthPrefix + '-01';
+        const monthEndStr = monthPrefix + '-' + String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, '0');
+        const filledThisMonth = practiceOffers.filter(o => {
+            const d = o.sessionDate || o.shiftDate || '';
+            return (o.status === 'accepted' || o.status === 'completed' || o.status === 'confirmed') &&
+                d >= monthStartStr && d <= monthEndStr;
+        });
         const monthlySpend = filledThisMonth.reduce((sum, o) => sum + (o.agreedRate || o.proposedRate || 0), 0);
 
-        const totalNeedCount = sessionNeeds.length;
+        // Fill rate: purely need-based (offers would double-count, since accepting an offer also marks the need 'filled')
+        const totalNeedCount = sessionNeeds.filter(n => n.status !== 'cancelled').length;
         const filledNeedCount = sessionNeeds.filter(n => n.status === 'filled').length;
-        const completedOfferCount = practiceOffers.filter(o => o.status === 'completed' || o.status === 'accepted' || o.status === 'confirmed').length;
-        const fillRate = totalNeedCount > 0 ? Math.round(((filledNeedCount + completedOfferCount) / Math.max(totalNeedCount, 1)) * 100) : 0;
+        const fillRate = totalNeedCount > 0 ? Math.round((filledNeedCount / totalNeedCount) * 100) : 0;
         const fillRateDisplay = Math.min(fillRate, 100);
 
-        // Weekly coverage — current week Mon-Fri
-        const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        // Weekly coverage — current week Mon-Sun
+        const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         const dayOfWeek = today.getDay();
         const monday = new Date(today);
         monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
@@ -396,7 +400,7 @@
                     </div>
                     <div>
                         <div class="text-[36px] font-extrabold text-navy leading-tight mb-1 tracking-tight">${totalNeedCount > 0 ? fillRateDisplay + '%' : '—'}</div>
-                        <div class="text-[13px] text-slate-500 font-semibold uppercase tracking-wider">Fill Rate (30d)</div>
+                        <div class="text-[13px] text-slate-500 font-semibold uppercase tracking-wider">Fill Rate (All Time)</div>
                     </div>
                 </button>
 
@@ -424,8 +428,9 @@
 
             let content;
             if (isEmpty) {
+                // Only pre-fill ?date= for future days (post-shift.html min date is tomorrow)
                 content = `
-                    <a href="post-shift.html?date=${c.dateStr}" class="flex-1 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-lg py-3 hover:border-slate-300 transition-colors cursor-pointer text-slate-400 hover:text-navy no-underline">
+                    <a href="post-shift.html${c.dateStr > todayStr ? '?date=' + c.dateStr : ''}" class="flex-1 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-lg py-3 hover:border-slate-300 transition-colors cursor-pointer text-slate-400 hover:text-navy no-underline">
                         <div class="text-[13px] font-bold flex items-center gap-2"><i class="ph-bold ph-plus"></i> Add Session</div>
                     </a>`;
             } else {
@@ -490,20 +495,24 @@
         const notifIconMap = {
             'offer_accepted': { icon: 'ph-check-circle', bg: 'bg-brand-mint', color: 'text-brand-green' },
             'new_offer': { icon: 'ph-envelope', bg: 'bg-slate-100', color: 'text-slate-600' },
-            'offer_received': { icon: 'ph-envelope', bg: 'bg-slate-100', color: 'text-slate-600' },
-            'invoice': { icon: 'ph-file-text', bg: 'bg-slate-100', color: 'text-slate-600' },
+            'offer_viewed': { icon: 'ph-envelope-open', bg: 'bg-slate-100', color: 'text-slate-600' },
+            'offer_declined': { icon: 'ph-x-circle', bg: 'bg-rose-50', color: 'text-rose-500' },
+            'offer_expired': { icon: 'ph-clock', bg: 'bg-slate-100', color: 'text-slate-600' },
+            'counter_offer': { icon: 'ph-arrows-left-right', bg: 'bg-amber-50', color: 'text-amber-600' },
             'payment_reminder': { icon: 'ph-warning-circle', bg: 'bg-amber-50', color: 'text-amber-600' },
-            'payment_received': { icon: 'ph-check-circle', bg: 'bg-brand-mint', color: 'text-brand-green' },
-            'shift_cancelled': { icon: 'ph-warning-octagon', bg: 'bg-rose-50', color: 'text-rose-500' },
+            'cancellation': { icon: 'ph-warning-octagon', bg: 'bg-rose-50', color: 'text-rose-500' },
+            'late_cancellation': { icon: 'ph-warning-octagon', bg: 'bg-rose-50', color: 'text-rose-500' },
             'no_show': { icon: 'ph-warning-octagon', bg: 'bg-rose-50', color: 'text-rose-500' },
             'compliance': { icon: 'ph-warning-octagon', bg: 'bg-rose-50', color: 'text-rose-500' },
+            'leave_feedback': { icon: 'ph-star', bg: 'bg-amber-50', color: 'text-amber-600' },
+            'message': { icon: 'ph-chat-circle-dots', bg: 'bg-slate-100', color: 'text-slate-600' },
             'invoice_revised': { icon: 'ph-file-text', bg: 'bg-amber-50', color: 'text-amber-600' },
             'payment_confirmed': { icon: 'ph-check-circle', bg: 'bg-brand-mint', color: 'text-brand-green' }
         };
         function renderNotifItem(n, idx) {
             const map = notifIconMap[n.type] || { icon: 'ph-bell', bg: 'bg-slate-100', color: 'text-slate-600' };
             return `
-                <div id="notif-${idx}" onclick="expandNotification(${idx})" class="p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors flex items-start gap-3 relative">
+                <div id="notif-${escapeHtml(n.id)}" onclick="expandNotification('${escapeHtml(n.id)}')" class="p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors flex items-start gap-3 relative">
                     ${!n.read ? '<span class="absolute top-4 right-4 w-2 h-2 bg-brand-green rounded-full"></span>' : ''}
                     <div class="w-9 h-9 rounded-full ${map.bg} flex items-center justify-center ${map.color} shrink-0 mt-0.5">
                         <i class="ph-fill ${map.icon} text-lg"></i>
@@ -528,7 +537,7 @@
                             <p class="text-[11px] font-medium">No new notifications</p>
                         </div>
                     ` : notifications.slice(0, 5).map((n, i) => renderNotifItem(n, i)).join('<hr class="border-slate-100 mx-3">')}
-                    ${notifications.length > 0 ? `<a href="view-requested-shifts.html" class="mt-auto mx-3 mb-2 py-2 text-[12px] font-bold text-navy bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 text-center">View Activity Log</a>` : ''}
+                    ${notifications.length > 0 ? `<a href="view-requested-shifts.html" class="mt-auto mx-3 mb-2 py-2 text-[12px] font-bold text-navy bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 text-center">View Shifts</a>` : ''}
                 </div>
             </div>
         `;
@@ -550,7 +559,7 @@
             if (needsAction) {
                 actionCell = `
                     <button onclick="confirmOfferFromDash('${escapeHtml(app.offerId)}')" class="text-[13px] font-bold text-white bg-navy border border-navy px-6 py-2 rounded-xl hover:bg-slate-800 transition-colors shadow-md">Confirm</button>
-                    <button onclick="withdrawOfferFromDash('${escapeHtml(app.offerId)}')" class="text-[13px] font-bold text-navy bg-white border border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">Withdraw</button>
+                    <button onclick="cancelAcceptedOfferFromDash('${escapeHtml(app.offerId)}')" class="text-[13px] font-bold text-navy bg-white border border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">Decline/Cancel</button>
                 `;
             } else {
                 actionCell = `
@@ -592,8 +601,9 @@
                     </div>
                     <a href="view-requested-shifts.html" class="text-[13px] font-bold text-slate-600 bg-white border border-slate-200 px-4 py-1.5 rounded-full hover:bg-slate-50 transition-colors shadow-sm">View All</a>
                 </div>
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-subtle overflow-hidden relative">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-subtle overflow-x-auto relative">
                     ${pendingApps.length > 0 ? `
+                        <div class="min-w-[760px]">
                         <div class="grid grid-cols-12 gap-4 border-b border-slate-200 bg-slate-50/50 p-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                             <div class="col-span-4 pl-2">Locum Profile</div>
                             <div class="col-span-3">Shift Details</div>
@@ -601,6 +611,7 @@
                             <div class="col-span-3 text-right pr-2">Action / Status</div>
                         </div>
                         ${pendingApps.map((a, i) => renderCandidateRow(a, i)).join('')}
+                        </div>
                     ` : `
                         <div class="p-10 flex flex-col items-center justify-center text-center">
                             <div class="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-4 text-slate-400"><i class="ph ph-users text-2xl"></i></div>
@@ -662,8 +673,23 @@
 
         function withdrawOfferFromDash(offerId) {
             const result = Booking.withdrawOffer(offerId);
-            Toast.show(result.success ? 'Offer withdrawn.' : (result.message || 'Failed to withdraw offer.'), result.success ? 'info' : 'error');
-            setTimeout(() => window.location.reload(), 800);
+            if (result.success) {
+                Toast.show('Offer withdrawn.', 'info');
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                Toast.show(result.message || 'Failed to withdraw offer.', 'error');
+            }
+        }
+
+        function cancelAcceptedOfferFromDash(offerId) {
+            // Accepted offers can't be withdrawn — cancel the booking instead (notifies the locum, reopens the need)
+            const result = Booking.cancelBooking(offerId, 'practice');
+            if (result === true) {
+                Toast.show('Booking cancelled. The locum has been notified.', 'info');
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                Toast.show((result && result.message) || 'Failed to cancel this booking.', 'error');
+            }
         }
 
         function markAllNotifRead() {
@@ -678,11 +704,9 @@
             document.querySelectorAll('[id^="notif-"] .bg-brand-green.rounded-full').forEach(el => el.remove());
         }
 
-        function expandNotification(idx) {
+        function expandNotification(notifId) {
             const freshData = getMockData();
-            const notifs = (freshData.notifications || [])
-                .filter(n => (n.userId === session.id || !n.userId) && !n.acknowledged);
-            const n = notifs[idx];
+            const n = (freshData.notifications || []).find(nn => nn.id === notifId);
             if (!n) return;
 
             const overlay = Modal.show({
@@ -702,10 +726,10 @@
 
             const acknowledge = () => {
                 const d = getMockData();
-                const match = (d.notifications || []).find(nn => nn.title === n.title && nn.message === n.message && nn.date === n.date);
+                const match = (d.notifications || []).find(nn => nn.id === notifId);
                 if (match) { match.acknowledged = true; match.read = true; }
                 saveMockData(d);
-                const el = document.getElementById('notif-' + idx);
+                const el = document.getElementById('notif-' + notifId);
                 if (el) el.remove();
             };
 
@@ -734,7 +758,7 @@
                     let statusBadge = '';
                     let details = '';
                     if (shift.status === 'filled' || offer) {
-                        statusBadge = '<span class="badge badge-success">Filled</span>';
+                        statusBadge = `<span class="badge ${getStatusBadge('filled')}">${getStatusLabel('filled')}</span>`;
                         if (offer) {
                             const loc = freshData.locums.find(l => l.id === offer.locumId);
                             const locName = loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown';
@@ -743,7 +767,7 @@
                             details = `<div style="margin-top: 8px; padding: 10px; background: rgba(34, 197, 94,0.08); border-radius: var(--radius); font-size: 0.85rem;">${getIcon('user')} ${locLink} &bull; ${formatCurrency(rate)}/session</div>`;
                         }
                     } else if (shift.status === 'open') {
-                        statusBadge = '<span class="badge badge-warning">Open</span>';
+                        statusBadge = `<span class="badge ${getStatusBadge('open')}">${getStatusLabel('open')}</span>`;
                         details = `<div style="margin-top: 6px; font-size: 0.82rem; color: var(--dark-600);">${pendingCount} pending offer${pendingCount !== 1 ? 's' : ''} &bull; <a href="find-locums.html?needId=${shift.id}" style="color: var(--primary);">Find Locums</a></div>`;
                     } else {
                         statusBadge = `<span class="badge">${escapeHtml(shift.status)}</span>`;
@@ -771,7 +795,7 @@
                     </div>
                     ${shiftRows}
                 `,
-                footer: `<a href="post-shift.html?date=${dateStr}" class="btn btn-primary">${getIcon('plus-circle')} Create Session for ${dayName}</a>`
+                footer: `<a href="post-shift.html${dateStr > todayStr ? '?date=' + dateStr : ''}" class="btn btn-primary">${getIcon('plus-circle')} Create Session${dateStr > todayStr ? ' for ' + dayName : ''}</a>`
             });
         }
 
@@ -782,10 +806,34 @@
                 const d = new Date(inv.shiftDate);
                 return d.getMonth() === meta.month && d.getFullYear() === meta.year;
             });
-            const totalSpent = monthInvoices.reduce((s, inv) => s + inv.total, 0);
-            const paidTotal = monthInvoices.filter(i => i.status === 'paid').reduce((s, inv) => s + inv.total, 0);
-            const outstandingTotal = monthInvoices.filter(i => i.status !== 'paid').reduce((s, inv) => s + inv.total, 0);
             const freshData = getMockData();
+            // Booked spend — same offer-based calculation as the KPI card
+            const mPrefix = `${meta.year}-${String(meta.month + 1).padStart(2, '0')}`;
+            const mStartStr = mPrefix + '-01';
+            const mEndStr = mPrefix + '-' + String(new Date(meta.year, meta.month + 1, 0).getDate()).padStart(2, '0');
+            const monthOffers = freshData.offers.filter(o => {
+                const d = o.sessionDate || o.shiftDate || '';
+                return o.practiceId === session.id &&
+                    (o.status === 'accepted' || o.status === 'confirmed' || o.status === 'completed') &&
+                    d >= mStartStr && d <= mEndStr;
+            });
+            const totalSpent = monthOffers.reduce((s, o) => s + (o.agreedRate || o.proposedRate || 0), 0);
+            const invoicedTotal = monthInvoices.reduce((s, inv) => s + inv.total, 0);
+            const paidTotal = monthInvoices.filter(i => i.status === 'paid').reduce((s, inv) => s + inv.total, 0);
+
+            let bookedRows;
+            if (monthOffers.length === 0) {
+                bookedRows = '<p style="color: var(--dark-600); font-size: 0.88rem; padding: 8px 0;">No booked sessions for this month.</p>';
+            } else {
+                bookedRows = monthOffers.map(o => {
+                    const loc = freshData.locums.find(l => l.id === o.locumId);
+                    const locName = loc ? `${loc.title} ${loc.firstName} ${loc.lastName}` : 'Unknown';
+                    return `<div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+                        <div><strong style="font-size: 0.88rem;">${DateUtils.format(o.sessionDate || o.shiftDate, 'medium')}</strong> <span style="font-size: 0.82rem; color: var(--dark-600); margin-left: 8px;">${escapeHtml(o.sessionType || '')} &bull; ${escapeHtml(locName)}</span></div>
+                        <div style="display: flex; align-items: center; gap: 10px;"><span class="badge ${getStatusBadge(o.status)}" style="font-size: 0.72rem;">${getStatusLabel(o.status)}</span><strong style="font-size: 0.88rem;">${formatCurrency(o.agreedRate || o.proposedRate || 0)}</strong></div>
+                    </div>`;
+                }).join('');
+            }
 
             let invoiceRows;
             if (monthInvoices.length === 0) {
@@ -820,18 +868,20 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px;">
                         <div style="padding: 14px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
                             <div style="font-size: 1.2rem; font-weight: 700; color: var(--dark);">${formatCurrency(totalSpent)}</div>
-                            <div style="font-size: 0.78rem; color: var(--dark-600);">Total Spend</div>
+                            <div style="font-size: 0.78rem; color: var(--dark-600);">Total Spend (Booked)</div>
+                        </div>
+                        <div style="padding: 14px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--dark);">${formatCurrency(invoicedTotal)}</div>
+                            <div style="font-size: 0.78rem; color: var(--dark-600);">Invoiced</div>
                         </div>
                         <div style="padding: 14px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
                             <div style="font-size: 1.2rem; font-weight: 700; color: var(--success);">${formatCurrency(paidTotal)}</div>
                             <div style="font-size: 0.78rem; color: var(--dark-600);">Paid</div>
                         </div>
-                        <div style="padding: 14px; background: var(--gray-50); border-radius: var(--radius); text-align: center;">
-                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--coral);">${formatCurrency(outstandingTotal)}</div>
-                            <div style="font-size: 0.78rem; color: var(--dark-600);">Outstanding</div>
-                        </div>
                     </div>
-                    <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 12px;">${monthInvoices.length} Invoice${monthInvoices.length !== 1 ? 's' : ''}</h4>
+                    <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 8px;">${monthOffers.length} Booked Session${monthOffers.length !== 1 ? 's' : ''}</h4>
+                    ${bookedRows}
+                    <h4 style="font-size: 0.9rem; font-weight: 600; margin: 16px 0 12px;">${monthInvoices.length} Invoice${monthInvoices.length !== 1 ? 's' : ''}</h4>
                     ${invoiceRows}
                 `,
                 footer: `<a href="billing.html" class="btn btn-secondary">View Full Billing</a>`
@@ -887,12 +937,12 @@
                     }).join('');
                 Modal.show({ title: `Active Offers (${active.length})`, size: 'large', body: rows, footer: `<a href="view-requested-shifts.html" class="btn btn-secondary">View All Sessions</a>` });
             } else if (type === 'fillRate') {
-                const allNeeds = (freshData.sessionNeeds || []).filter(n => n.practiceId === session.id);
+                // Purely need-based, matching the KPI card (offers would double-count filled needs)
+                const allNeeds = (freshData.sessionNeeds || []).filter(n => n.practiceId === session.id && n.status !== 'cancelled');
                 const total = allNeeds.length;
                 const filled = allNeeds.filter(n => n.status === 'filled').length;
-                const completed = freshData.offers.filter(o => o.practiceId === session.id && (o.status === 'completed' || o.status === 'accepted' || o.status === 'confirmed')).length;
                 const open = allNeeds.filter(n => n.status === 'open');
-                const rate = total > 0 ? Math.min(Math.round(((filled + completed) / total) * 100), 100) : 0;
+                const rate = total > 0 ? Math.min(Math.round((filled / total) * 100), 100) : 0;
                 const unfilledRows = open.length === 0
                     ? '<p style="color: var(--dark-600); font-size: 0.85rem;">All sessions filled.</p>'
                     : open.slice(0, 10).map(n => `
@@ -910,7 +960,7 @@
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px;">
                             <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;"><div style="font-size: 1.3rem; font-weight: 700;">${total}</div><div style="font-size: 0.78rem; color: var(--dark-600);">Total Sessions</div></div>
-                            <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;"><div style="font-size: 1.3rem; font-weight: 700; color: var(--success);">${filled + completed}</div><div style="font-size: 0.78rem; color: var(--dark-600);">Filled / Completed</div></div>
+                            <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;"><div style="font-size: 1.3rem; font-weight: 700; color: var(--success);">${filled}</div><div style="font-size: 0.78rem; color: var(--dark-600);">Filled</div></div>
                             <div style="padding: 12px; background: var(--gray-50); border-radius: var(--radius); text-align: center;"><div style="font-size: 1.3rem; font-weight: 700; color: var(--coral);">${open.length}</div><div style="font-size: 0.78rem; color: var(--dark-600);">Still Open</div></div>
                         </div>
                         ${open.length > 0 ? '<h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 8px;">Unfilled Sessions</h4>' : ''}

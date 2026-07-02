@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage()) throw new Error('Auth required');
 
@@ -59,7 +59,12 @@
         const invoiceId = params.get('id');
 
         if (!data.invoices) data.invoices = [];
-        const invoice = data.invoices.find(i => i.id === invoiceId);
+        let invoice = data.invoices.find(i => i.id === invoiceId);
+
+        // Only the invoice's own locum, its practice, or an admin may view it
+        if (invoice && !(session.id === invoice.locumId || session.id === invoice.practiceId || session.is_admin)) {
+            invoice = null;
+        }
 
         function getInvoiceStatusBadge(status) {
             const map = {
@@ -102,7 +107,7 @@
             Modal.show({
                 title: 'Confirm Payment Received',
                 size: 'small',
-                body: `<p style="color: var(--dark-600); line-height: 1.6;">Confirm that you have received payment of <strong>${formatCurrency(invoice.total)}</strong> from <strong>${invoice.practiceName}</strong> for invoice <strong>${invoice.invoiceNumber}</strong>?</p>`,
+                body: `<p style="color: var(--dark-600); line-height: 1.6;">Confirm that you have received payment of <strong>${formatCurrency(invoice.total)}</strong> from <strong>${sanitizeHTML(invoice.practiceName)}</strong> for invoice <strong>${invoice.invoiceNumber}</strong>?</p>`,
                 footer: `
                     <button class="btn btn-ghost" data-modal-close>Cancel</button>
                     <button class="btn btn-primary" id="confirmReceiptBtn">Confirm Received</button>
@@ -164,7 +169,7 @@
                 Modal.show({
                     title: 'Reminder Sent',
                     size: 'small',
-                    body: `<p style="color: var(--dark-600); line-height: 1.6;">A payment reminder has been sent to <strong>${invoice.practiceName}</strong>. They will see it in their messages and can approve or dispute the invoice from there.</p>`,
+                    body: `<p style="color: var(--dark-600); line-height: 1.6;">A payment reminder has been sent to <strong>${sanitizeHTML(invoice.practiceName)}</strong>. They will see it in their messages and can approve or dispute the invoice from there.</p>`,
                     footer: `
                         <a href="messages.html" class="btn btn-primary">Go to Messages</a>
                         <button class="btn btn-ghost" data-modal-close>Stay Here</button>
@@ -242,9 +247,10 @@
                         if (InvoiceManager.approveRevision(invoiceId)) {
                             Modal.close(overlay);
                             Toast.show('Revised amount approved. You can now mark the invoice as paid.', 'success');
-                            // Update local invoice object
+                            // Update local invoice object (session rate = total minus any housecall fee,
+                            // mirroring InvoiceManager.approveRevision so line items sum to the total)
                             invoice.total = invoice.revisedTotal;
-                            invoice.sessionRate = invoice.revisedTotal;
+                            invoice.sessionRate = Math.max(0, invoice.revisedTotal - (invoice.housecallFee || 0));
                             invoice.status = 'pending';
                             delete invoice.revisedTotal;
                             setTimeout(() => render(), 500);
@@ -305,14 +311,14 @@
             const locum = data.locums.find(l => l.id === invoice.locumId);
             const practice = data.practices.find(p => p.id === invoice.practiceId);
 
-            const statusLabel = invoice.status === 'paid_pending' ? 'Awaiting Confirmation' : invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
+            const statusLabel = invoice.status === 'paid_pending' ? 'Awaiting Confirmation' : invoice.status === 'revised' ? 'Under Review' : invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
 
-            // Build line items
+            // Build line items — derived from invoice.total so they always sum to the true amount
             const lineItems = [];
             lineItems.push({
                 description: `${invoice.sessionType} Session - ${DateUtils.format(invoice.shiftDate, 'full')}`,
                 time: `${invoice.startTime || '08:30'} - ${invoice.endTime || '17:00'}`,
-                amount: invoice.sessionRate || invoice.total
+                amount: invoice.total - (invoice.housecallFee || 0)
             });
             if (invoice.housecallFee && invoice.housecallFee > 0) {
                 lineItems.push({
@@ -321,8 +327,6 @@
                     amount: invoice.housecallFee
                 });
             }
-
-            const subtotal = lineItems.reduce((s, item) => s + item.amount, 0);
 
             // Action buttons based on role and status
             let actionButtons = '';
@@ -338,7 +342,7 @@
                     <button class="btn btn-danger btn-ghost" onclick="handleRejectRevision()">Reject Revision</button>
                 `;
             }
-            if (role === 'locum' && (invoice.status === 'pending' || invoice.status === 'overdue')) {
+            if (role === 'locum' && (invoice.status === 'overdue' || (invoice.status === 'pending' && new Date(invoice.dueDate) < new Date()))) {
                 actionButtons = `
                     <button class="btn btn-warning" onclick="handleChasePayment()">Chase Payment</button>
                 `;
@@ -405,20 +409,20 @@
                         <div class="invoice-parties">
                             <div class="invoice-party">
                                 <h4>From</h4>
-                                <p><strong>${invoice.locumName}</strong></p>
+                                <p><strong>${sanitizeHTML(invoice.locumName)}</strong></p>
                                 ${locum ? `
-                                    ${locum.gmcNumber ? `<p>GMC: ${locum.gmcNumber}</p>` : ''}
-                                    ${locum.email ? `<p>${locum.email}</p>` : ''}
-                                    ${locum.phone ? `<p>${locum.phone}</p>` : ''}
+                                    ${locum.gmcNumber ? `<p>GMC: ${sanitizeHTML(locum.gmcNumber)}</p>` : ''}
+                                    ${locum.email ? `<p>${sanitizeHTML(locum.email)}</p>` : ''}
+                                    ${locum.phone ? `<p>${sanitizeHTML(locum.phone)}</p>` : ''}
                                 ` : ''}
                             </div>
                             <div class="invoice-party">
                                 <h4>To</h4>
-                                <p><strong>${invoice.practiceName}</strong></p>
+                                <p><strong>${sanitizeHTML(invoice.practiceName)}</strong></p>
                                 ${practice ? `
-                                    ${practice.address ? `<p>${practice.address}</p>` : ''}
-                                    ${(practice.city || practice.postcode) ? `<p>${practice.city || ''} ${practice.postcode || ''}</p>` : ''}
-                                    ${practice.phone ? `<p>${practice.phone}</p>` : ''}
+                                    ${practice.address ? `<p>${sanitizeHTML(practice.address)}</p>` : ''}
+                                    ${(practice.city || practice.postcode) ? `<p>${sanitizeHTML(practice.city || '')} ${sanitizeHTML(practice.postcode || '')}</p>` : ''}
+                                    ${practice.phone ? `<p>${sanitizeHTML(practice.phone)}</p>` : ''}
                                 ` : ''}
                             </div>
                         </div>
@@ -445,7 +449,7 @@
                         <div class="invoice-total-row">
                             <div style="text-align: right;">
                                 <p style="color: var(--dark-600); margin-bottom: 4px;">Total Amount</p>
-                                <span class="invoice-total" style="color: var(--primary);">${formatCurrency(subtotal)}</span>
+                                <span class="invoice-total" style="color: var(--primary);">${formatCurrency(invoice.total)}</span>
                             </div>
                         </div>
 

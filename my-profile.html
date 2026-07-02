@@ -37,44 +37,133 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
         const session = Auth.getSession();
         const pageContent = initAppLayout('locum', 'profile', 'My Profile');
-        const user = Auth.getCurrentUser();
-        const fullName = `${user.title} ${user.firstName} ${user.lastName}`;
+        let user = Auth.getCurrentUser();
 
-        // Get ratings data
-        const avgRating = FeedbackManager.getAverageRating(session.id);
-        const reviews = FeedbackManager.getForUser(session.id);
+        const DOC_LABELS = {
+            indemnity: 'Indemnity Certificate',
+            performerListStatus: 'Performer List Status',
+            dbs: 'DBS Enhanced Check',
+            cv: 'Curriculum Vitae (CV)'
+        };
+        const MAX_DOC_BYTES = 1024 * 1024; // 1MB
 
-        function renderDocRow(label, doc) {
+        function renderDocRow(key, label) {
+            const doc = (user.documents || {})[key] || { uploaded: false, name: null, expiry: null };
             const expiry = doc.expiry ? getDocumentExpiryStatus(doc.expiry) : null;
             return `
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--gray-100);">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--gray-100); gap: 12px; flex-wrap: wrap;">
                     <div>
                         <p style="font-size: 0.9rem; font-weight: 600; color: var(--dark-700);">${label}</p>
                         ${doc.uploaded
-                            ? `<p style="font-size: 0.82rem; color: var(--success); margin-top: 2px;">${getIcon('check')} Uploaded: ${doc.name}</p>`
+                            ? `<p style="font-size: 0.82rem; color: var(--success); margin-top: 2px;">${getIcon('check')} Uploaded: ${sanitizeHTML(doc.name || '')}</p>`
                             : `<p style="font-size: 0.82rem; color: var(--warning); margin-top: 2px;">Not uploaded</p>`
                         }
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         ${expiry ? `<span class="badge ${expiry.badge}">${expiry.label}</span>` : ''}
                         ${doc.uploaded
-                            ? `<button class="btn btn-small btn-secondary" onclick="Toast.show('Download simulated: ${doc.name}', 'info')">${getIcon('download')} Download</button>`
-                            : `<span class="badge badge-warning">Missing</span>`
+                            ? `<button class="btn btn-small btn-secondary" onclick="handleDocDownload('${key}')">${getIcon('download')} Download</button>
+                               <button class="btn btn-small btn-ghost" onclick="openDocUpload('${key}')">Replace</button>`
+                            : `<span class="badge badge-warning">Missing</span>
+                               <button class="btn btn-small btn-secondary" onclick="openDocUpload('${key}')">Upload</button>`
                         }
                     </div>
                 </div>
             `;
         }
+
+        function openDocUpload(key) {
+            Modal.show({
+                title: 'Upload ' + DOC_LABELS[key],
+                size: 'small',
+                body: `
+                    <div class="form-group">
+                        <label class="form-label">Select file (PDF or image, max 1MB)</label>
+                        <input type="file" class="form-input" id="docFile" accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Expiry Date ${key === 'cv' ? '(optional)' : ''}</label>
+                        <input type="date" class="form-input" id="docExpiry">
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" id="docUploadBtn">Upload</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#docUploadBtn').addEventListener('click', () => {
+                        const fileInput = overlay.querySelector('#docFile');
+                        const file = fileInput.files && fileInput.files[0];
+                        if (!file) {
+                            Toast.show('Please choose a file to upload.', 'warning');
+                            return;
+                        }
+                        if (file.size > MAX_DOC_BYTES) {
+                            Toast.show('File is too large. Maximum size is 1MB.', 'error');
+                            return;
+                        }
+                        const expiryInput = overlay.querySelector('#docExpiry');
+                        const expiry = expiryInput && expiryInput.value ? expiryInput.value : null;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const data = getMockData();
+                            const u = data.locums.find(l => l.id === session.id);
+                            if (!u) {
+                                Toast.show('Could not save document. Please try again.', 'error');
+                                return;
+                            }
+                            if (!u.documents) u.documents = {};
+                            u.documents[key] = {
+                                uploaded: true,
+                                name: file.name,
+                                expiry: expiry,
+                                dataUrl: reader.result,
+                                uploadedDate: new Date().toISOString().split('T')[0]
+                            };
+                            saveMockData(data);
+                            Modal.close(overlay);
+                            Toast.show(DOC_LABELS[key] + ' uploaded', 'success');
+                            renderProfile();
+                        };
+                        reader.onerror = () => Toast.show('Could not read the file. Please try again.', 'error');
+                        reader.readAsDataURL(file);
+                    });
+                }
+            });
+        }
+
+        function handleDocDownload(key) {
+            const doc = (Auth.getCurrentUser().documents || {})[key];
+            if (!doc || !doc.uploaded) return;
+            if (doc.dataUrl) {
+                const a = document.createElement('a');
+                a.href = doc.dataUrl;
+                a.download = doc.name || 'document';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                Toast.show('No file is stored for this document yet. Use Replace to upload it.', 'info');
+            }
+        }
+
+        function renderProfile() {
+        user = Auth.getCurrentUser();
+        const fullName = `${user.title} ${user.firstName} ${user.lastName}`;
+
+        // Get ratings data
+        const avgRating = FeedbackManager.getAverageRating(session.id);
+        const reviews = FeedbackManager.getForUser(session.id);
 
         pageContent.innerHTML = `
             <div style="background: rgba(14,165,233,0.08); border: 1px solid rgba(14,165,233,0.2); border-radius: var(--radius); padding: 14px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: var(--secondary);">
@@ -85,7 +174,7 @@
             <!-- Document Expiry Warnings -->
             ${(() => {
                 const warnings = [];
-                Object.entries(user.documents).forEach(([key, doc]) => {
+                Object.entries(user.documents || {}).forEach(([key, doc]) => {
                     if (doc.expiry) {
                         const status = getDocumentExpiryStatus(doc.expiry);
                         const labels = { indemnity: 'Indemnity Certificate', performerListStatus: 'Performer List Status', dbs: 'DBS Check', cv: 'CV / Resume' };
@@ -139,7 +228,7 @@
             <div class="content-card">
                 <div class="content-card-header"><h2>About</h2></div>
                 <div class="content-card-body">
-                    <p style="font-size: 0.92rem; color: var(--dark-700); line-height: 1.7;">${user.bio || '<span style="color: var(--gray-400); font-style: italic;">No biography added yet. <a href="my-settings.html" style="color: var(--primary);">Add one in Settings</a>.</span>'}</p>
+                    <p style="font-size: 0.92rem; color: var(--dark-700); line-height: 1.7;">${user.bio ? sanitizeHTML(user.bio) : '<span style="color: var(--gray-400); font-style: italic;">No biography added yet. <a href="my-settings.html" style="color: var(--primary);">Add one in Settings</a>.</span>'}</p>
                 </div>
             </div>
 
@@ -147,11 +236,11 @@
             <div class="content-card">
                 <div class="content-card-header"><h2>Professional Details</h2></div>
                 <div class="content-card-body">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 24px;">
                         <div>
                             <p style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Computer Systems</p>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                ${user.computerSystems.map(s => `<span class="badge badge-info">${s}</span>`).join('')}
+                                ${(user.computerSystems || []).length ? (user.computerSystems || []).map(s => `<span class="badge badge-info">${s}</span>`).join('') : '<span class="badge badge-neutral">Not specified</span>'}
                             </div>
                         </div>
                         <div>
@@ -160,11 +249,11 @@
                         </div>
                         <div>
                             <p style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Signing Scripts</p>
-                            <span style="font-size: 0.9rem; color: var(--dark-700);">${user.signingScripts}</span>
+                            <span style="font-size: 0.9rem; color: var(--dark-700);">${user.signingScripts || 'Not specified'}</span>
                         </div>
                         <div>
-                            <p style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">ID Response Time</p>
-                            <span style="font-size: 0.9rem; color: var(--dark-700);">${user.responseTime}</span>
+                            <p style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Response Time</p>
+                            <span style="font-size: 0.9rem; color: var(--dark-700);">${!user.responseTime || user.responseTime === 'N/A' ? 'New to GPRN' : user.responseTime}</span>
                         </div>
                         <div style="grid-column: 1 / -1;">
                             <p style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Booking Reliability</p>
@@ -183,10 +272,10 @@
             <div class="content-card">
                 <div class="content-card-header"><h2>Documents</h2></div>
                 <div class="content-card-body" style="padding: 0;">
-                    ${renderDocRow('Indemnity Certificate', user.documents.indemnity)}
-                    ${renderDocRow('Performer List Status', user.documents.performerListStatus)}
-                    ${renderDocRow('DBS Enhanced Check', user.documents.dbs)}
-                    ${renderDocRow('Curriculum Vitae (CV)', user.documents.cv)}
+                    ${renderDocRow('indemnity', 'Indemnity Certificate')}
+                    ${renderDocRow('performerListStatus', 'Performer List Status')}
+                    ${renderDocRow('dbs', 'DBS Enhanced Check')}
+                    ${renderDocRow('cv', 'Curriculum Vitae (CV)')}
                 </div>
             </div>
 
@@ -210,7 +299,7 @@
                             <div style="padding: 16px 0; border-bottom: 1px solid var(--gray-100);">
                                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <strong style="font-size: 0.88rem; color: var(--dark);">${reviewerName}</strong>
+                                        <strong style="font-size: 0.88rem; color: var(--dark);">${sanitizeHTML(reviewerName)}</strong>
                                         ${renderRatingStars(parseFloat(avgScore))}
                                     </div>
                                     <span class="review-date">${DateUtils.format(r.timestamp, 'medium')}</span>
@@ -220,13 +309,16 @@
                                         <span style="font-size: 0.78rem; color: var(--dark-600);">${cat}: <strong>${val}/5</strong></span>
                                     `).join('')}
                                 </div>
-                                ${r.comment ? `<p class="review-comment">${r.comment}</p>` : ''}
+                                ${r.comment ? `<p class="review-comment">${sanitizeHTML(r.comment)}</p>` : ''}
                             </div>`;
                         }).join('')
                     }
                 </div>
             </div>
         `;
+        }
+
+        renderProfile();
     </script>
 </body>
 </html>

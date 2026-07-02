@@ -105,7 +105,7 @@ img { max-width: 100%; }
 
 .btn-primary {
     background: var(--primary);
-    color: var(--white);
+    color: #fff; /* literal: --white is remapped to dark navy in dark mode */
     box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
 }
 .btn-primary:hover {
@@ -141,6 +141,35 @@ img { max-width: 100%; }
     padding: 10px 16px;
 }
 .btn-ghost:hover { color: var(--primary); }
+
+.btn-warning {
+    background: var(--warning);
+    color: #fff;
+}
+.btn-warning:hover {
+    background: #D97706;
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: #fff;
+}
+.btn-danger:hover {
+    background: #DC2626;
+    transform: translateY(-1px);
+}
+/* Ghost variants (used where both classes are combined, e.g. invoice dispute/reject) */
+.btn-danger.btn-ghost {
+    background: transparent;
+    color: var(--danger);
+}
+.btn-danger.btn-ghost:hover { background: rgba(239, 68, 68, 0.08); color: #DC2626; }
+.btn-warning.btn-ghost {
+    background: transparent;
+    color: #B45309;
+}
+.btn-warning.btn-ghost:hover { background: rgba(245, 158, 11, 0.1); color: #92400E; }
 
 .btn-white {
     background: var(--white);
@@ -1705,8 +1734,8 @@ body.gprn-app .content-card-header h2 {
     white-space: nowrap;
 }
 .badge-primary { background: rgba(5, 150, 105,0.08); color: var(--primary); }
-.badge-success { background: rgba(34, 197, 94,0.1); color: var(--success); }
-.badge-warning { background: rgba(245,158,11,0.1); color: var(--warning); }
+.badge-success { background: rgba(34, 197, 94,0.1); color: #15803D; }
+.badge-warning { background: rgba(245,158,11,0.1); color: #B45309; }
 .badge-danger { background: rgba(239,68,68,0.1); color: var(--danger); }
 .badge-info { background: rgba(11, 15, 25,0.06); color: var(--secondary); }
 .badge-neutral { background: var(--gray-100); color: var(--dark-600); }
@@ -2757,6 +2786,19 @@ html.dark textarea {
 /* Badges */
 html.dark .badge {
     opacity: 0.9;
+}
+html.dark .badge-info {
+    background: rgba(148, 163, 184, 0.15) !important;
+    color: #CBD5E1 !important;
+}
+html.dark .badge-warning {
+    color: #FBBF24 !important;
+}
+html.dark .badge-success {
+    color: #4ADE80 !important;
+}
+html.dark .toast-info .toast-icon {
+    color: #CBD5E1 !important;
 }
 
 /* Bar charts */

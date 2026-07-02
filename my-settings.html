@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -79,33 +79,35 @@
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label">GMC Number</label>
-                                        <input type="text" class="form-input" id="settGmc" value="${user.gmcNumber}">
+                                        <input type="text" class="form-input" id="settGmc" value="${sanitizeHTML(user.gmcNumber)}" readonly style="background: var(--gray-50); cursor: not-allowed;">
+                                        <span class="form-hint">Your GMC number was verified at approval — contact support to change it.</span>
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label class="form-label">First Name</label>
-                                        <input type="text" class="form-input" id="settFirst" value="${user.firstName}" required>
+                                        <input type="text" class="form-input" id="settFirst" value="${sanitizeHTML(user.firstName)}" required>
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label">Last Name</label>
-                                        <input type="text" class="form-input" id="settLast" value="${user.lastName}" required>
+                                        <input type="text" class="form-input" id="settLast" value="${sanitizeHTML(user.lastName)}" required>
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label class="form-label">Email</label>
-                                        <input type="email" class="form-input" id="settEmail" value="${user.email}" required>
+                                        <input type="email" class="form-input" id="settEmail" value="${sanitizeHTML(user.email)}" readonly style="background: var(--gray-50); cursor: not-allowed;">
+                                        <span class="form-hint">This is your login email — contact support to change it.</span>
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label">Phone</label>
-                                        <input type="tel" class="form-input" id="settPhone" value="${user.phone}">
+                                        <input type="tel" class="form-input" id="settPhone" value="${sanitizeHTML(user.phone)}">
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label class="form-label">Medical School</label>
-                                        <input type="text" class="form-input" id="settMedSchool" value="${user.medicalSchool}">
+                                        <input type="text" class="form-input" id="settMedSchool" value="${sanitizeHTML(user.medicalSchool)}">
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label">Year Qualified</label>
@@ -114,7 +116,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Bio</label>
-                                    <textarea class="form-textarea" id="settBio" rows="4">${user.bio}</textarea>
+                                    <textarea class="form-textarea" id="settBio" rows="4">${sanitizeHTML(user.bio)}</textarea>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Computer Systems</label>
@@ -222,8 +224,8 @@
                                     return '<div class="email-log-item">' +
                                         '<div class="email-log-icon">' + getIcon('mail') + '</div>' +
                                         '<div class="email-log-info">' +
-                                            '<div class="email-log-subject">' + email.subject + '</div>' +
-                                            '<div class="email-log-body">' + (email.body || '').substring(0, 120) + (email.body && email.body.length > 120 ? '...' : '') + '</div>' +
+                                            '<div class="email-log-subject">' + sanitizeHTML(email.subject) + '</div>' +
+                                            '<div class="email-log-body">' + sanitizeHTML((email.body || '').substring(0, 120)) + (email.body && email.body.length > 120 ? '...' : '') + '</div>' +
                                         '</div>' +
                                         '<div class="email-log-time">' + timeStr + '</div>' +
                                     '</div>';
@@ -257,6 +259,26 @@
                     </div>
                 </div>
             `;
+
+            applySavedToggles();
+        }
+
+        function applySavedToggles() {
+            var data = getMockData();
+            var session = Auth.getSession();
+            if (data.userSettings && data.userSettings[session.id]) {
+                var settings = data.userSettings[session.id];
+                document.querySelectorAll('.toggle-switch[data-pref]').forEach(function(el) {
+                    var key = el.dataset.pref;
+                    if (settings.hasOwnProperty(key)) {
+                        if (settings[key]) {
+                            el.classList.add('active');
+                        } else {
+                            el.classList.remove('active');
+                        }
+                    }
+                });
+            }
         }
 
         function switchTab(tab) {
@@ -291,14 +313,14 @@
             user.title = document.getElementById('settTitle').value;
             user.firstName = document.getElementById('settFirst').value;
             user.lastName = document.getElementById('settLast').value;
-            user.email = document.getElementById('settEmail').value;
             user.phone = document.getElementById('settPhone').value;
-            user.gmcNumber = document.getElementById('settGmc').value;
             user.medicalSchool = document.getElementById('settMedSchool').value;
-            user.yearQualified = parseInt(document.getElementById('settYear').value);
+            const newYear = parseInt(document.getElementById('settYear').value);
+            user.yearQualified = isNaN(newYear) ? user.yearQualified : newYear;
             user.bio = document.getElementById('settBio').value;
             user.signingScripts = document.getElementById('settScripts').value;
-            user.travelDistance = parseInt(document.getElementById('settTravel').value);
+            const newTravel = parseInt(document.getElementById('settTravel').value);
+            user.travelDistance = isNaN(newTravel) ? user.travelDistance : newTravel;
 
             const checkedSystems = document.querySelectorAll('input[name="computerSystems"]:checked');
             user.computerSystems = Array.from(checkedSystems).map(c => c.value);
@@ -310,7 +332,7 @@
             const newSession = {
                 ...session,
                 name: `${user.title} ${user.firstName} ${user.lastName}`,
-                email: user.email
+                firstName: user.firstName
             };
             localStorage.setItem('gprn_session', JSON.stringify(newSession));
 
@@ -324,11 +346,6 @@
             const newPw = document.getElementById('pwNew').value;
             const confirm = document.getElementById('pwConfirm').value;
 
-            const user = getUser();
-            if (current !== user.password) {
-                Toast.show('Current password is incorrect', 'error');
-                return;
-            }
             if (newPw.length < 6) {
                 Toast.show('New password must be at least 6 characters', 'error');
                 return;
@@ -338,8 +355,41 @@
                 return;
             }
 
-            const data = getMockData();
             const session = Auth.getSession();
+
+            // Real accounts authenticate against Supabase — the password must be changed there,
+            // not in the shared app-state blob (which the login flow never checks).
+            if (session.access_token && typeof SupabaseClient !== 'undefined' && typeof SupabaseClient.changePassword === 'function') {
+                const result = SupabaseClient.changePassword(current, newPw);
+                if (result.error === 'incorrect_password') {
+                    Toast.show('Current password is incorrect', 'error');
+                    return;
+                }
+                if (result.error) {
+                    Toast.show('Failed to update password. Please try again.', 'error');
+                    return;
+                }
+
+                // Remove any legacy plaintext password stored in the shared blob
+                const data = getMockData();
+                const u = data.locums.find(l => l.id === session.id);
+                if (u && u.password !== undefined) {
+                    delete u.password;
+                    saveMockData(data);
+                }
+
+                Toast.show('Password updated successfully', 'success');
+                document.getElementById('passwordForm').reset();
+                return;
+            }
+
+            // Local/offline fallback (no Supabase session)
+            const user = getUser();
+            if (current !== user.password) {
+                Toast.show('Current password is incorrect', 'error');
+                return;
+            }
+            const data = getMockData();
             const u = data.locums.find(l => l.id === session.id);
             u.password = newPw;
             saveMockData(data);
@@ -348,25 +398,6 @@
         }
 
         renderSettings();
-
-        // Load saved toggle states from mock data
-        (function() {
-            var data = getMockData();
-            var session = Auth.getSession();
-            if (data.userSettings && data.userSettings[session.id]) {
-                var settings = data.userSettings[session.id];
-                document.querySelectorAll('.toggle-switch[data-pref]').forEach(function(el) {
-                    var key = el.dataset.pref;
-                    if (settings.hasOwnProperty(key)) {
-                        if (settings[key]) {
-                            el.classList.add('active');
-                        } else {
-                            el.classList.remove('active');
-                        }
-                    }
-                });
-            }
-        })();
     </script>
 </body>
 </html>

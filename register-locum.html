@@ -155,14 +155,6 @@
         .register-shell .password-toggle:hover { color: #475569; }
         .register-shell .password-wrapper .form-input { padding-right: 48px !important; }
 
-        .register-shell .upload-zone {
-            border: 2px dashed #CBD5E1; border-radius: 14px; padding: 24px; text-align: center;
-            background: #F8FAFC; cursor: pointer; transition: border-color .15s, background .15s;
-        }
-        .register-shell .upload-zone:hover { border-color: #0F8B5A; background: #ECFDF5; }
-        .register-shell .upload-zone-icon { color: #64748B; display: flex; justify-content: center; margin-bottom: 8px; }
-        .register-shell .upload-zone p { font-size: 0.85rem; color: #64748B; margin: 0; }
-
         @keyframes rise { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
         .rise { animation: rise .6s cubic-bezier(0.16, 1, 0.3, 1) both; }
     </style>
@@ -434,46 +426,36 @@
 
                     <!-- Step 4: Documents -->
                     <div class="form-step" id="step4" style="display:none;">
-                        <p style="font-size:0.9rem; color:#64748B; margin-bottom:24px;">Upload your documents to complete your profile. You can upload these now or add them later from your dashboard.</p>
+                        <p style="font-size:0.9rem; color:#64748B; margin-bottom:24px;">Once your account is approved, you'll upload your compliance documents from your dashboard. Here's what you'll need to have ready:</p>
 
-                        <div class="form-group">
-                            <label class="form-label">Indemnity Certificate</label>
-                            <div class="upload-zone" id="uploadIndemnity">
-                                <div class="upload-zone-icon">
-                                    <i class="ph ph-upload-simple text-3xl"></i>
+                        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:14px; padding:20px 24px; margin-bottom:16px;">
+                            <div style="display:flex; align-items:flex-start; gap:12px; padding:10px 0;">
+                                <i class="ph ph-file-text text-xl" style="color:#0F8B5A; flex-shrink:0; margin-top:2px;"></i>
+                                <div>
+                                    <p style="margin:0; font-size:0.9rem; font-weight:600; color:#0F172A;">Indemnity Certificate</p>
+                                    <p style="margin:2px 0 0; font-size:0.8rem; color:#64748B;">Current medical indemnity cover</p>
                                 </div>
-                                <p>Click to upload or drag and drop (PDF, max 10MB)</p>
                             </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Performer List Status</label>
-                            <p class="form-hint">NHS England/Wales performers list registration</p>
-                            <div class="upload-zone" id="uploadPerformer">
-                                <div class="upload-zone-icon">
-                                    <i class="ph ph-upload-simple text-3xl"></i>
+                            <div style="display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-top:1px solid #E2E8F0;">
+                                <i class="ph ph-file-text text-xl" style="color:#0F8B5A; flex-shrink:0; margin-top:2px;"></i>
+                                <div>
+                                    <p style="margin:0; font-size:0.9rem; font-weight:600; color:#0F172A;">Performer List Status</p>
+                                    <p style="margin:2px 0 0; font-size:0.8rem; color:#64748B;">NHS England/Wales performers list registration</p>
                                 </div>
-                                <p>Click to upload or drag and drop (PDF, max 10MB)</p>
                             </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">DBS Check</label>
-                            <div class="upload-zone" id="uploadDBS">
-                                <div class="upload-zone-icon">
-                                    <i class="ph ph-upload-simple text-3xl"></i>
+                            <div style="display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-top:1px solid #E2E8F0;">
+                                <i class="ph ph-file-text text-xl" style="color:#0F8B5A; flex-shrink:0; margin-top:2px;"></i>
+                                <div>
+                                    <p style="margin:0; font-size:0.9rem; font-weight:600; color:#0F172A;">DBS Check</p>
+                                    <p style="margin:2px 0 0; font-size:0.8rem; color:#64748B;">Enhanced DBS certificate</p>
                                 </div>
-                                <p>Click to upload or drag and drop (PDF, max 10MB)</p>
                             </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">CV</label>
-                            <div class="upload-zone" id="uploadCV">
-                                <div class="upload-zone-icon">
-                                    <i class="ph ph-upload-simple text-3xl"></i>
+                            <div style="display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-top:1px solid #E2E8F0;">
+                                <i class="ph ph-file-text text-xl" style="color:#0F8B5A; flex-shrink:0; margin-top:2px;"></i>
+                                <div>
+                                    <p style="margin:0; font-size:0.9rem; font-weight:600; color:#0F172A;">CV</p>
+                                    <p style="margin:2px 0 0; font-size:0.8rem; color:#64748B;">Up-to-date curriculum vitae</p>
                                 </div>
-                                <p>Click to upload or drag and drop (PDF, max 10MB)</p>
                             </div>
                         </div>
                     </div>
@@ -506,11 +488,11 @@
 
     </div>
 
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-    <script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+    <script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         (function() {
             initMockData();
@@ -527,37 +509,6 @@
 
             travelSlider.addEventListener('input', function() {
                 travelValue.textContent = this.value + ' miles';
-            });
-
-            // Upload zones
-            document.querySelectorAll('.upload-zone').forEach(zone => {
-                var fileInput = document.createElement('input');
-                fileInput.type = 'file';
-                fileInput.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
-                fileInput.style.display = 'none';
-                zone.parentElement.appendChild(fileInput);
-
-                zone.addEventListener('click', function() {
-                    fileInput.click();
-                });
-
-                fileInput.addEventListener('change', function() {
-                    var file = this.files[0];
-                    if (!file) return;
-                    var docType = zone.getAttribute('data-doc-type') || 'general';
-                    zone.innerHTML = '<p class="uploaded" style="color:#047857;font-weight:600;"><i class="ph ph-check-circle" style="vertical-align:middle;margin-right:6px;"></i>' + file.name + '<span class="upload-remove" onclick="event.stopPropagation(); removeUpload(this)" style="color: #DC2626; cursor: pointer; font-size: 0.8rem; margin-left: 8px; text-decoration: underline;">Remove</span></p>';
-                    zone.style.borderColor = '#0F8B5A';
-                    var err = zone.parentElement.querySelector('.form-error');
-                    if (err) err.remove();
-
-                    if (typeof API !== 'undefined' && file) {
-                        API.uploadFile(file, docType).then(function(result) {
-                            if (result.success) {
-                                console.log('File uploaded:', result.document.name);
-                            }
-                        }).catch(function() {});
-                    }
-                });
             });
 
             function showStep(step) {
@@ -587,7 +538,23 @@
                 const fields = stepEl.querySelectorAll('[required], [data-validate]');
                 let valid = true;
                 fields.forEach(field => {
-                    const error = FormValidator.validateField(field);
+                    let error = FormValidator.validateField(field);
+                    // FormValidator reads field.value, which is always set for radios —
+                    // check the group has an actual selection.
+                    if (!error && field.type === 'radio' && field.required) {
+                        if (!stepEl.querySelector('input[name="' + field.name + '"]:checked')) {
+                            error = 'Please select an option';
+                        }
+                    }
+                    // Enforce min/max on number inputs (form is novalidate).
+                    if (!error && field.type === 'number' && field.value.trim() !== '') {
+                        const n = parseFloat(field.value);
+                        if (isNaN(n)
+                            || (field.min !== '' && n < parseFloat(field.min))
+                            || (field.max !== '' && n > parseFloat(field.max))) {
+                            error = 'Enter a value between ' + (field.min || 'the minimum') + ' and ' + (field.max || 'the maximum');
+                        }
+                    }
                     const errorEl = field.closest('.form-group')?.querySelector('.form-error');
                     if (error) {
                         valid = false;
@@ -620,18 +587,22 @@
                     currentStep++;
                     showStep(currentStep);
                 } else {
-                    const data = getMockData();
-                    const newId = 'loc-' + String(data.locums.length + 1).padStart(3, '0');
+                    // Collision-proof id — never derived from local data length,
+                    // which is 0 for anonymous visitors and would give everyone 'loc-001'.
+                    const newId = 'loc-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
                     const computerSystems = Array.from(document.querySelectorAll('input[name="computerSystems"]:checked')).map(c => c.value);
                     const healthBoards = Array.from(document.querySelectorAll('input[name="healthBoards"]:checked')).map(c => c.value);
                     const shiftTypes = Array.from(document.querySelectorAll('input[name="shiftTypes"]:checked')).map(c => c.value);
                     const performerList = document.querySelector('input[name="performerList"]:checked');
                     const nhsPension = document.querySelector('input[name="nhsPension"]:checked');
 
+                    // Password goes to Supabase Auth only — never into the profile object,
+                    // which ends up in the shared app_state blob.
+                    const accountPassword = document.getElementById('password').value;
+
                     const newLocum = {
                         id: newId,
-                        email: document.getElementById('email').value.trim(),
-                        password: document.getElementById('password').value,
+                        email: document.getElementById('email').value.trim().toLowerCase(),
                         role: 'locum',
                         title: document.getElementById('title').value,
                         firstName: document.getElementById('firstName').value.trim(),
@@ -658,18 +629,33 @@
                             dbs: { uploaded: false, name: null, expiry: null },
                             cv: { uploaded: false, name: null, expiry: null }
                         },
-                        rates: { am: 400, pm: 400, fullDay: 780, onCall: 40, housecall: 0 },
+                        // No fabricated fees — the locum sets real rates from My Rates
+                        // after approval. Consumers treat empty rates as "not set".
+                        rates: { am: null, pm: null, fullDay: null, onCall: null, housecall: null },
                         practiceRates: {}
                     };
 
                     var regResult = window.SupaRegister
-                        ? window.SupaRegister(newLocum.email, newLocum.password, 'locum', newLocum)
+                        ? window.SupaRegister(newLocum.email, accountPassword, 'locum', newLocum)
                         : null;
 
                     if (!regResult || regResult.error) {
                         var msg = (regResult && regResult.error && (regResult.error.msg || regResult.error.message))
                             || 'Could not create account. Please try again.';
-                        alert('Registration failed: ' + msg);
+                        if (/already.*(registered|exists)/i.test(msg)) {
+                            // Surface it inline on the email field instead of a raw alert()
+                            currentStep = 1;
+                            showStep(1);
+                            var emailField = document.getElementById('email');
+                            emailField.classList.add('error');
+                            var emailErr = emailField.closest('.form-group').querySelector('.form-error');
+                            if (emailErr) emailErr.textContent = 'An account with this email already exists. Try logging in instead.';
+                            emailField.focus();
+                        } else {
+                            var termsErrEl = document.getElementById('termsError');
+                            termsErrEl.textContent = 'Registration failed: ' + msg;
+                            termsErrEl.style.color = '#DC2626';
+                        }
                         return;
                     }
 
@@ -686,16 +672,6 @@
 
             showStep(1);
         })();
-
-        function removeUpload(el) {
-            var zone = el.closest('.upload-zone');
-            if (zone) {
-                zone.classList.remove('uploaded');
-                zone.innerHTML = '<div class="upload-zone-icon"><i class="ph ph-upload-simple text-3xl"></i></div><p>Click to upload or drag and drop (PDF, max 10MB)</p>';
-                zone.style.borderColor = '';
-                zone.style.background = '';
-            }
-        }
 
         function togglePw(inputId, btn) {
             var input = document.getElementById(inputId);

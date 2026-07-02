@@ -407,11 +407,11 @@
 
     </div>
 
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-    <script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+    <script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         (function() {
             initMockData();
@@ -450,7 +450,25 @@
                 const fields = stepEl.querySelectorAll('[required], [data-validate]');
                 let valid = true;
                 fields.forEach(field => {
-                    const error = FormValidator.validateField(field);
+                    let error = FormValidator.validateField(field);
+                    // FormValidator reads field.value, which is always set for radios —
+                    // check the group has an actual selection.
+                    if (!error && field.type === 'radio' && field.required) {
+                        if (!stepEl.querySelector('input[name="' + field.name + '"]:checked')) {
+                            error = 'Please select an option';
+                        }
+                    }
+                    // Enforce min/max on number inputs (form is novalidate).
+                    if (!error && field.type === 'number' && field.value.trim() !== '') {
+                        const n = parseFloat(field.value);
+                        if (isNaN(n)
+                            || (field.min !== '' && n < parseFloat(field.min))
+                            || (field.max !== '' && n > parseFloat(field.max))) {
+                            error = field.max !== ''
+                                ? 'Enter a value between ' + field.min + ' and ' + field.max
+                                : 'Enter a value of at least ' + field.min;
+                        }
+                    }
                     const errorEl = field.closest('.form-group')?.querySelector('.form-error');
                     if (error) {
                         valid = false;
@@ -484,14 +502,17 @@
                     showStep(currentStep);
                 } else {
                     // Final submit
-                    const data = getMockData();
-                    const newId = 'prac-' + String(data.practices.length + 1).padStart(3, '0');
-                    const email = document.getElementById('contactEmail').value.trim();
+                    // Collision-proof id — never derived from local data length,
+                    // which is 0 for anonymous visitors and would give everyone 'prac-001'.
+                    const newId = 'prac-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+                    const email = document.getElementById('contactEmail').value.trim().toLowerCase();
+                    // Password goes to Supabase Auth only — never into the profile object,
+                    // which ends up in the shared app_state blob.
+                    const accountPassword = document.getElementById('password').value;
 
                     const newPractice = {
                         id: newId,
                         email: email,
-                        password: document.getElementById('password').value,
                         role: 'practice',
                         practiceName: document.getElementById('practiceName').value.trim(),
                         odsCode: document.getElementById('odsCode') ? document.getElementById('odsCode').value.trim() : '',
@@ -511,13 +532,24 @@
                     };
 
                     var regResult = window.SupaRegister
-                        ? window.SupaRegister(newPractice.email, newPractice.password, 'practice', newPractice)
+                        ? window.SupaRegister(newPractice.email, accountPassword, 'practice', newPractice)
                         : null;
 
                     if (!regResult || regResult.error) {
                         var msg = (regResult && regResult.error && (regResult.error.msg || regResult.error.message))
                             || 'Could not create account. Please try again.';
-                        alert('Registration failed: ' + msg);
+                        if (/already.*(registered|exists)/i.test(msg)) {
+                            // Surface it inline on the email field instead of a raw alert()
+                            var emailField = document.getElementById('contactEmail');
+                            emailField.classList.add('error');
+                            var emailErr = emailField.closest('.form-group').querySelector('.form-error');
+                            if (emailErr) emailErr.textContent = 'An account with this email already exists. Try logging in instead.';
+                            emailField.focus();
+                        } else {
+                            var termsErrEl = document.getElementById('termsError');
+                            termsErrEl.textContent = 'Registration failed: ' + msg;
+                            termsErrEl.style.color = '#DC2626';
+                        }
                         return;
                     }
 

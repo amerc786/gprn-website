@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
 
@@ -56,17 +56,41 @@
             throw new Error('Locum not found');
         }
 
-        const pageContent = initAppLayout('practice', 'find-locums', `${locum.title} ${locum.firstName} ${locum.lastName}`, [
+        // Normalise free-form profile data so incomplete records degrade gracefully
+        locum.title = locum.title || '';
+        locum.firstName = locum.firstName || '';
+        locum.lastName = locum.lastName || '';
+        locum.documents = locum.documents || {};
+        locum.computerSystems = locum.computerSystems || [];
+        locum.preferredShiftTypes = locum.preferredShiftTypes || [];
+        locum.healthBoards = locum.healthBoards || [];
+        if (typeof locum.bookingReliability !== 'number') locum.bookingReliability = 100;
+        if (typeof locum.totalShifts !== 'number') locum.totalShifts = 0;
+
+        const locumName = `${locum.title} ${locum.firstName} ${locum.lastName}`.trim();
+        const safeName = sanitizeHTML(locumName);
+
+        const pageContent = initAppLayout('practice', 'find-locums', safeName, [
             { label: 'Find Locums', href: 'find-locums.html' },
-            { label: `${locum.title} ${locum.firstName} ${locum.lastName}` }
+            { label: safeName }
         ]);
 
-        const locumName = `${locum.title} ${locum.firstName} ${locum.lastName}`;
         const notesKey = `notes_${session.id}_${locumId}`;
+
+        function getSavedNotes() {
+            const d = getMockData();
+            const key = session.id + '_' + locumId;
+            if (d.practiceNotes && d.practiceNotes[key] !== undefined) return d.practiceNotes[key];
+            // One-time migration fallback from this browser's localStorage
+            return localStorage.getItem(notesKey) || '';
+        }
 
         function saveNotes() {
             const notes = document.getElementById('practiceNotes').value;
-            localStorage.setItem(notesKey, notes);
+            const d = getMockData();
+            if (!d.practiceNotes) d.practiceNotes = {};
+            d.practiceNotes[session.id + '_' + locumId] = notes;
+            saveMockData(d);
             Toast.show('Notes saved.', 'success');
         }
 
@@ -75,7 +99,7 @@
                 title: 'Block Locum',
                 body: `
                     <p style="font-size: 0.92rem; color: var(--dark-600); margin-bottom: 16px;">
-                        Are you sure you want to block <strong>${locumName}</strong>?
+                        Are you sure you want to block <strong>${safeName}</strong>?
                     </p>
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">Reason for blocking</label>
@@ -115,17 +139,121 @@
             renderProfile();
         }
 
-        function requestLocum() {
-            Toast.show('Request sent to ' + locumName + '. They will be notified.', 'success');
+        function getOpenSessionNeeds() {
+            const d = getMockData();
+            if (!d.sessionNeeds) return [];
+            return d.sessionNeeds.filter(n => n.practiceId === session.id && n.status === 'open')
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
         }
+
+        function requestLocum() {
+            const openNeeds = getOpenSessionNeeds();
+
+            if (openNeeds.length === 0) {
+                Modal.show({
+                    title: 'No Open Sessions',
+                    body: '<p style="font-size:0.92rem; color:var(--dark-600);">Create a session first before sending offers to locums.</p>',
+                    footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><a href="post-shift.html" class="btn btn-primary">Create Session</a>'
+                });
+                return;
+            }
+
+            const effRates = getEffectiveRates(locum, session.id);
+            const locumRates = effRates ? effRates.rates : {};
+            const preSelected = openNeeds[0].id;
+
+            const needOptions = openNeeds.map(n => {
+                const rate = n.sessionType === 'AM' ? locumRates.am : n.sessionType === 'PM' ? locumRates.pm : locumRates.fullDay;
+                return `<option value="${n.id}" ${n.id === preSelected ? 'selected' : ''}>${DateUtils.format(n.date, 'medium')} - ${n.sessionType} (${n.startTime}-${n.endTime})${rate ? ' — Locum rate: ' + formatCurrency(rate) : ''}</option>`;
+            }).join('');
+
+            const preNeed = openNeeds[0];
+            const defaultRate = preNeed.sessionType === 'AM' ? locumRates.am : preNeed.sessionType === 'PM' ? locumRates.pm : locumRates.fullDay;
+
+            Modal.show({
+                title: 'Send Offer to ' + safeName,
+                size: 'medium',
+                body: `
+                    <div class="form-group">
+                        <label class="form-label">Session</label>
+                        <select class="form-select" id="offerNeedSelect" onchange="updateOfferRate()">
+                            ${needOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Offered Rate (£)</label>
+                        <input type="number" class="form-input" id="offerRate" min="1" step="1" value="${defaultRate || ''}" placeholder="Enter rate...">
+                        <span id="offerRateHint" style="font-size:0.8rem; color:var(--gray-400); margin-top:4px; display:block;">${defaultRate ? 'Locum\'s published rate: ' + formatCurrency(defaultRate) : 'No published rate available'}</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message (optional)</label>
+                        <textarea class="form-input" id="offerMessage" rows="3" placeholder="Add a personal message to the locum..."></textarea>
+                    </div>
+                `,
+                footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" id="sendOfferBtn">Send Offer</button>',
+                onOpen: function(overlay) {
+                    overlay.dataset.locumRatesAm = locumRates.am || 0;
+                    overlay.dataset.locumRatesPm = locumRates.pm || 0;
+                    overlay.dataset.locumRatesFullDay = locumRates.fullDay || 0;
+
+                    overlay.querySelector('#sendOfferBtn').addEventListener('click', function() {
+                        const needId = overlay.querySelector('#offerNeedSelect').value;
+                        const rate = Number(overlay.querySelector('#offerRate').value);
+                        const message = overlay.querySelector('#offerMessage').value.trim();
+
+                        if (!rate || rate <= 0) {
+                            Toast.show('Please enter a valid rate.', 'error');
+                            return;
+                        }
+
+                        this.disabled = true;
+                        this.textContent = 'Sending...';
+
+                        const result = Booking.sendOffer(needId, locumId, rate, message);
+                        if (result.success) {
+                            Modal.close(overlay);
+                            Toast.show('Offer sent to ' + locumName, 'success');
+                        } else {
+                            this.disabled = false;
+                            this.textContent = 'Send Offer';
+                            Toast.show(result.message || 'Failed to send offer.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        window.updateOfferRate = function() {
+            const overlay = document.querySelector('.modal-overlay');
+            if (!overlay) return;
+            const needId = document.getElementById('offerNeedSelect').value;
+            const needs = getOpenSessionNeeds();
+            const need = needs.find(n => n.id === needId);
+            if (!need) return;
+            const rate = need.sessionType === 'AM' ? Number(overlay.dataset.locumRatesAm) :
+                        need.sessionType === 'PM' ? Number(overlay.dataset.locumRatesPm) :
+                        Number(overlay.dataset.locumRatesFullDay);
+            const rateInput = document.getElementById('offerRate');
+            const rateHint = document.getElementById('offerRateHint');
+            if (rate) {
+                rateInput.value = rate;
+                rateHint.textContent = 'Locum\'s published rate: ' + formatCurrency(rate);
+            } else {
+                rateInput.value = '';
+                rateHint.textContent = 'No published rate available';
+            }
+        };
 
         function renderProfile() {
             const reliabilityColor = locum.bookingReliability >= 95 ? 'var(--success)' : (locum.bookingReliability >= 85 ? 'var(--warning)' : 'var(--danger)');
             const isBarred = BarredList.isBarred(session.id, locumId);
             const isPreferred = BarredList.isPreferred(session.id, locumId);
             const avgRating = FeedbackManager.getAverageRating(locumId);
-            const reviews = FeedbackManager.getForUser(locumId);
-            const savedNotes = localStorage.getItem(notesKey) || '';
+            // Only genuine reviews with ratings — exclude no-show / late-cancellation reports
+            const reviews = FeedbackManager.getForUser(locumId).filter(r =>
+                r.ratings && Object.keys(r.ratings).length > 0 && !['no_show', 'late_cancellation'].includes(r.type)
+            );
+            const savedNotes = getSavedNotes();
 
             pageContent.innerHTML = `
                 <a href="find-locums.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
@@ -144,11 +272,11 @@
                             </div>
                             <div style="flex: 1;">
                                 <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">
-                                    ${locumName}
+                                    ${safeName}
                                 </h1>
                                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
                                     <span class="badge badge-primary">GP</span>
-                                    <span style="font-size: 0.88rem; color: var(--dark-600);">GMC: ${locum.gmcNumber}</span>
+                                    <span style="font-size: 0.88rem; color: var(--dark-600);">GMC: ${sanitizeHTML(locum.gmcNumber || 'Not provided')}</span>
                                     ${locum.performerList ? '<span class="badge badge-success">On Performer List</span>' : ''}
                                 </div>
                                 ${avgRating ? `
@@ -194,7 +322,7 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                <div class="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
                     <div>
                         <!-- About -->
                         <div class="content-card" style="margin-bottom: 24px;">
@@ -202,7 +330,7 @@
                                 <h2>About</h2>
                             </div>
                             <div class="content-card-body">
-                                <p style="font-size: 0.95rem; color: var(--dark-600); line-height: 1.7;">${locum.bio}</p>
+                                <p style="font-size: 0.95rem; color: var(--dark-600); line-height: 1.7;">${sanitizeHTML(locum.bio || 'No bio provided.')}</p>
                             </div>
                         </div>
 
@@ -212,24 +340,24 @@
                                 <h2>Professional Details</h2>
                             </div>
                             <div class="content-card-body">
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
                                         <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Medical School</span>
-                                        <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.medicalSchool}</p>
+                                        <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${sanitizeHTML(String(locum.medicalSchool || 'Not provided'))}</p>
                                     </div>
                                     <div>
                                         <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Year Qualified</span>
-                                        <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.yearQualified}</p>
+                                        <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${sanitizeHTML(String(locum.yearQualified || 'Not provided'))}</p>
                                     </div>
                                     <div>
                                         <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Computer Systems</span>
                                         <div style="display: flex; gap: 6px; margin-top: 6px;">
-                                            ${locum.computerSystems.map(cs => `<span class="badge badge-primary">${cs}</span>`).join('')}
+                                            ${locum.computerSystems.map(cs => `<span class="badge badge-primary">${sanitizeHTML(cs)}</span>`).join('')}
                                         </div>
                                     </div>
                                     <div>
                                         <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Signing Scripts</span>
-                                        <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${locum.signingScripts}</p>
+                                        <p style="font-size: 0.9rem; color: var(--dark); margin-top: 4px;">${sanitizeHTML(String(locum.signingScripts || 'Not specified'))}</p>
                                     </div>
                                     <div>
                                         <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">NHS Pension</span>
@@ -238,13 +366,13 @@
                                     <div>
                                         <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Preferred Sessions</span>
                                         <div style="display: flex; gap: 6px; margin-top: 6px;">
-                                            ${locum.preferredShiftTypes.map(t => `<span class="badge badge-neutral">${t}</span>`).join('')}
+                                            ${locum.preferredShiftTypes.map(t => `<span class="badge badge-neutral">${sanitizeHTML(t)}</span>`).join('')}
                                         </div>
                                     </div>
                                     <div style="grid-column: 1 / -1;">
                                         <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Health Boards Covered</span>
                                         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
-                                            ${locum.healthBoards.map(hb => `<span class="badge badge-info">${hb}</span>`).join('')}
+                                            ${locum.healthBoards.map(hb => `<span class="badge badge-info">${sanitizeHTML(hb)}</span>`).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -299,7 +427,7 @@
                                         <div style="padding: 16px 0; border-bottom: 1px solid var(--gray-100);">
                                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <strong style="font-size: 0.88rem; color: var(--dark);">${reviewerName}</strong>
+                                                    <strong style="font-size: 0.88rem; color: var(--dark);">${sanitizeHTML(reviewerName)}</strong>
                                                     ${renderRatingStars(parseFloat(avgScore))}
                                                 </div>
                                                 <span class="review-date">${DateUtils.format(r.timestamp, 'medium')}</span>
@@ -309,7 +437,7 @@
                                                     <span style="font-size: 0.78rem; color: var(--dark-600);">${cat}: <strong>${val}/5</strong></span>
                                                 `).join('')}
                                             </div>
-                                            ${r.comment ? `<p class="review-comment">${r.comment}</p>` : ''}
+                                            ${r.comment ? `<p class="review-comment">${sanitizeHTML(r.comment)}</p>` : ''}
                                         </div>`;
                                     }).join('')
                                 }
@@ -323,7 +451,7 @@
                                 <span style="font-size: 0.78rem; color: var(--gray-400);">Only visible to your practice</span>
                             </div>
                             <div class="content-card-body">
-                                <textarea id="practiceNotes" class="form-input" rows="4" style="resize: vertical; margin-bottom: 12px;" placeholder="Add private notes about this locum...">${savedNotes}</textarea>
+                                <textarea id="practiceNotes" class="form-input" rows="4" style="resize: vertical; margin-bottom: 12px;" placeholder="Add private notes about this locum...">${sanitizeHTML(savedNotes)}</textarea>
                                 <button class="btn btn-primary btn-small" onclick="saveNotes()">Save Notes</button>
                             </div>
                         </div>
@@ -358,7 +486,7 @@
                                     ${getIcon('clock')}
                                     <div>
                                         <span style="font-size: 0.82rem; color: var(--dark-600);">Response Time</span>
-                                        <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.responseTime}</strong>
+                                        <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${sanitizeHTML(String(locum.responseTime || 'Not known'))}</strong>
                                     </div>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
@@ -372,7 +500,7 @@
                                     ${getIcon('map-pin')}
                                     <div>
                                         <span style="font-size: 0.82rem; color: var(--dark-600);">Travel Distance</span>
-                                        <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.travelDistance} miles</strong>
+                                        <strong style="display: block; font-size: 0.9rem; color: var(--dark);">${locum.travelDistance != null ? sanitizeHTML(String(locum.travelDistance)) + ' miles' : 'Not specified'}</strong>
                                     </div>
                                 </div>
                             </div>
@@ -390,7 +518,7 @@
                                 </div>`;
                             const r = eff.rates;
                             const sourceLabel = eff.source === 'practice' ? 'Rate set for your practice' : eff.source === 'region' ? 'Rate set for your region' : 'Default rate';
-                            const sourceColor = eff.source === 'practice' ? 'var(--primary)' : eff.source === 'region' ? 'var(--info)' : 'var(--gray-400)';
+                            const sourceColor = eff.source === 'practice' ? 'var(--primary)' : eff.source === 'region' ? '#3B82F6' : 'var(--gray-400)';
                             return `
                                 <div class="content-card">
                                     <div class="content-card-header">

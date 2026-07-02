@@ -103,11 +103,11 @@
         </div>
     </div>
     <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -147,14 +147,21 @@
 
         function bulkSetWeek(status) {
             const daysInMonth = DateUtils.getDaysInMonth(viewYear, viewMonth);
+            const bulkDates = [];
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const dayOfWeek = new Date(viewYear, viewMonth, d).getDay();
                 if (dayOfWeek === 0 || dayOfWeek === 6) continue;
                 if (dateStr < todayStr) continue;
-                Availability.set(session.id, dateStr, 'both', status);
+                bulkDates.push(dateStr);
                 // Update local cache
                 _cachedAvail[dateStr] = { am: status, pm: status };
+            }
+            if (typeof DB !== 'undefined' && DB.Availability && typeof DB.Availability.bulkSet === 'function') {
+                // One blob write + one batched upsert instead of ~6 blocking requests per day
+                DB.Availability.bulkSet(session.id, bulkDates, status);
+            } else {
+                bulkDates.forEach(dateStr => Availability.set(session.id, dateStr, 'both', status));
             }
             Toast.show(status === 'none' ? 'Weekday availability cleared for ' + monthNames[viewMonth] + '.' : 'All weekdays in ' + monthNames[viewMonth] + ' set to ' + status + '.', 'info');
             renderCalendar();
@@ -185,7 +192,7 @@
                 events.push({ type: 'booked', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
             });
 
-            _cachedOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['sent', 'viewed', 'negotiating'].includes(o.status)).forEach(o => {
+            _cachedOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['sent', 'viewed', 'negotiating'].includes(o.status) && !(o.expiresAt && new Date(o.expiresAt) < new Date())).forEach(o => {
                 events.push({ type: 'pending', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
             });
 
@@ -317,7 +324,7 @@
                                         <div style="display: flex; align-items: center; gap: 12px;">
                                             <div class="cal-event cal-event-${e.type}" style="display: inline-block; margin: 0; padding: 4px 10px; font-size: 0.75rem;">${e.type === 'booked' ? 'Booked' : 'Invitation'}</div>
                                             <div>
-                                                <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${e.label}</div>
+                                                <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${sanitizeHTML(e.label)}</div>
                                                 <div style="font-size: 0.82rem; color: var(--dark-600);">${e.sessionType} &bull; ${e.time}</div>
                                             </div>
                                         </div>
@@ -352,7 +359,7 @@
                                 <span class="cal-legend-dot" style="background: var(--primary);"></span> Booked
                             </div>
                             <div class="cal-legend-item">
-                                <span class="cal-legend-dot" style="background: rgba(245,158,11,0.5);"></span> Invitation
+                                <span class="cal-legend-dot" style="background: rgba(245,158,11,0.15); border: 1px solid var(--warning);"></span> Invitation
                             </div>
                             <div class="cal-legend-item">
                                 <span class="cal-legend-dot" style="background: var(--success);"></span> Available
@@ -406,6 +413,9 @@
                 });
             });
         }
+
+        // Mark expired invitations before first render (same as other pages)
+        if (typeof Booking !== 'undefined' && typeof Booking.expireOffers === 'function') Booking.expireOffers();
 
         renderCalendar();
         // Remove loading screen

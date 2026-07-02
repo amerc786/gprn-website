@@ -118,11 +118,11 @@
 </head>
 <body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
 
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-    <script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+    <script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
     </script>
@@ -202,7 +202,7 @@
                 </a>
             <div class="relative w-full max-w-96 hidden sm:block group">
                 <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-navy transition-colors"></i>
-                <input type="text" id="dashSearch" placeholder="Search settings..." class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
+                <input type="text" id="dashSearch" placeholder="Search locums by name..." class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
             </div>
 
             <div class="flex items-center gap-3 lg:gap-5 shrink-0">
@@ -329,12 +329,14 @@
                             <div>
                                 <label class="${labelCls}" for="healthBoard">Health Board</label>
                                 <select id="healthBoard" class="${inputCls}" required>
+                                    <option value="" disabled ${!healthBoards.includes(practice.healthBoard) ? 'selected' : ''}>Select health board...</option>
                                     ${healthBoards.map(hb => `<option value="${hb}" ${practice.healthBoard === hb ? 'selected' : ''}>${hb}</option>`).join('')}
                                 </select>
                             </div>
                             <div>
                                 <label class="${labelCls}" for="computerSystem">Computer System</label>
                                 <select id="computerSystem" class="${inputCls}" required>
+                                    <option value="" disabled ${!computerSystems.includes(practice.computerSystem) ? 'selected' : ''}>Select computer system...</option>
                                     ${computerSystems.map(cs => `<option value="${cs}" ${practice.computerSystem === cs ? 'selected' : ''}>${cs}</option>`).join('')}
                                 </select>
                             </div>
@@ -539,6 +541,18 @@
             if (practiceForm) {
                 practiceForm.addEventListener('submit', function(e) {
                     e.preventDefault();
+                    if (!document.getElementById('practiceName').value.trim()) {
+                        Toast.show('Please enter your practice name.', 'error');
+                        return;
+                    }
+                    if (!document.getElementById('healthBoard').value) {
+                        Toast.show('Please select your health board.', 'error');
+                        return;
+                    }
+                    if (!document.getElementById('computerSystem').value) {
+                        Toast.show('Please select your computer system.', 'error');
+                        return;
+                    }
                     const d = getMockData();
                     const p = d.practices.find(pr => pr.id === session.id);
                     if (p) {
@@ -547,8 +561,10 @@
                         p.computerSystem = document.getElementById('computerSystem').value;
                         p.patientListSize = parseInt(document.getElementById('patientListSize').value) || 0;
                         saveMockData(d);
+                        Toast.show('Profile saved successfully.', 'success');
+                    } else {
+                        Toast.show('Could not save — your practice record was not found. Please contact support.', 'error');
                     }
-                    Toast.show('Profile saved successfully.', 'success');
                 });
             }
 
@@ -556,6 +572,15 @@
             if (contactForm) {
                 contactForm.addEventListener('submit', function(e) {
                     e.preventDefault();
+                    if (!document.getElementById('contactName').value.trim()) {
+                        Toast.show('Please enter a primary contact name.', 'error');
+                        return;
+                    }
+                    const email = document.getElementById('contactEmail').value.trim();
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        Toast.show('Please enter a valid contact email address.', 'error');
+                        return;
+                    }
                     const d = getMockData();
                     const p = d.practices.find(pr => pr.id === session.id);
                     if (p) {
@@ -565,11 +590,13 @@
                         p.phone = document.getElementById('phone').value;
                         p.contactName = document.getElementById('contactName').value;
                         p.contactRole = document.getElementById('contactRole').value;
-                        p.contactEmail = document.getElementById('contactEmail').value;
+                        p.contactEmail = email;
                         p.contactPhone = document.getElementById('contactPhone').value;
                         saveMockData(d);
+                        Toast.show('Contact details saved successfully.', 'success');
+                    } else {
+                        Toast.show('Could not save — your practice record was not found. Please contact support.', 'error');
                     }
-                    Toast.show('Contact details saved successfully.', 'success');
                 });
             }
 
@@ -583,8 +610,10 @@
                         p.defaultSessionRate = parseFloat(document.getElementById('defaultSessionRate').value) || 0;
                         p.defaultHourlyRate = parseFloat(document.getElementById('defaultHourlyRate').value) || 0;
                         saveMockData(d);
+                        Toast.show('Default rates saved.', 'success');
+                    } else {
+                        Toast.show('Could not save — your practice record was not found. Please contact support.', 'error');
                     }
-                    Toast.show('Default rates saved.', 'success');
                 });
             }
 
@@ -621,7 +650,7 @@
                         Modal.show({
                             title: 'Delete Practice Account?',
                             body: '<p style="color: var(--dark-600); font-size: 0.9rem;">This will permanently delete your practice account and all associated data. This action cannot be undone.</p>',
-                            footer: '<button class="btn btn-secondary" onclick="Modal.hide()">Cancel</button> <button class="btn btn-danger" onclick="Toast.show(\'Please contact support to delete your account.\', \'info\'); Modal.hide();">Delete Account</button>'
+                            footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button> <button class="btn btn-danger" onclick="Toast.show(\'Please contact support to delete your account.\', \'info\'); Modal.close();">Delete Account</button>'
                         });
                     }
                 });
@@ -635,8 +664,56 @@
             if (!curr || !nw || !cfm) { Toast.show('Please fill in all fields.', 'error'); return; }
             if (nw !== cfm) { Toast.show('New passwords do not match.', 'error'); return; }
             if (nw.length < 8) { Toast.show('Password must be at least 8 characters.', 'error'); return; }
-            Toast.show('Password updated successfully.', 'success');
-            Modal.hide();
+
+            const SUPABASE_URL = 'https://fysilmypgpewbzyxkymx.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5c2lsbXlwZ3Bld2J6eXhreW14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzODQwNjYsImV4cCI6MjA5MDk2MDA2Nn0.BEgSiUO_RWvk0ixZSORuKFqwMG6nYNGsCqWCftukBnE';
+            const token = session && session.access_token;
+            if (!token || !session.email) {
+                Toast.show('Your session has expired. Please log out and back in, or use Forgot Password.', 'error');
+                return;
+            }
+
+            const btn = document.querySelector('.modal-overlay .btn-primary');
+            const resetBtn = function() { if (btn) { btn.disabled = false; btn.textContent = 'Update Password'; } };
+            if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
+
+            // Verify the current password first via a password grant
+            const verify = new XMLHttpRequest();
+            verify.open('POST', SUPABASE_URL + '/auth/v1/token?grant_type=password', true);
+            verify.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+            verify.setRequestHeader('Content-Type', 'application/json');
+            verify.onload = function() {
+                if (verify.status < 200 || verify.status >= 300) {
+                    resetBtn();
+                    Toast.show('Current password is incorrect.', 'error');
+                    return;
+                }
+                // PUT /auth/v1/user updates the password for the authenticated user
+                const xhr = new XMLHttpRequest();
+                xhr.open('PUT', SUPABASE_URL + '/auth/v1/user', true);
+                xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        Modal.close();
+                        Toast.show('Password updated successfully.', 'success');
+                    } else {
+                        resetBtn();
+                        Toast.show('Could not update password. Please try again or use Forgot Password.', 'error');
+                    }
+                };
+                xhr.onerror = function() {
+                    resetBtn();
+                    Toast.show('Network error. Please check your connection and try again.', 'error');
+                };
+                xhr.send(JSON.stringify({ password: nw }));
+            };
+            verify.onerror = function() {
+                resetBtn();
+                Toast.show('Network error. Please check your connection and try again.', 'error');
+            };
+            verify.send(JSON.stringify({ email: session.email, password: curr }));
         };
 
         function saveNotifications() {

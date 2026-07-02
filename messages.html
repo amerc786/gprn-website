@@ -97,11 +97,11 @@
 </head>
 <body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
 
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-    <script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+    <script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage()) throw new Error('Auth required');
     </script>
@@ -155,7 +155,7 @@
             </a>
             <div class="relative w-full max-w-96 hidden sm:block group">
                 <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-navy transition-colors"></i>
-                <input type="text" placeholder="Search messages..." class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
+                <input type="text" id="msgSearchInput" placeholder="Search messages..." class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
             </div>
             <div class="flex items-center gap-3 lg:gap-5 shrink-0">
                 <div class="relative" id="profileDropdownWrap">
@@ -169,7 +169,7 @@
                             <div class="text-[13px] font-bold text-navy" id="dropdownDisplayName">User</div>
                             <div class="text-[11px] text-slate-400">Signed in</div>
                         </div>
-                        <a href="practice-settings.html" class="flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-navy transition-colors">
+                        <a href="practice-settings.html" id="dropdownSettingsLink" class="flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-navy transition-colors">
                             <i class="ph ph-gear text-base"></i> Settings
                         </a>
                         <button onclick="toggleDarkMode()" class="w-full flex items-center justify-between px-4 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-navy transition-colors cursor-pointer">
@@ -218,6 +218,9 @@
         if (_dn) _dn.textContent = session.firstName || (session.name || 'User').split(' ')[0];
         document.getElementById('rolePill').textContent = role === 'locum' ? 'Locum Portal' : (role === 'admin' ? 'Admin Portal' : 'Practice Manager Portal');
 
+        // Point the dropdown Settings link at the correct page for this role
+        document.getElementById('dropdownSettingsLink').href = role === 'practice' ? 'practice-settings.html' : (role === 'locum' ? 'my-settings.html' : 'admin-dashboard.html');
+
         // Hide "New Message" for locums (they can only reply)
         if (role === 'locum') {
             document.getElementById('newMsgBtn').style.display = 'none';
@@ -252,6 +255,14 @@
                 links += item('messages.html', 'ph-fill ph-chat-circle-dots', 'Messages', true, badge);
             }
             nav.insertAdjacentHTML('beforeend', links);
+            if (role === 'locum') {
+                let resLinks = '<p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] px-4 mb-2 mt-6">Resources</p>';
+                resLinks += item('cpd-events.html', 'ph ph-certificate', 'CPD Events', false);
+                resLinks += item('jobs-board.html', 'ph ph-buildings', 'Jobs Board', false);
+                resLinks += item('links-resources.html', 'ph ph-link-simple', 'Links & Resources', false);
+                resLinks += item('help-faq.html', 'ph ph-question', 'Help / FAQ', false);
+                nav.insertAdjacentHTML('beforeend', resLinks);
+            }
             const settingsHref = role === 'practice' ? 'practice-settings.html' : (role === 'locum' ? 'my-settings.html' : 'admin-dashboard.html');
             bottom.insertAdjacentHTML('afterbegin', `
                 <a href="${settingsHref}" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
@@ -259,12 +270,19 @@
                 </a>`);
         })();
 
-        // Unread badge
-        const unreadMsgCount = MessageManager.getUnreadCount(session.id);
-        if (unreadMsgCount > 0) {
+        // Unread badge (kept in sync as threads are read)
+        function updateUnreadBadge() {
             const badge = document.getElementById('sidebarUnreadBadge');
-            if (badge) { badge.textContent = unreadMsgCount; badge.classList.remove('hidden'); }
+            if (!badge) return;
+            const count = MessageManager.getUnreadCount(session.id);
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
         }
+        updateUnreadBadge();
 
         // Init messages data
         (function() {
@@ -273,11 +291,21 @@
         })();
 
         let activeThreadId = null;
+        let searchQuery = '';
+
+        // Header search filters the thread list
+        document.getElementById('msgSearchInput').addEventListener('input', function() {
+            searchQuery = this.value.trim().toLowerCase();
+            render();
+        });
 
         // ===== Helpers =====
         function fmtTime(ts) {
-            const d = new Date(ts), now = new Date();
-            const diff = Math.floor((now - d) / 86400000);
+            const d = new Date(ts);
+            // Compare calendar days, not elapsed 24h buckets
+            const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
+            const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+            const diff = Math.round((todayStart - dayStart) / 86400000);
             if (diff === 0) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             if (diff === 1) return 'Yesterday';
             if (diff < 7) return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
@@ -293,10 +321,15 @@
 
         // ===== Main render =====
         function render() {
-            const threads = MessageManager.getThreads(session.id);
+            const allThreads = MessageManager.getThreads(session.id);
+            const threads = searchQuery ? allThreads.filter(t => {
+                const name = (MessageManager.getUserName(t.otherId) || '').toLowerCase();
+                const body = (t.lastMessage.body || '').toLowerCase();
+                return name.includes(searchQuery) || body.includes(searchQuery);
+            }) : allThreads;
             const root = document.getElementById('messagesRoot');
 
-            if (threads.length === 0) {
+            if (allThreads.length === 0) {
                 root.innerHTML = `
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-subtle overflow-hidden p-16 flex flex-col items-center justify-center text-center">
                         <div class="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-5">
@@ -322,10 +355,10 @@
                             <span class="text-[11px] font-bold text-slate-400">${threads.length}</span>
                         </div>
                         <div class="flex-1 overflow-y-auto custom-scroll p-2" id="threadListBody">
+                            ${threads.length === 0 ? '<p class="text-[13px] text-slate-400 text-center py-8 px-4">No conversations match your search.</p>' : ''}
                             ${threads.map(t => {
                                 const name = MessageManager.getUserName(t.otherId);
                                 const initials = getInitials(name);
-                                const status = OnlineStatus.formatStatus(t.otherId);
                                 const preview = sanitizeHTML(t.lastMessage.body.length > 48 ? t.lastMessage.body.substring(0, 48) + '...' : t.lastMessage.body);
                                 const time = fmtTime(t.lastMessage.timestamp);
                                 const isActive = activeThreadId === t.threadId;
@@ -333,7 +366,6 @@
                                 <div class="thread-item ${isActive ? 'active' : ''} p-4 rounded-xl cursor-pointer flex items-start gap-3 transition-colors" data-thread-id="${t.threadId}">
                                     <div class="relative shrink-0">
                                         <div class="${avatarBg(name)} text-white w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-bold shadow-subtle">${initials}</div>
-                                        ${status.online ? '<div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>' : ''}
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center justify-between gap-2 mb-0.5">
@@ -379,7 +411,11 @@
             const otherId = first.fromId === session.id ? first.toId : first.fromId;
             const otherName = MessageManager.getUserName(otherId);
             const initials = getInitials(otherName);
-            const status = OnlineStatus.formatStatus(otherId);
+
+            // Other participant's phone (for the Call button)
+            const allData = getMockData();
+            const otherUser = (allData.practices || []).find(p => p.id === otherId) || (allData.locums || []).find(l => l.id === otherId);
+            const otherPhone = otherUser ? (otherUser.phone || otherUser.contactPhone || '') : '';
 
             // Check if this user can reply
             const canReply = role === 'practice' || MessageManager.canLocumMessage(session.id, otherId);
@@ -393,20 +429,17 @@
                         </button>
                         <div class="relative">
                             <div class="${avatarBg(otherName)} text-white w-12 h-12 rounded-full flex items-center justify-center text-[13px] font-bold shadow-subtle">${initials}</div>
-                            ${status.online ? '<div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>' : ''}
                         </div>
                         <div>
                             <div class="font-bold text-navy text-[16px]">${sanitizeHTML(otherName)}</div>
-                            <div class="flex items-center gap-1.5">
-                                <div class="w-1.5 h-1.5 rounded-full ${status.online ? 'bg-green-500' : 'bg-slate-300'}"></div>
-                                <span class="text-[12px] ${status.online ? 'text-green-600 font-medium' : 'text-slate-400'}">${status.text}</span>
-                            </div>
+                            <span class="text-[12px] text-slate-400">${role === 'practice' ? 'Locum GP' : 'Practice'}</span>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button class="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-navy hover:border-slate-300 transition-colors" title="Call">
+                        ${otherPhone ? `
+                        <a href="tel:${sanitizeHTML(otherPhone)}" class="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-navy hover:border-slate-300 transition-colors" title="Call ${sanitizeHTML(otherName)}">
                             <i class="ph ph-phone text-lg"></i>
-                        </button>
+                        </a>` : ''}
                         <button onclick="deleteCurrentThread()" class="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors" title="Delete conversation">
                             <i class="ph ph-trash text-lg"></i>
                         </button>
@@ -473,6 +506,7 @@
                 el.addEventListener('click', () => {
                     activeThreadId = el.dataset.threadId;
                     MessageManager.markThreadRead(activeThreadId, session.id);
+                    updateUnreadBadge();
                     render();
                 });
             });
@@ -538,7 +572,7 @@
                 seen.add(l.id);
                 return true;
             }).map(l =>
-                `<option value="${l.id}" ${preRecipient === l.id ? 'selected' : ''}>${l.title} ${l.firstName} ${l.lastName}</option>`
+                `<option value="${sanitizeHTML(l.id)}" ${preRecipient === l.id ? 'selected' : ''}>${sanitizeHTML(`${l.title} ${l.firstName} ${l.lastName}`)}</option>`
             ).join('');
 
             Modal.show({
@@ -554,12 +588,12 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Subject (optional)</label>
-                        <input type="text" class="form-input" id="modalSubject" placeholder="Enter subject..." value="${preSubject || ''}">
+                        <input type="text" class="form-input" id="modalSubject" placeholder="Enter subject..." value="${sanitizeHTML(preSubject || '')}">
                     </div>
-                    ${preShiftId ? `<input type="hidden" id="modalShiftId" value="${preShiftId}">` : ''}
+                    ${preShiftId ? `<input type="hidden" id="modalShiftId" value="${sanitizeHTML(preShiftId)}">` : ''}
                     <div class="form-group">
                         <label class="form-label">Message</label>
-                        <textarea class="form-input" id="modalBody" rows="5" placeholder="Write your message...">${preBody || ''}</textarea>
+                        <textarea class="form-input" id="modalBody" rows="5" placeholder="Write your message...">${sanitizeHTML(preBody || '')}</textarea>
                     </div>`,
                 footer: `
                     <button class="btn btn-ghost" data-modal-close>Cancel</button>

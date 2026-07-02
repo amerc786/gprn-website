@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Help &amp; FAQ &mdash; GPRN</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Clash Display', 'sans-serif'],
+                        sans: ['Manrope', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: { 50: '#F8FAFC', 100: '#F1F5F9', 800: '#1E293B', 900: '#0F172A', 950: '#020617' },
+                        emerald: { 500: '#10B981', 700: '#047857', 900: '#064E3B' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body { font-family: 'Manrope', sans-serif; background: #F8FAFC; color: #0F172A; }
+        .font-display { font-family: 'Clash Display', sans-serif; }
+        .gprn-logo { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+        .gprn-logo-mark { width: 38px; height: 38px; border-radius: 12px; background: #101524; display: flex; align-items: center; justify-content: center; }
+        .gprn-logo-mark span { color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 900; font-size: 24px; line-height: 1; padding-top: 2px; }
+        .gprn-logo-word { font-family: 'Plus Jakarta Sans', sans-serif; color: #101524; font-weight: 900; font-size: 32px; line-height: 0.8; letter-spacing: -0.05em; display: inline-flex; align-items: baseline; padding-top: 4px; }
+        .gprn-logo-word::after { content: ''; display: inline-block; width: 9px; height: 9px; background: #0F8B5A; margin-left: 4px; margin-bottom: 3px; align-self: flex-end; }
+
+        .dot-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.08) 1px, transparent 0); background-size: 24px 24px; }
+
+        .faq-item {
+            background: #ffffff;
+            border: 1px solid #E2E8F0;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .faq-item:hover { border-color: #CBD5E1; }
+        .faq-item.open { border-color: #0F8B5A; box-shadow: 0 10px 30px -18px rgba(15,139,90,0.25); }
+        .faq-trigger {
+            width: 100%; text-align: left; padding: 18px 22px;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 16px; background: none; border: none; cursor: pointer;
+            font-size: 0.98rem; font-weight: 600; color: #0F172A;
+            font-family: 'Manrope', sans-serif;
+        }
+        .faq-trigger .chev { transition: transform .25s; color: #94A3B8; }
+        .faq-item.open .faq-trigger .chev { transform: rotate(180deg); color: #047857; }
+        .faq-content {
+            max-height: 0; overflow: hidden; transition: max-height .3s ease;
+            padding: 0 22px; color: #475569; font-size: 0.93rem; line-height: 1.75;
+        }
+        .faq-item.open .faq-content { max-height: 600px; padding: 0 22px 20px; }
+
+        .search-input {
+            width: 100%; padding: 16px 20px 16px 52px;
+            border: 1px solid #E2E8F0; border-radius: 16px;
+            font-size: 1rem; font-family: 'Manrope', sans-serif; color: #0F172A;
+            background: #ffffff; transition: border-color .2s, box-shadow .2s;
+        }
+        .search-input:focus { outline: none; border-color: #0F8B5A; box-shadow: 0 0 0 4px rgba(15,139,90,0.08); }
+        .search-input::placeholder { color: #94A3B8; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- NAV -->
+    <nav class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="index.html" class="gprn-logo">
+                <span class="gprn-logo-mark"><span>G</span></span>
+                <span class="gprn-logo-word">PRN</span>
+            </a>
+            <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+                <a href="index.html#how-it-works" class="hover:text-slate-900">For GPs</a>
+                <a href="index.html#surgeries" class="hover:text-slate-900">For Surgeries</a>
+                <a href="index.html#platform" class="hover:text-slate-900">Platform</a>
+                <a href="help-faq.html" class="text-slate-900">Help</a>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="login.html" class="hidden md:block text-sm font-medium text-slate-600 hover:text-slate-900">Log In</a>
+                <a href="register.html" class="bg-slate-900 text-white px-3.5 py-2 md:px-5 md:py-2.5 rounded-full text-sm font-semibold hover:bg-emerald-700 transition-all flex items-center gap-2">
+                    <span class="hidden sm:inline">Join Network</span><span class="sm:hidden">Join</span> <i class="ph ph-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="relative bg-[#0F172A] text-white overflow-hidden">
+        <div class="absolute inset-0 dot-pattern opacity-80"></div>
+        <div class="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl"></div>
+        <div class="absolute -bottom-32 -left-16 w-[32rem] h-[32rem] rounded-full bg-sky-500/5 blur-3xl"></div>
+        <div class="relative max-w-4xl mx-auto px-6 py-12 md:py-20 text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 backdrop-blur-sm mb-5">
+                <i class="ph ph-question text-emerald-400 text-sm"></i>
+                <span class="text-xs font-semibold tracking-wide uppercase text-white/80">Help Centre</span>
+            </div>
+            <h1 class="font-display text-3xl md:text-5xl font-semibold mb-4">How can we help?</h1>
+            <p class="text-slate-300 text-base max-w-xl mx-auto">Answers to common questions about using GPRN. Can't find what you need? Our support team is a click away.</p>
+
+            <!-- Search -->
+            <div class="mt-10 max-w-xl mx-auto relative">
+                <i class="ph ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 text-xl"></i>
+                <input type="text" id="faqSearch" class="search-input" placeholder="Search questions...">
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ CONTENT -->
+    <section class="py-16">
+        <div class="max-w-3xl mx-auto px-6">
+
+            <!-- Getting Started -->
+            <h2 class="font-display text-2xl font-semibold text-slate-900 mb-5 mt-4 flex items-center gap-2"><i class="ph ph-rocket-launch text-emerald-600"></i> Getting Started</h2>
+            <div class="faq-section">
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>How do I register on GPRN?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">Click "Join Network" on the homepage and choose whether you are a Locum GP or a Practice Manager. Fill in your details, verify your email address, and complete your profile. Locum GPs will need to provide their GMC number and upload key documents. The process takes approximately 2-3 minutes.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>Is GPRN free to use?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">GPRN is free to register. Practices pay a small service fee per confirmed booking. There are no hidden charges or subscription fees. Full pricing details are available during practice registration.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>How does the platform work?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">Locum GPs set up their profile, availability calendar, and rates. When a practice needs cover, they search for available locums filtered by health board, date, and session type. The practice sends a direct offer with a locum's set rate. The locum can accept, decline, or counter-offer. Once both parties agree, the booking is confirmed. Both parties receive notifications throughout the process.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>Which areas does GPRN cover?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">GPRN covers all seven health boards in Wales: Aneurin Bevan, Betsi Cadwaladr, Cardiff and Vale, Cwm Taf Morgannwg, Hywel Dda, Powys, and Swansea Bay. We are focused exclusively on Welsh primary care.</p></div>
+                </div>
+            </div>
+
+            <!-- For Locums -->
+            <h2 class="font-display text-2xl font-semibold text-slate-900 mb-5 mt-12 flex items-center gap-2"><i class="ph ph-stethoscope text-emerald-600"></i> For Locums</h2>
+            <div class="faq-section">
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>How do I receive offers from practices?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">Once logged in, set your availability and rates from your dashboard. Practices will find you when searching for locums and send you direct offers. You can view all pending offers from "My Offers" and manage your schedule on "My Calendar".</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>Can I set my own rates?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">Yes. You can set your default rates for AM, PM, Full Day, and On-Call sessions from the "My Rates" page. You can also set practice-specific rates if you have different arrangements with particular practices. Your published rates are visible to practices when they view your profile and send offers.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>How do offers and bookings work?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">When a practice sends you an offer, you can review the details including the locum's set rate, date, and session type. You can accept the offer, decline it, or send a counter-offer with your preferred rate. Once both parties agree, the booking is confirmed in your calendar.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>What is the booking reliability score?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">Your booking reliability score reflects how consistently you honour confirmed bookings. Cancellations and no-shows reduce your score. A high score (above 95%) makes you more attractive to practices when they search for locums. Practices can see your reliability score on your profile, so maintaining a high score helps you receive more offers.</p></div>
+                </div>
+            </div>
+
+            <!-- For Practices -->
+            <h2 class="font-display text-2xl font-semibold text-slate-900 mb-5 mt-12 flex items-center gap-2"><i class="ph ph-buildings text-emerald-600"></i> For Practices</h2>
+            <div class="faq-section">
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>How do I find a locum for a session?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">From your dashboard, use "Find Locums" to search for available GPs by health board, date, and session type. You can view their profiles, rates, reliability scores, and availability. When you find a suitable locum, send them a direct offer with your locum's set rate and session details.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>How do I find and select a locum?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">Use the "Find Locums" section to search by health board, availability, and session type. Each locum profile includes their qualifications, clinical system experience, booking reliability score, and published rates. You can send a direct offer with your locum's set rate, or message them first to discuss details before booking.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>Can I send offers to multiple locums at once?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">Currently, offers are sent individually to ensure clear communication with each locum. You can create internal session records to track your staffing needs and then approach locums one at a time. We are working on a bulk offer feature for future releases.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>How does billing work for practices?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">After a session is completed, the agreed rate is processed through the platform. Practices receive a monthly invoice detailing all confirmed bookings. Payment terms and billing details can be managed from the "Billing" section of your dashboard. All rates are agreed upfront before booking confirmation.</p></div>
+                </div>
+            </div>
+
+            <!-- Billing & Payments -->
+            <h2 class="font-display text-2xl font-semibold text-slate-900 mb-5 mt-12 flex items-center gap-2"><i class="ph ph-wallet text-emerald-600"></i> Billing &amp; Payments</h2>
+            <div class="faq-section">
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>When do locums get paid?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">Payment arrangements are agreed directly between the locum and the practice. GPRN facilitates the booking and provides transparent rate information, but does not process payments directly. Most practices pay locums within 30 days of the completed session.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>Are there any hidden fees?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">No. GPRN is transparent about all costs. Locums use the platform for free. Practices are charged a clearly stated service fee per booking, which is visible before confirming any booking. There are no sign-up fees, monthly subscriptions, or hidden charges.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>Can I claim NHS pension contributions through GPRN sessions?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">GPRN displays whether you have opted into NHS Pension on your profile. Pension contributions remain between you, the practice, and the pension scheme. We recommend using tools like Locum Organiser to track your pension contributions across all your locum work.</p></div>
+                </div>
+            </div>
+
+            <!-- Technical -->
+            <h2 class="font-display text-2xl font-semibold text-slate-900 mb-5 mt-12 flex items-center gap-2"><i class="ph ph-gear text-emerald-600"></i> Technical</h2>
+            <div class="faq-section">
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>Which browsers are supported?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">GPRN works on all modern browsers including Chrome, Firefox, Safari, and Edge. We recommend keeping your browser up to date for the best experience. Internet Explorer is not supported.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>Can I use GPRN on my mobile phone?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">Yes. GPRN is fully responsive and works on smartphones and tablets. You can manage offers, bookings, and receive notifications from any device. A dedicated mobile app is planned for the future.</p></div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-trigger" onclick="toggleAccordion(this)"><span>I forgot my password. How do I reset it?</span><i class="ph ph-caret-down chev"></i></button>
+                    <div class="faq-content"><p class="pt-2">Click "Forgot Password" on the login page and enter your registered email address. You will receive a password reset link within a few minutes. If you do not receive it, check your spam folder or contact our support team.</p></div>
+                </div>
+            </div>
+
+            <!-- Contact Card -->
+            <div id="contact" class="mt-16 rounded-3xl bg-gradient-to-br from-emerald-50 to-sky-50 border border-emerald-100 p-10 text-center">
+                <div class="w-14 h-14 mx-auto rounded-2xl bg-white flex items-center justify-center shadow-sm mb-4">
+                    <i class="ph ph-lifebuoy text-emerald-600 text-2xl"></i>
+                </div>
+                <h3 class="font-display text-2xl font-semibold text-slate-900 mb-2">Still need help?</h3>
+                <p class="text-slate-600 text-sm mb-6 max-w-md mx-auto">Our support team is here to help. Get in touch and we'll get back to you as soon as possible.</p>
+                <a href="mailto:support@gprn.wales" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
+                    <i class="ph ph-envelope-simple"></i> support@gprn.wales
+                </a>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-50 border-t border-slate-200 pt-16 pb-8">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                <div>
+                    <div class="flex items-center gap-[8px] mb-4">
+                        <div class="w-[38px] h-[38px] bg-[#101524] rounded-[12px] flex items-center justify-center">
+                            <span class="text-white font-black text-[24px] leading-none pt-[2px]" style="font-family:'Plus Jakarta Sans',sans-serif;">G</span>
+                        </div>
+                        <div class="flex items-baseline pt-1">
+                            <span class="text-[#101524] font-black text-[32px] leading-[0.8] tracking-[-0.05em]" style="font-family:'Plus Jakarta Sans',sans-serif;">PRN</span>
+                            <div class="w-[9px] h-[9px] bg-[#0F8B5A] ml-[4px] mb-[3px]"></div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-slate-500 leading-relaxed pr-4">The modern infrastructure for Locum GPs and Surgeries across Wales.</p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">For GPs</h4>
+                    <ul class="space-y-3 text-sm text-slate-600">
+                        <li><a href="register-locum.html" class="hover:text-emerald-700">Register as Locum</a></li>
+                        <li><a href="login.html" class="hover:text-emerald-700">Rates &amp; Billing</a></li>
+                        <li><a href="help-faq.html" class="hover:text-emerald-700">Compliance Guide</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">For Surgeries</h4>
+                    <ul class="space-y-3 text-sm text-slate-600">
+                        <li><a href="register-practice.html" class="hover:text-emerald-700">Register Practice</a></li>
+                        <li><a href="login.html" class="hover:text-emerald-700">Pricing Structure</a></li>
+                        <li><a href="login.html" class="hover:text-emerald-700">Roster Management</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">Legal</h4>
+                    <ul class="space-y-3 text-sm text-slate-600">
+                        <li><a href="privacy-policy.html" class="hover:text-emerald-700">Privacy Policy</a></li>
+                        <li><a href="terms-conditions.html" class="hover:text-emerald-700">Terms of Service</a></li>
+                        <li><a href="help-faq.html#contact" class="hover:text-emerald-700">Contact Support</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-slate-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+                <p class="text-xs text-slate-400 font-medium">&copy; 2026 GPRN Wales. All rights reserved.</p>
+                <div class="flex items-center gap-4">
+                    <a href="#" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200"><i class="ph-fill ph-twitter-logo"></i></a>
+                    <a href="#" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200"><i class="ph-fill ph-linkedin-logo"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleAccordion(trigger) {
+            const item = trigger.closest('.faq-item');
+            item.classList.toggle('open');
+        }
+
+        const searchInput = document.getElementById('faqSearch');
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            document.querySelectorAll('.faq-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = (query === '' || text.includes(query)) ? '' : 'none';
+            });
+            document.querySelectorAll('.faq-section').forEach(section => {
+                const hasVisible = Array.from(section.querySelectorAll('.faq-item')).some(i => i.style.display !== 'none');
+                const heading = section.previousElementSibling;
+                if (heading && heading.tagName === 'H2') {
+                    heading.style.display = hasVisible ? '' : 'none';
+                }
+                section.style.display = hasVisible ? '' : 'none';
+            });
+        });
+    </script>
+</body>
+</html>

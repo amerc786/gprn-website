@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -66,7 +66,7 @@
             }
 
             const practice = data.practices.find(p => p.id === offer.practiceId);
-            const rates = user ? user.rates : { am: 0, pm: 0, fullDay: 0, housecall: 0 };
+            const rates = (user && user.rates) || { am: 0, pm: 0, fullDay: 0, housecall: 0 };
             const offerDate = offer.sessionDate || offer.shiftDate;
             const proposedRate = offer.proposedRate || 0;
             const locumRate = offer.sessionType === 'Full Day' ? rates.fullDay : offer.sessionType === 'PM' ? rates.pm : rates.am;
@@ -93,8 +93,8 @@
                         <div class="content-card">
                             <div class="content-card-body" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
                                 <div>
-                                    <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">${offer.practiceName}</h2>
-                                    <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 8px;">${practice ? practice.city : ''}</p>
+                                    <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--dark); margin-bottom: 4px;">${sanitizeHTML(offer.practiceName)}</h2>
+                                    <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 8px;">${practice ? sanitizeHTML(practice.city) : ''}</p>
                                     <span class="badge badge-primary">${offer.healthBoard}</span>
                                     <span class="badge badge-info" style="margin-left: 6px;">${offer.sessionType}</span>
                                 </div>
@@ -110,18 +110,9 @@
                                     ${getIcon('phone')} Call Practice
                                 </a>
                                 <a href="sms:${practice.phone}" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; background: var(--primary); color: white; border-radius: 8px; font-size: 0.88rem; font-weight: 700; text-decoration: none;">
-                                    ${getIcon('chat-circle-text')} Text Practice
+                                    <i class="ph ph-chat-circle-text" style="font-size:20px;line-height:1"></i> Text Practice
                                 </a>
                             </div>
-                            <script>
-                                (function() {
-                                    var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
-                                    if (isMobile) {
-                                        var el = document.getElementById('mobileContactBtns');
-                                        if (el) el.style.display = 'flex';
-                                    }
-                                })();
-                            </script>
                             ` : ''}
                         </div>
 
@@ -135,15 +126,15 @@
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                                     <div>
                                         <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Address</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${practice.address || 'N/A'}</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${sanitizeHTML(practice.address || 'N/A')}</div>
                                     </div>
                                     <div>
                                         <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Postcode</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${practice.postcode || 'N/A'}</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${sanitizeHTML(practice.postcode || 'N/A')}</div>
                                     </div>
                                     <div>
                                         <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">City</div>
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${practice.city || 'N/A'}</div>
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${sanitizeHTML(practice.city || 'N/A')}</div>
                                     </div>
                                     <div>
                                         <div style="font-size: 0.82rem; color: var(--dark-600); margin-bottom: 4px;">Directions</div>
@@ -193,7 +184,7 @@
                                 ${negotiations.map(n => `
                                     <div style="padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
                                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <strong style="font-size: 0.88rem;">${n.from === 'practice' ? offer.practiceName : 'You'}</strong>
+                                            <strong style="font-size: 0.88rem;">${n.from === 'practice' ? sanitizeHTML(offer.practiceName) : 'You'}</strong>
                                             <span style="font-size: 0.88rem; font-weight: 700; color: var(--primary);">${formatCurrency(n.rate)}</span>
                                         </div>
                                         ${n.message ? `<p style="font-size: 0.85rem; color: var(--dark-600); margin-top: 4px;">${sanitizeHTML(n.message)}</p>` : ''}
@@ -241,7 +232,7 @@
                                 </div>` : ''}
 
                                 ${isActionable ? `
-                                <button class="btn btn-primary" style="width: 100%;" onclick="handleAccept('${offer.id}')">
+                                <button class="btn btn-primary" style="width: 100%;" id="acceptBtn" onclick="handleAccept('${offer.id}')">
                                     ${getIcon('check')} Accept Invitation
                                 </button>
                                 <button class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="handleCounter('${offer.id}')">
@@ -265,13 +256,24 @@
                 </div>
             `;
 
+            // Show call/text buttons on mobile devices
+            (function() {
+                var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+                var mobileBtns = document.getElementById('mobileContactBtns');
+                if (isMobile && mobileBtns) mobileBtns.style.display = 'flex';
+            })();
+
             // Action handlers
             window.handleAccept = function(id) {
+                const btn = document.getElementById('acceptBtn');
+                if (btn && btn.disabled) return;
+                if (btn) btn.disabled = true;
                 const result = Booking.respondToOffer(id, 'accept');
                 if (result && !result.error) {
                     Toast.show('Offer accepted! Awaiting practice confirmation.', 'success');
                     setTimeout(function() { window.location.href = 'my-offers.html'; }, 1500);
                 } else {
+                    if (btn) btn.disabled = false;
                     Toast.show((result && result.message) || 'Failed to accept offer.', 'error');
                 }
             };
@@ -284,9 +286,13 @@
                     onOpen: function(overlay) {
                         overlay.querySelector('#confirmDecBtn').addEventListener('click', function() {
                             Modal.close(overlay);
-                            Booking.respondToOffer(id, 'decline');
-                            Toast.show('Invitation declined.', 'info');
-                            setTimeout(function() { window.location.href = 'available-shifts.html'; }, 1000);
+                            const result = Booking.respondToOffer(id, 'decline');
+                            if (result && !result.error) {
+                                Toast.show('Invitation declined.', 'info');
+                                setTimeout(function() { window.location.href = 'available-shifts.html'; }, 1000);
+                            } else {
+                                Toast.show((result && result.message) || 'Failed to decline.', 'error');
+                            }
                         });
                     }
                 });
@@ -312,10 +318,14 @@
                             var rate = Number(overlay.querySelector('#counterRate').value);
                             var msg = overlay.querySelector('#counterMsg').value.trim();
                             if (!rate || rate <= 0) { Toast.show('Enter a valid rate.', 'error'); return; }
-                            Booking.respondToOffer(id, 'counter', rate, msg);
+                            const result = Booking.respondToOffer(id, 'counter', rate, msg);
                             Modal.close(overlay);
-                            Toast.show('Counter-offer sent!', 'success');
-                            setTimeout(function() { location.reload(); }, 1000);
+                            if (result && !result.error) {
+                                Toast.show('Counter-offer sent!', 'success');
+                                setTimeout(function() { location.reload(); }, 1000);
+                            } else {
+                                Toast.show((result && result.message) || 'Failed to send counter.', 'error');
+                            }
                         });
                     }
                 });
@@ -325,7 +335,7 @@
             document.getElementById('msgPracticeBtn').addEventListener('click', function() {
                 const defaultSubject = 'Question about session on ' + DateUtils.format(offerDate, 'medium');
                 Modal.show({
-                    title: 'Send Message to ' + offer.practiceName,
+                    title: 'Send Message to ' + sanitizeHTML(offer.practiceName),
                     size: 'medium',
                     body: `
                         <div class="form-group">
@@ -345,7 +355,11 @@
                         overlay.querySelector('#sendMsgBtn').addEventListener('click', function() {
                             const body = overlay.querySelector('#msgBody').value.trim();
                             if (!body) { Toast.show('Please enter a message.', 'warning'); return; }
-                            MessageManager.send(session.id, offer.practiceId, overlay.querySelector('#msgSubject').value.trim(), body);
+                            const result = MessageManager.send(session.id, offer.practiceId, overlay.querySelector('#msgSubject').value.trim(), body);
+                            if (result && result.error) {
+                                Toast.show(result.message || 'Message could not be sent.', 'error');
+                                return;
+                            }
                             Modal.close(overlay);
                             Toast.show('Message sent!', 'success');
                         });

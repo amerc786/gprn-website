@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>My Calendar - GPRN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Syne"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: { DEFAULT: '#0B0F19', 50: '#141C2F' },
+                        brand: { green: '#059669', mint: '#ECFDF5', dark: '#022C22' },
+                        surface: '#F8F9FA'
+                    },
+                    boxShadow: {
+                        'card': '0 4px 20px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
+                        'subtle': '0 1px 2px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Calendar-specific overrides */
+        .cal-legend {
+            display: flex; align-items: center; gap: 16px; font-size: 0.78rem; flex-wrap: wrap;
+        }
+        .cal-legend-item {
+            display: flex; align-items: center; gap: 5px;
+        }
+        .cal-legend-dot {
+            width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+        }
+        .cal-avail-bar {
+            display: flex; gap: 2px; margin-top: 4px; width: 100%;
+        }
+        .cal-slot {
+            flex: 1; padding: 3px 0; text-align: center; font-size: 0.65rem; font-weight: 700;
+            border-radius: 4px; cursor: pointer; transition: all 0.15s; user-select: none;
+            min-height: 22px; display: flex; align-items: center; justify-content: center;
+        }
+        .cal-slot:hover { transform: scale(1.05); }
+        .cal-slot.available { background: rgba(34, 197, 94,0.2); color: var(--success); border: 1.5px solid rgba(34, 197, 94,0.5); }
+        .cal-slot.unavailable { background: rgba(239,68,68,0.12); color: var(--danger); border: 1.5px solid rgba(239,68,68,0.35); }
+        .cal-slot.none { background: var(--gray-50); color: var(--gray-400); border: 1.5px solid transparent; }
+        .cal-slot.none:hover { border-color: var(--gray-200); }
+
+        /* Inline availability indicators (non-edit mode) */
+        .cal-avail-inline {
+            display: flex; gap: 2px; margin-top: 3px; width: 100%;
+        }
+        .cal-avail-pip {
+            flex: 1; height: 5px; border-radius: 3px;
+        }
+        .cal-avail-pip.available { background: var(--success); }
+        .cal-avail-pip.unavailable { background: var(--danger); }
+        .cal-avail-pip.none { background: var(--gray-100); }
+
+        /* Bulk set bar */
+        .cal-bulk-bar {
+            background: rgba(5, 150, 105,0.04); border: 1px solid rgba(5, 150, 105,0.1); border-radius: var(--radius);
+            padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }
+        .cal-bulk-bar label { font-size: 0.85rem; font-weight: 600; color: var(--dark); white-space: nowrap; }
+        .cal-bulk-btn {
+            padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+            border: 1.5px solid var(--gray-200); background: white; cursor: pointer; transition: all 0.15s;
+        }
+        .cal-bulk-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .cal-bulk-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Mobile calendar cells */
+        @media (max-width: 768px) {
+            .cal-slot { min-height: 28px; font-size: 0.6rem; }
+            .calendar-day-cell { min-height: 70px; padding: 4px; }
+            .cal-date { font-size: 0.75rem; }
+            .cal-event { font-size: 0.6rem; padding: 1px 4px; }
+            .cal-bulk-bar { padding: 10px 12px; gap: 8px; }
+            .cal-bulk-bar label { font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body class="app-layout">
+    <div id="pageLoader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#F8F9FA;z-index:9999;">
+        <div style="text-align:center;">
+            <div style="width:36px;height:36px;border:3px solid #E2E8F0;border-top-color:#059669;border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px;"></div>
+            <p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:#64748B;font-weight:500;">Loading calendar...</p>
+        </div>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
+    <script>
+        if (!initPage('locum')) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const pageContent = initAppLayout('locum', 'calendar', 'My Calendar');
+
+        const today = new Date();
+        const todayStr = DateUtils.toISO(today);
+        let viewYear = today.getFullYear();
+        let viewMonth = today.getMonth();
+        let selectedDate = null;
+        let editMode = false;
+
+        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+        function toggleEditMode() {
+            editMode = !editMode;
+            if (!editMode) {
+                Toast.show('Availability saved.', 'success');
+            }
+            renderCalendar();
+        }
+
+        function toggleAvailability(dateStr, slot) {
+            const current = _getCachedAvail(dateStr, slot);
+            let next;
+            if (current === 'none' || !current) next = 'available';
+            else if (current === 'available' || current === 'preferred') next = 'unavailable';
+            else next = 'none';
+            Availability.set(session.id, dateStr, slot, next);
+            // Update local cache immediately so renderCalendar doesn't re-fetch
+            if (!_cachedAvail[dateStr]) _cachedAvail[dateStr] = { am: 'none', pm: 'none' };
+            _cachedAvail[dateStr][slot] = next;
+            renderCalendar();
+        }
+
+        function bulkSetWeek(status) {
+            const daysInMonth = DateUtils.getDaysInMonth(viewYear, viewMonth);
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const dayOfWeek = new Date(viewYear, viewMonth, d).getDay();
+                if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+                if (dateStr < todayStr) continue;
+                Availability.set(session.id, dateStr, 'both', status);
+                // Update local cache
+                _cachedAvail[dateStr] = { am: status, pm: status };
+            }
+            Toast.show(status === 'none' ? 'Weekday availability cleared for ' + monthNames[viewMonth] + '.' : 'All weekdays in ' + monthNames[viewMonth] + ' set to ' + status + '.', 'info');
+            renderCalendar();
+        }
+
+        // Cache offers and availability to avoid repeated network calls
+        let _cachedOffers = null;
+        let _cachedAvail = null;
+
+        function _refreshCache() {
+            const data = getMockData();
+            _cachedOffers = (data.offers || []).filter(o => o.locumId === session.id);
+            _cachedAvail = Availability.getAll(session.id) || {};
+        }
+
+        function _getCachedAvail(dateStr, slot) {
+            if (!_cachedAvail) _refreshCache();
+            var day = _cachedAvail[dateStr];
+            if (!day) return 'none';
+            return day[slot] || 'none';
+        }
+
+        function getEventsForDate(dateStr) {
+            if (!_cachedOffers) _refreshCache();
+            const events = [];
+
+            _cachedOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['accepted', 'confirmed', 'completed'].includes(o.status)).forEach(o => {
+                events.push({ type: 'booked', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
+            });
+
+            _cachedOffers.filter(o => (o.sessionDate || o.shiftDate) === dateStr && ['sent', 'viewed', 'negotiating'].includes(o.status)).forEach(o => {
+                events.push({ type: 'pending', label: o.practiceName, sessionType: o.sessionType, time: o.startTime + ' - ' + o.endTime, data: o });
+            });
+
+            return events;
+        }
+
+        function getSlotLabel(status) {
+            if (status === 'available' || status === 'preferred') return 'Avail';
+            if (status === 'unavailable') return 'Away';
+            return '';
+        }
+
+        function renderCalendar() {
+            // Refresh cache once per render — 1 network call instead of ~70
+            _refreshCache();
+
+            const daysInMonth = DateUtils.getDaysInMonth(viewYear, viewMonth);
+            const firstDay = DateUtils.getFirstDayOfMonth(viewYear, viewMonth);
+
+            const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
+            const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
+            const daysInPrevMonth = DateUtils.getDaysInMonth(prevYear, prevMonth);
+
+            let cells = '';
+
+            function renderDayCell(day, dateStr, isOtherMonth) {
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDate;
+                const isPast = dateStr < todayStr;
+                const events = getEventsForDate(dateStr);
+
+                const amSlot = _getCachedAvail(dateStr, 'am');
+                const pmSlot = _getCachedAvail(dateStr, 'pm');
+                // Treat 'preferred' as 'available' for display
+                const amNorm = (amSlot === 'preferred') ? 'available' : amSlot;
+                const pmNorm = (pmSlot === 'preferred') ? 'available' : pmSlot;
+
+                let cellContent = `<div class="cal-date">${day}</div>`;
+
+                // Always show events (bookings)
+                cellContent += events.slice(0, 2).map(e =>
+                    `<div class="cal-event cal-event-${e.type}">${e.sessionType}</div>`
+                ).join('');
+                if (events.length > 2) {
+                    cellContent += `<div style="font-size: 0.6rem; color: var(--dark-600);">+${events.length - 2} more</div>`;
+                }
+
+                if (editMode && !isPast && !isOtherMonth) {
+                    // Editable AM/PM toggle slots
+                    cellContent += `
+                        <div class="cal-avail-bar">
+                            <div class="cal-slot ${amNorm}" onclick="event.stopPropagation(); toggleAvailability('${dateStr}', 'am')" title="AM: ${amNorm}">
+                                AM
+                            </div>
+                            <div class="cal-slot ${pmNorm}" onclick="event.stopPropagation(); toggleAvailability('${dateStr}', 'pm')" title="PM: ${pmNorm}">
+                                PM
+                            </div>
+                        </div>`;
+                } else {
+                    // Compact availability bar (always visible)
+                    if (amNorm !== 'none' || pmNorm !== 'none') {
+                        cellContent += `
+                            <div class="cal-avail-inline">
+                                <div class="cal-avail-pip ${amNorm}" title="AM: ${amNorm === 'none' ? 'Not set' : amNorm}"></div>
+                                <div class="cal-avail-pip ${pmNorm}" title="PM: ${pmNorm === 'none' ? 'Not set' : pmNorm}"></div>
+                            </div>`;
+                    }
+                }
+
+                return `
+                    <div class="calendar-day-cell ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${isPast && !isOtherMonth ? 'past' : ''}" data-date="${dateStr}" style="${isSelected ? 'background: rgba(5, 150, 105,0.06); outline: 2px solid var(--primary); outline-offset: -2px;' : ''}">
+                        ${cellContent}
+                    </div>`;
+            }
+
+            // Previous month trailing days
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const day = daysInPrevMonth - i;
+                const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                cells += renderDayCell(day, dateStr, true);
+            }
+
+            // Current month days
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                cells += renderDayCell(d, dateStr, false);
+            }
+
+            // Next month fill
+            const totalCells = firstDay + daysInMonth;
+            const remainder = totalCells % 7;
+            if (remainder > 0) {
+                const nextMonth = viewMonth === 11 ? 0 : viewMonth + 1;
+                const nextYear = viewMonth === 11 ? viewYear + 1 : viewYear;
+                for (let d = 1; d <= (7 - remainder); d++) {
+                    const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    cells += renderDayCell(d, dateStr, true);
+                }
+            }
+
+            // Day detail section
+            let dayDetail = '';
+            if (selectedDate) {
+                const selEvents = getEventsForDate(selectedDate);
+                const amSlot = _getCachedAvail(selectedDate, 'am');
+                const pmSlot = _getCachedAvail(selectedDate, 'pm');
+                const amNorm = (amSlot === 'preferred') ? 'available' : amSlot;
+                const pmNorm = (pmSlot === 'preferred') ? 'available' : pmSlot;
+
+                dayDetail = `
+                    <div class="content-card" style="margin-top: 24px;">
+                        <div class="content-card-header">
+                            <h2>${DateUtils.format(selectedDate, 'full')}</h2>
+                        </div>
+                        <div class="content-card-body">
+                            <div style="display: flex; gap: 16px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--gray-100); flex-wrap: wrap;">
+                                <span style="font-size: 0.82rem; color: var(--dark-600); font-weight: 600;">Your Availability:</span>
+                                <span style="font-size: 0.82rem; font-weight: 600; color: ${amNorm === 'available' ? 'var(--success)' : amNorm === 'unavailable' ? 'var(--danger)' : 'var(--gray-400)'};">
+                                    AM: ${amNorm === 'available' ? 'Available' : amNorm === 'unavailable' ? 'Unavailable' : 'Not set'}
+                                </span>
+                                <span style="font-size: 0.82rem; font-weight: 600; color: ${pmNorm === 'available' ? 'var(--success)' : pmNorm === 'unavailable' ? 'var(--danger)' : 'var(--gray-400)'};">
+                                    PM: ${pmNorm === 'available' ? 'Available' : pmNorm === 'unavailable' ? 'Unavailable' : 'Not set'}
+                                </span>
+                            </div>
+                            ${selEvents.length === 0
+                                ? '<p style="font-size: 0.88rem; color: var(--dark-600);">No sessions scheduled for this day.</p>'
+                                : selEvents.map(e => `
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <div class="cal-event cal-event-${e.type}" style="display: inline-block; margin: 0; padding: 4px 10px; font-size: 0.75rem;">${e.type === 'booked' ? 'Booked' : 'Invitation'}</div>
+                                            <div>
+                                                <div style="font-size: 0.9rem; font-weight: 600; color: var(--dark);">${e.label}</div>
+                                                <div style="font-size: 0.82rem; color: var(--dark-600);">${e.sessionType} &bull; ${e.time}</div>
+                                            </div>
+                                        </div>
+                                        ${e.type === 'pending' && e.data.id ? `<a href="shift-detail.html?id=${e.data.id}" class="btn btn-primary btn-small">Review</a>` : ''}
+                                    </div>
+                                `).join('')
+                            }
+                        </div>
+                    </div>`;
+            }
+
+            pageContent.innerHTML = `
+                <div class="calendar-container">
+                    <div class="calendar-header-bar">
+                        <div class="calendar-nav">
+                            <button id="calPrev">${getIcon('chevron-left')}</button>
+                            <span class="calendar-title">${monthNames[viewMonth]} ${viewYear}</span>
+                            <button id="calNext">${getIcon('chevron-right')}</button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <button class="btn ${editMode ? 'btn-coral' : 'btn-primary'} btn-small" id="editToggle">
+                                ${editMode ? 'Done Editing' : 'Edit Availability'}
+                            </button>
+                            <button class="btn btn-secondary btn-small" id="calToday">Today</button>
+                        </div>
+                    </div>
+
+                    <!-- Always-visible legend -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 24px; flex-wrap: wrap; gap: 8px;">
+                        <div class="cal-legend">
+                            <div class="cal-legend-item">
+                                <span class="cal-legend-dot" style="background: var(--primary);"></span> Booked
+                            </div>
+                            <div class="cal-legend-item">
+                                <span class="cal-legend-dot" style="background: rgba(245,158,11,0.5);"></span> Invitation
+                            </div>
+                            <div class="cal-legend-item">
+                                <span class="cal-legend-dot" style="background: var(--success);"></span> Available
+                            </div>
+                            <div class="cal-legend-item">
+                                <span class="cal-legend-dot" style="background: var(--danger);"></span> Unavailable
+                            </div>
+                        </div>
+                    </div>
+
+                    ${editMode ? `
+                    <div class="cal-bulk-bar">
+                        <label>Bulk set weekdays:</label>
+                        <button class="cal-bulk-btn" onclick="bulkSetWeek('available')">All Available</button>
+                        <button class="cal-bulk-btn" onclick="bulkSetWeek('unavailable')">All Unavailable</button>
+                        <button class="cal-bulk-btn" onclick="bulkSetWeek('none')">Clear All</button>
+                    </div>` : ''}
+
+                    <div class="calendar-grid-full">
+                        ${dayNames.map(d => `<div class="calendar-day-header">${d}</div>`).join('')}
+                        ${cells}
+                    </div>
+                </div>
+                ${dayDetail}
+            `;
+
+            // Bind navigation
+            document.getElementById('calPrev').addEventListener('click', function() {
+                viewMonth--;
+                if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+                renderCalendar();
+            });
+            document.getElementById('calNext').addEventListener('click', function() {
+                viewMonth++;
+                if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+                renderCalendar();
+            });
+            document.getElementById('calToday').addEventListener('click', function() {
+                viewYear = today.getFullYear();
+                viewMonth = today.getMonth();
+                selectedDate = todayStr;
+                renderCalendar();
+            });
+            document.getElementById('editToggle').addEventListener('click', toggleEditMode);
+
+            // Day click (select day)
+            document.querySelectorAll('.calendar-day-cell').forEach(cell => {
+                cell.addEventListener('click', function() {
+                    selectedDate = this.dataset.date;
+                    renderCalendar();
+                });
+            });
+        }
+
+        renderCalendar();
+        // Remove loading screen
+        var loader = document.getElementById('pageLoader');
+        if (loader) loader.remove();
+    </script>
+</body>
+</html>

@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Messages - GPRN</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Syne + Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Existing app styles -->
+    <link rel="stylesheet" href="styles.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Syne"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: { DEFAULT: '#0B0F19', 50: '#141C2F' },
+                        brand: { green: '#059669', mint: '#ECFDF5', dark: '#022C22' },
+                        surface: '#F8F9FA'
+                    },
+                    boxShadow: {
+                        'card': '0 4px 20px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
+                        'subtle': '0 1px 2px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body.pm-dashboard { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+        .custom-scroll:hover::-webkit-scrollbar-thumb { background: #CBD5E1; }
+
+        @keyframes fade-in-up {
+            0% { opacity: 0; transform: translateY(15px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-item { animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+
+        .sidebar-active::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 10%; height: 80%; width: 4px;
+            background-color: #0B0F19;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .thread-item.active { background-color: #F1F5F9; }
+        .thread-item:hover:not(.active) { background-color: #FAFBFC; }
+
+        /* System message pill */
+        .system-msg {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #ECFDF5;
+            border: 1px solid #D1FAE5;
+            border-radius: 12px;
+            padding: 10px 16px;
+            margin: 8px auto;
+            max-width: 80%;
+        }
+
+        /* Mobile: hide thread list when chat is open */
+        @media (max-width: 767px) {
+            .chat-mobile-back { display: flex !important; }
+            .msg-container.chat-open .thread-pane { display: none; }
+            .msg-container:not(.chat-open) .chat-pane { display: none; }
+            .thread-pane { width: 100% !important; }
+            .chat-pane { width: 100% !important; }
+        }
+        @media (min-width: 768px) {
+            .chat-mobile-back { display: none !important; }
+        }
+    </style>
+</head>
+<body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
+
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+    <script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
+    <script>
+        if (!initPage()) throw new Error('Auth required');
+    </script>
+
+    <!-- MOBILE BACKDROP -->
+    <div id="sidebarBackdrop" class="fixed inset-0 bg-black/40 z-40 hidden lg:hidden" onclick="document.getElementById('pmSidebar').classList.add('-translate-x-full');this.classList.add('hidden');"></div>
+
+    <!-- SIDEBAR -->
+    <aside id="pmSidebar" class="fixed inset-y-0 left-0 z-50 w-[280px] bg-white border-r border-slate-200 flex flex-col -translate-x-full lg:translate-x-0 lg:relative lg:w-[260px] lg:z-20 lg:shrink-0 transition-transform duration-300 ease-in-out">
+        <div class="h-20 px-6 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-[8px] select-none">
+                <div class="w-[38px] h-[38px] bg-[#101524] rounded-[12px] flex items-center justify-center shadow-sm">
+                    <span class="text-white font-black text-[24px] leading-none tracking-tight pt-[2px]">G</span>
+                </div>
+                <div class="flex items-baseline pt-1">
+                    <span class="logo-prn text-[#101524] font-black text-[32px] leading-[0.8] tracking-[-0.05em]">PRN</span>
+                    <div class="w-[9px] h-[9px] bg-[#0F8B5A] ml-[4px] mb-[3px]"></div>
+                </div>
+            </a>
+            <button class="lg:hidden w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600" onclick="document.getElementById('pmSidebar').classList.add('-translate-x-full');document.getElementById('sidebarBackdrop').classList.add('hidden');">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scroll py-6 px-4 flex flex-col gap-8">
+            <nav class="flex flex-col gap-1.5" id="sidebarNav">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] px-4 mb-2">Platform</p>
+            </nav>
+            <nav class="flex flex-col gap-1.5 mt-auto" id="sidebarNavBottom">
+                <button onclick="Auth.logout()" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl text-[14px] font-semibold transition-colors group cursor-pointer text-left">
+                    <i class="ph ph-sign-out text-lg"></i> Log Out
+                </button>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col relative w-full h-full">
+        <header class="h-16 lg:h-20 px-4 lg:px-10 flex items-center justify-between shrink-0 z-10 sticky top-0 bg-surface/80 backdrop-blur-md">
+            <button class="lg:hidden w-10 h-10 flex items-center justify-center text-slate-600 hover:text-navy rounded-xl hover:bg-slate-100 transition-colors shrink-0" onclick="document.getElementById('pmSidebar').classList.remove('-translate-x-full');document.getElementById('sidebarBackdrop').classList.remove('hidden');">
+                <i class="ph ph-list text-2xl"></i>
+            </button>
+            <a href="index.html" class="lg:hidden flex items-center gap-[6px] select-none shrink-0">
+                <div class="w-[32px] h-[32px] bg-[#101524] rounded-[10px] flex items-center justify-center">
+                    <span class="text-white font-black text-[18px] leading-none tracking-tight pt-[2px]">G</span>
+                </div>
+                <div class="flex items-baseline pt-0.5">
+                    <span class="text-[#101524] font-black text-[24px] leading-[0.8] tracking-[-0.05em]">PRN</span>
+                    <div class="w-[7px] h-[7px] bg-[#0F8B5A] ml-[3px] mb-[2px]"></div>
+                </div>
+            </a>
+            <div class="relative w-full max-w-96 hidden sm:block group">
+                <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-navy transition-colors"></i>
+                <input type="text" placeholder="Search messages..." class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-subtle">
+            </div>
+            <div class="flex items-center gap-3 lg:gap-5 shrink-0">
+                <div class="relative" id="profileDropdownWrap">
+                    <button onclick="document.getElementById('profileDropMenu').classList.toggle('hidden')" class="bg-navy rounded-full p-1 pl-1.5 pr-4 flex items-center gap-2.5 hover:bg-slate-800 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-navy group">
+                        <div class="bg-brand-green text-white w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold tracking-wider" id="headerAvatar">--</div>
+                        <span class="text-white text-[13px] font-semibold pr-1" id="headerName">User</span>
+                        <i class="ph-bold ph-caret-down text-slate-400 text-[10px] group-hover:text-white transition-colors"></i>
+                    </button>
+                    <div id="profileDropMenu" class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-slate-200 shadow-lg py-2 z-50" style="font-family:'Plus Jakarta Sans',sans-serif;">
+                        <div class="px-4 py-3 border-b border-slate-100">
+                            <div class="text-[13px] font-bold text-navy" id="dropdownDisplayName">User</div>
+                            <div class="text-[11px] text-slate-400">Signed in</div>
+                        </div>
+                        <a href="practice-settings.html" class="flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-navy transition-colors">
+                            <i class="ph ph-gear text-base"></i> Settings
+                        </a>
+                        <button onclick="toggleDarkMode()" class="w-full flex items-center justify-between px-4 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-navy transition-colors cursor-pointer">
+                            <span class="flex items-center gap-3"><i class="ph ph-moon text-base"></i> Dark Mode</span>
+                            <div id="darkModeToggle" class="w-9 h-5 rounded-full bg-slate-300 relative transition-colors">
+                                <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-all"></div>
+                            </div>
+                        </button>
+                        <div class="border-t border-slate-100 mt-1 pt-1">
+                            <button onclick="Auth.logout()" class="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-red-500 hover:bg-red-50 transition-colors cursor-pointer text-left">
+                                <i class="ph ph-sign-out text-base"></i> Log Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto custom-scroll px-4 lg:px-10 pb-10 pt-4">
+            <div class="max-w-[1400px] mx-auto w-full relative flex flex-col gap-6">
+                <!-- Heading -->
+                <div class="animate-item">
+                    <span class="inline-block bg-brand-mint text-brand-green text-[11px] font-bold uppercase tracking-[0.15em] px-3 py-1.5 rounded-full mb-3" id="rolePill">Portal</span>
+                    <div class="flex items-center justify-between">
+                        <h1 class="text-[44px] font-extrabold text-navy tracking-tight" style="font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1.2;">Messages</h1>
+                        <button id="newMsgBtn" class="bg-navy text-white text-[13px] font-bold px-5 py-3 rounded-full hover:bg-slate-800 transition-colors shadow-md flex items-center gap-2">
+                            <i class="ph-bold ph-pencil-simple"></i> New Message
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chat Container -->
+                <div id="messagesRoot" class="animate-item"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const session = Auth.getSession();
+        const role = Auth.getRole();
+
+        // Header
+        document.getElementById('headerAvatar').textContent = getInitials((session.firstName || '') + ' ' + (session.lastName || session.name || ''));
+        document.getElementById('headerName').textContent = session.firstName || (session.name || 'User').split(' ')[0];
+        const _dn = document.getElementById('dropdownDisplayName');
+        if (_dn) _dn.textContent = session.firstName || (session.name || 'User').split(' ')[0];
+        document.getElementById('rolePill').textContent = role === 'locum' ? 'Locum Portal' : (role === 'admin' ? 'Admin Portal' : 'Practice Manager Portal');
+
+        // Hide "New Message" for locums (they can only reply)
+        if (role === 'locum') {
+            document.getElementById('newMsgBtn').style.display = 'none';
+        }
+
+        // Sidebar
+        (function buildSidebar() {
+            const nav = document.getElementById('sidebarNav');
+            const bottom = document.getElementById('sidebarNavBottom');
+            const item = (href, icon, label, active, extras = '') => `
+                <a href="${href}" class="${active ? 'sidebar-active bg-slate-50 text-navy' : 'text-slate-500 hover:text-navy hover:bg-slate-50'} relative flex items-center justify-between px-4 py-2.5 rounded-xl text-[14px] ${active ? 'font-bold' : 'font-semibold'} transition-all group">
+                    <div class="flex items-center gap-3"><i class="${icon} text-lg"></i> ${label}</div>${extras}
+                </a>`;
+            let links = '';
+            const badge = '<span id="sidebarUnreadBadge" class="hidden text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full"></span>';
+            if (role === 'practice') {
+                links += item('practice-dashboard.html', 'ph-fill ph-squares-four', 'Dashboard', false);
+                links += item('post-shift.html', 'ph ph-calendar-plus', 'Create Session', false);
+                links += item('view-requested-shifts.html', 'ph ph-clipboard-text', 'Manage Shifts', false);
+                links += item('find-locums.html', 'ph ph-users', 'Locum Network', false);
+                links += item('billing.html', 'ph ph-receipt', 'Compliance & Billing', false);
+                links += item('messages.html', 'ph-fill ph-chat-circle-dots', 'Messages', true, badge);
+            } else if (role === 'locum') {
+                links += item('locum-dashboard.html', 'ph-fill ph-squares-four', 'Dashboard', false);
+                links += item('available-shifts.html', 'ph ph-envelope-simple', 'Invitations', false);
+                links += item('my-calendar.html', 'ph ph-calendar-blank', 'My Calendar', false);
+                links += item('my-offers.html', 'ph ph-clipboard-text', 'My Bookings', false);
+                links += item('my-rates.html', 'ph ph-currency-gbp', 'My Rates', false);
+                links += item('my-profile.html', 'ph ph-user-circle', 'My Profile', false);
+                links += item('report-extra-shifts.html', 'ph ph-plus-circle', 'Log Outside Work', false);
+                links += item('my-invoices.html', 'ph ph-receipt', 'My Invoices', false);
+                links += item('messages.html', 'ph-fill ph-chat-circle-dots', 'Messages', true, badge);
+            }
+            nav.insertAdjacentHTML('beforeend', links);
+            const settingsHref = role === 'practice' ? 'practice-settings.html' : (role === 'locum' ? 'my-settings.html' : 'admin-dashboard.html');
+            bottom.insertAdjacentHTML('afterbegin', `
+                <a href="${settingsHref}" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:text-navy hover:bg-slate-50 rounded-xl text-[14px] font-semibold transition-colors group">
+                    <i class="ph ph-gear text-lg"></i> Settings
+                </a>`);
+        })();
+
+        // Unread badge
+        const unreadMsgCount = MessageManager.getUnreadCount(session.id);
+        if (unreadMsgCount > 0) {
+            const badge = document.getElementById('sidebarUnreadBadge');
+            if (badge) { badge.textContent = unreadMsgCount; badge.classList.remove('hidden'); }
+        }
+
+        // Init messages data
+        (function() {
+            const data = getMockData();
+            if (!data.messages) { data.messages = []; saveMockData(data); }
+        })();
+
+        let activeThreadId = null;
+
+        // ===== Helpers =====
+        function fmtTime(ts) {
+            const d = new Date(ts), now = new Date();
+            const diff = Math.floor((now - d) / 86400000);
+            if (diff === 0) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (diff === 1) return 'Yesterday';
+            if (diff < 7) return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+            return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+        }
+
+        function avatarBg(name) {
+            const colors = ['bg-brand-green', 'bg-navy', 'bg-indigo-500', 'bg-amber-500', 'bg-rose-500', 'bg-sky-500'];
+            let h = 0;
+            for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+            return colors[Math.abs(h) % colors.length];
+        }
+
+        // ===== Main render =====
+        function render() {
+            const threads = MessageManager.getThreads(session.id);
+            const root = document.getElementById('messagesRoot');
+
+            if (threads.length === 0) {
+                root.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-subtle overflow-hidden p-16 flex flex-col items-center justify-center text-center">
+                        <div class="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-5">
+                            <i class="ph ph-chat-circle-dots text-slate-400 text-3xl"></i>
+                        </div>
+                        <h3 class="text-[22px] font-extrabold text-navy tracking-tight mb-2">No messages yet</h3>
+                        <p class="text-[14px] text-slate-500 max-w-md mb-6">${role === 'locum' ? 'When a practice sends you a message, it will appear here.' : 'Start a conversation with a locum to see your messages here.'}</p>
+                        ${role === 'practice' ? `<button onclick="openNewMessageModal()" class="bg-navy text-white text-[13px] font-bold px-5 py-3 rounded-full hover:bg-slate-800 transition-colors shadow-md inline-flex items-center gap-2">
+                            <i class="ph-bold ph-pencil-simple"></i> Send a Message
+                        </button>` : ''}
+                    </div>`;
+                return;
+            }
+
+            const hasChat = activeThreadId !== null;
+
+            root.innerHTML = `
+                <div class="msg-container ${hasChat ? 'chat-open' : ''} bg-white rounded-2xl border border-slate-200 shadow-subtle overflow-hidden flex" style="height: calc(100vh - 280px); min-height: 560px;">
+                    <!-- LEFT: Thread list -->
+                    <div class="thread-pane w-[340px] border-r border-slate-200 flex flex-col shrink-0">
+                        <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between shrink-0">
+                            <h2 class="text-[15px] font-extrabold text-navy tracking-tight" style="font-family: 'Plus Jakarta Sans', sans-serif;">Conversations</h2>
+                            <span class="text-[11px] font-bold text-slate-400">${threads.length}</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto custom-scroll p-2" id="threadListBody">
+                            ${threads.map(t => {
+                                const name = MessageManager.getUserName(t.otherId);
+                                const initials = getInitials(name);
+                                const status = OnlineStatus.formatStatus(t.otherId);
+                                const preview = sanitizeHTML(t.lastMessage.body.length > 48 ? t.lastMessage.body.substring(0, 48) + '...' : t.lastMessage.body);
+                                const time = fmtTime(t.lastMessage.timestamp);
+                                const isActive = activeThreadId === t.threadId;
+                                return `
+                                <div class="thread-item ${isActive ? 'active' : ''} p-4 rounded-xl cursor-pointer flex items-start gap-3 transition-colors" data-thread-id="${t.threadId}">
+                                    <div class="relative shrink-0">
+                                        <div class="${avatarBg(name)} text-white w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-bold shadow-subtle">${initials}</div>
+                                        ${status.online ? '<div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>' : ''}
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center justify-between gap-2 mb-0.5">
+                                            <div class="font-bold text-navy text-[14px] truncate">${sanitizeHTML(name)}</div>
+                                            <div class="text-[11px] text-slate-400 shrink-0">${time}</div>
+                                        </div>
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div class="text-[13px] text-slate-500 truncate">${t.lastMessage._system ? '<i class="ph ph-check-circle text-green-500"></i> ' : ''}${preview}</div>
+                                            ${t.unread > 0 ? '<div class="bg-brand-green rounded-full w-2.5 h-2.5 shrink-0"></div>' : ''}
+                                        </div>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Chat area -->
+                    <div class="chat-pane flex-1 flex flex-col min-w-0">
+                        ${activeThreadId ? renderChat(activeThreadId) : renderChatEmpty()}
+                    </div>
+                </div>`;
+
+            bindEvents();
+            if (activeThreadId) scrollBottom();
+        }
+
+        function renderChatEmpty() {
+            return `
+                <div class="flex-1 flex flex-col items-center justify-center text-center px-8">
+                    <div class="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+                        <i class="ph ph-chat-circle text-slate-400 text-3xl"></i>
+                    </div>
+                    <p class="text-[16px] font-bold text-navy mb-1">Select a conversation</p>
+                    <p class="text-[13px] text-slate-500">Choose a thread from the left to view messages.</p>
+                </div>`;
+        }
+
+        function renderChat(threadId) {
+            const messages = MessageManager.getThread(threadId, session.id);
+            if (messages.length === 0) return renderChatEmpty();
+
+            const first = messages[0];
+            const otherId = first.fromId === session.id ? first.toId : first.fromId;
+            const otherName = MessageManager.getUserName(otherId);
+            const initials = getInitials(otherName);
+            const status = OnlineStatus.formatStatus(otherId);
+
+            // Check if this user can reply
+            const canReply = role === 'practice' || MessageManager.canLocumMessage(session.id, otherId);
+
+            return `
+                <!-- Chat header matching screenshot -->
+                <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-3">
+                        <button class="chat-mobile-back hidden w-9 h-9 items-center justify-center text-slate-500 hover:text-navy rounded-lg hover:bg-slate-100 mr-1" onclick="activeThreadId=null;render();">
+                            <i class="ph-bold ph-arrow-left text-lg"></i>
+                        </button>
+                        <div class="relative">
+                            <div class="${avatarBg(otherName)} text-white w-12 h-12 rounded-full flex items-center justify-center text-[13px] font-bold shadow-subtle">${initials}</div>
+                            ${status.online ? '<div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>' : ''}
+                        </div>
+                        <div>
+                            <div class="font-bold text-navy text-[16px]">${sanitizeHTML(otherName)}</div>
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-1.5 h-1.5 rounded-full ${status.online ? 'bg-green-500' : 'bg-slate-300'}"></div>
+                                <span class="text-[12px] ${status.online ? 'text-green-600 font-medium' : 'text-slate-400'}">${status.text}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-navy hover:border-slate-300 transition-colors" title="Call">
+                            <i class="ph ph-phone text-lg"></i>
+                        </button>
+                        <button onclick="deleteCurrentThread()" class="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors" title="Delete conversation">
+                            <i class="ph ph-trash text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div class="flex-1 overflow-y-auto custom-scroll px-6 py-5 flex flex-col gap-3" id="chatMessages">
+                    ${messages.map(m => renderBubble(m)).join('')}
+                </div>
+
+                <!-- Compose -->
+                ${canReply ? `
+                <div class="px-5 py-4 border-t border-slate-200 shrink-0 bg-white">
+                    <div class="flex items-center gap-3">
+                        <input type="text" id="msgInput" placeholder="Type a message..." autocomplete="off" class="flex-1 bg-slate-50 border border-slate-200 rounded-full py-3 px-5 text-[14px] font-medium text-navy placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all">
+                        <button id="sendMsgBtn" class="bg-navy text-white w-11 h-11 rounded-full flex items-center justify-center hover:bg-slate-800 transition-colors shadow-md shrink-0" aria-label="Send">
+                            <i class="ph-fill ph-paper-plane-right text-lg"></i>
+                        </button>
+                    </div>
+                </div>` : `
+                <div class="px-5 py-4 border-t border-slate-200 shrink-0 bg-slate-50">
+                    <p class="text-[13px] text-slate-400 text-center">You can only reply when a practice messages you first.</p>
+                </div>`}`;
+        }
+
+        function renderBubble(m) {
+            // System message (offer confirmed, etc.)
+            if (m._system) {
+                return `
+                    <div class="system-msg self-center">
+                        <i class="ph-fill ph-check-circle text-green-500 text-lg shrink-0"></i>
+                        <span class="text-[13px] font-semibold text-green-800">${sanitizeHTML(m.body)}</span>
+                    </div>`;
+            }
+
+            const isMine = m.fromId === session.id;
+            const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const body = sanitizeHTML(m.body).replace(/\n/g, '<br>');
+
+            // Invoice-linked message: add "View Invoice" button
+            const invoiceBtn = m._invoiceId ? `
+                <a href="invoice-view.html?id=${m._invoiceId}" class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg text-[12px] font-bold ${isMine ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-navy/10 text-navy hover:bg-navy/15'} transition-colors" style="text-decoration:none;">
+                    <i class="ph ph-file-text text-sm"></i> View Invoice
+                </a>` : '';
+
+            if (isMine) {
+                return `
+                    <div class="flex flex-col items-end max-w-[75%] self-end">
+                        <div class="bg-navy text-white rounded-2xl rounded-br-md px-4 py-2.5 text-[14px] leading-relaxed shadow-subtle">${body}${invoiceBtn}</div>
+                        <div class="text-[10px] text-slate-400 mt-1 mr-1">${time}</div>
+                    </div>`;
+            } else {
+                return `
+                    <div class="flex flex-col items-start max-w-[75%] self-start">
+                        <div class="bg-slate-100 text-navy rounded-2xl rounded-bl-md px-4 py-2.5 text-[14px] leading-relaxed">${body}${invoiceBtn}</div>
+                        <div class="text-[10px] text-slate-400 mt-1 ml-1">${time}</div>
+                    </div>`;
+            }
+        }
+
+        function bindEvents() {
+            document.querySelectorAll('.thread-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    activeThreadId = el.dataset.threadId;
+                    MessageManager.markThreadRead(activeThreadId, session.id);
+                    render();
+                });
+            });
+
+            const sendBtn = document.getElementById('sendMsgBtn');
+            const msgInput = document.getElementById('msgInput');
+            if (sendBtn && msgInput) {
+                sendBtn.addEventListener('click', () => sendReply(msgInput));
+                msgInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(msgInput); }
+                });
+                msgInput.focus();
+            }
+        }
+
+        function sendReply(inputEl) {
+            const body = inputEl.value.trim();
+            if (!body) return;
+
+            const messages = MessageManager.getThread(activeThreadId, session.id);
+            if (messages.length === 0) return;
+            const first = messages[0];
+            const otherId = first.fromId === session.id ? first.toId : first.fromId;
+
+            const result = MessageManager.send(session.id, otherId, first.subject || '', body, first.shiftId);
+            if (result && result.error) {
+                Toast.show(result.message, 'warning');
+                return;
+            }
+            Toast.show('Message sent', 'success');
+            render();
+        }
+
+        function deleteCurrentThread() {
+            if (!activeThreadId) return;
+            const confirmed = confirm('Delete this conversation? It will be removed from your messages but the other person will still have their copy.');
+            if (!confirmed) return;
+            MessageManager.deleteThread(activeThreadId, session.id);
+            activeThreadId = null;
+            Toast.show('Conversation deleted', 'success');
+            render();
+        }
+
+        function scrollBottom() {
+            setTimeout(() => {
+                const el = document.getElementById('chatMessages');
+                if (el) el.scrollTop = el.scrollHeight;
+            }, 50);
+        }
+
+        // ===== New Message Modal (practice only) =====
+        function openNewMessageModal(preRecipient, preSubject, preBody, preShiftId) {
+            if (role === 'locum') {
+                Toast.show('You can only reply to messages from practices.', 'warning');
+                return;
+            }
+
+            const data = getMockData();
+            // Practices can only message approved GPs — deduplicate by ID
+            const seen = new Set();
+            const recipientOptions = data.locums.filter(l => {
+                if (!l.id || seen.has(l.id)) return false;
+                seen.add(l.id);
+                return true;
+            }).map(l =>
+                `<option value="${l.id}" ${preRecipient === l.id ? 'selected' : ''}>${l.title} ${l.firstName} ${l.lastName}</option>`
+            ).join('');
+
+            Modal.show({
+                title: 'New Message',
+                size: 'medium',
+                body: `
+                    <div class="form-group">
+                        <label class="form-label">Recipient (GP)</label>
+                        <select class="form-select" id="modalRecipient" ${preRecipient ? 'disabled' : ''}>
+                            <option value="">-- Select a GP --</option>
+                            ${recipientOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Subject (optional)</label>
+                        <input type="text" class="form-input" id="modalSubject" placeholder="Enter subject..." value="${preSubject || ''}">
+                    </div>
+                    ${preShiftId ? `<input type="hidden" id="modalShiftId" value="${preShiftId}">` : ''}
+                    <div class="form-group">
+                        <label class="form-label">Message</label>
+                        <textarea class="form-input" id="modalBody" rows="5" placeholder="Write your message...">${preBody || ''}</textarea>
+                    </div>`,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" id="modalSendBtn">Send Message</button>`,
+                onOpen(overlay) {
+                    overlay.querySelector('#modalSendBtn').addEventListener('click', () => {
+                        const toId = overlay.querySelector('#modalRecipient').value;
+                        const subject = overlay.querySelector('#modalSubject').value.trim();
+                        const body = overlay.querySelector('#modalBody').value.trim();
+                        const shiftIdEl = overlay.querySelector('#modalShiftId');
+                        const shiftId = shiftIdEl ? shiftIdEl.value : null;
+
+                        if (!toId) { Toast.show('Please select a GP.', 'warning'); return; }
+                        if (!body) { Toast.show('Please enter a message.', 'warning'); return; }
+
+                        const result = MessageManager.send(session.id, toId, subject, body, shiftId);
+                        if (result && result.error) { Toast.show(result.message, 'warning'); return; }
+                        Toast.show('Message sent!', 'success');
+                        Modal.close(overlay);
+                        activeThreadId = result;
+                        render();
+                    });
+                }
+            });
+        }
+
+        window.openNewMessageModal = openNewMessageModal;
+        document.getElementById('newMsgBtn').addEventListener('click', () => openNewMessageModal());
+
+        // URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const composeFor = urlParams.get('compose');
+        if (composeFor && role === 'practice') {
+            render();
+            setTimeout(() => openNewMessageModal(composeFor, urlParams.get('subject') || '', '', urlParams.get('shiftId') || null), 300);
+        } else {
+            render();
+        }
+    </script>
+</body>
+</html>

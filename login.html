@@ -129,12 +129,48 @@
         }
 
         .form-error-msg { color: #DC2626; font-size: 0.8rem; margin-top: 6px; min-height: 1em; }
+        .field-input.error { border-color: #DC2626; box-shadow: 0 0 0 4px rgba(220,38,38,0.1); }
+
+        /* Toasts (copied from styles.css — this page does not load it) */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            border-radius: 10px;
+            background: #ffffff;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+            border: 1px solid #E2E8F0;
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: #0B0F19;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+            min-width: 300px;
+        }
+        .toast.toast-visible { transform: translateX(0); }
+        .toast-icon { flex-shrink: 0; }
+        .toast-success .toast-icon { color: #22C55E; }
+        .toast-error .toast-icon { color: #EF4444; }
+        .toast-warning .toast-icon { color: #F59E0B; }
+        .toast-info .toast-icon { color: #0B0F19; }
+        .toast-close { background: none; border: none; font-size: 1.2rem; color: #94A3B8; cursor: pointer; margin-left: auto; }
 
         /* Password toggle */
         .pw-wrap { position: relative; }
         .pw-wrap .field-input { padding-right: 48px; }
         .pw-toggle {
-            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            /* anchored to the input height (not 50% of .pw-wrap, which also holds the error line) */
+            position: absolute; right: 12px; top: 25px; transform: translateY(-50%);
             background: transparent; border: none; padding: 6px; cursor: pointer; color: #94A3B8;
             display: flex; align-items: center;
         }
@@ -258,15 +294,11 @@
                             <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password">
                                 <i class="ph ph-eye text-lg"></i>
                             </button>
+                            <div class="form-error form-error-msg"></div>
                         </div>
-                        <div class="form-error form-error-msg"></div>
                     </div>
 
-                    <div class="flex items-center justify-between mb-6">
-                        <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
-                            <input type="checkbox" id="remember" class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-                            Remember me
-                        </label>
+                    <div class="flex items-center justify-end mb-6">
                         <a href="#" id="forgotPasswordLink" class="text-sm font-semibold text-emerald-700 hover:text-emerald-900">Forgot password?</a>
                     </div>
 
@@ -301,11 +333,11 @@
 
     </div>
 
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-    <script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+    <script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         (function() {
             // If already logged in, redirect
@@ -397,8 +429,11 @@
                     return;
                 }
 
-                // Send Supabase password reset email
-                fetch(SUPA_URL + '/auth/v1/recover', {
+                // Send Supabase password reset email.
+                // GoTrue only honours redirect_to as a QUERY parameter, so the
+                // reset link lands on reset-password.html rather than the Site URL.
+                var redirectTo = window.location.href.replace(/[^/]*$/, 'reset-password.html');
+                fetch(SUPA_URL + '/auth/v1/recover?redirect_to=' + encodeURIComponent(redirectTo), {
                     method: 'POST',
                     headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: resetEmail })
@@ -441,6 +476,8 @@
                     window.location.href = 'pending-approval.html' + qs;
                 } else if (result && result.error === 'no_profile') {
                     Toast.show('No profile found for this account. Please register or contact support.', 'error');
+                } else if (result && result.error === 'data_unavailable') {
+                    Toast.show('We could not load your account data. Please try again in a moment.', 'error');
                 } else if (result && result.role) {
                     Toast.show('Welcome back, ' + result.firstName + '!', 'success');
                     setTimeout(() => {

@@ -195,7 +195,10 @@ function renderTopHeader(title, breadcrumbs) {
     const settingsHref = session.role === 'locum' ? 'my-settings.html' : 'practice-settings.html';
     const initials = getInitials(session.name);
     const displayName = session.firstName || (session.name || 'User').split(' ')[0];
-    const searchPlaceholder = session.role === 'locum' ? 'Search shifts, bookings...' : 'Search locums, shifts, or invoices...';
+    const crumbs = (breadcrumbs || []).filter(b => b && b.label && b.href).map(b =>
+        `<a href="${b.href}" class="text-[13px] font-semibold text-slate-400 hover:text-[#0B0F19] transition-colors whitespace-nowrap">${sanitizeHTML(b.label)}</a>
+        <i class="ph-bold ph-caret-right text-[10px] text-slate-300 shrink-0"></i>`
+    ).join('');
 
     return `
     <header class="h-16 lg:h-20 px-4 lg:px-10 flex items-center justify-between shrink-0 z-10 sticky top-0 bg-[#F8F9FA]/80 backdrop-blur-md">
@@ -212,9 +215,9 @@ function renderTopHeader(title, breadcrumbs) {
                     <div class="w-[7px] h-[7px] bg-[#0F8B5A] ml-[3px] mb-[2px]"></div>
                 </div>
             </a>
-            <div class="relative w-full max-w-96 group hidden sm:block">
-                <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-[#0B0F19] transition-colors"></i>
-                <input type="text" placeholder="${searchPlaceholder}" class="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-11 pr-4 text-[14px] font-medium text-[#0B0F19] placeholder-slate-400 focus:outline-none focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+            <div class="hidden sm:flex items-center gap-2 min-w-0">
+                ${crumbs}
+                <h1 class="text-[16px] font-bold text-[#0B0F19] truncate">${sanitizeHTML(title || '')}</h1>
             </div>
         </div>
         <div class="flex items-center gap-3 lg:gap-5 shrink-0">
@@ -228,6 +231,7 @@ function initAppLayout(role, activePage, pageTitle, breadcrumbs) {
     // Set body to match practice page design
     document.body.className = 'gprn-app bg-[#F8F9FA] text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-[#059669] selection:text-white';
     document.body.style.fontFamily = "'Plus Jakarta Sans', sans-serif";
+    if (pageTitle) document.title = pageTitle + ' — GPRN';
 
     document.body.innerHTML = `
         ${renderSidebar(role, activePage)}
@@ -242,60 +246,24 @@ function initAppLayout(role, activePage, pageTitle, breadcrumbs) {
     return document.getElementById('pageContent');
 }
 
-// ---- Session Need Card Component (Practice view) ----
-function renderSessionNeedCard(need, showActions = true) {
-    const housecallBadge = need.housecalls ? '<span class="badge badge-info">Housecalls</span>' : '';
-    const statusBadge = `<span class="badge ${getStatusBadge(need.status)}">${getStatusLabel(need.status)}</span>`;
-
-    return `
-    <div class="shift-card-full" data-need-id="${need.id}">
-        <div class="shift-card-header">
-            <div>
-                <h3 class="shift-card-title">${DateUtils.format(need.date, 'full')}</h3>
-                <p class="shift-card-location">${sanitizeHTML(need.practiceName)} &bull; ${sanitizeHTML(need.healthBoard)}</p>
-            </div>
-            <div class="shift-card-badges">
-                ${statusBadge}
-                <span class="badge badge-primary">${need.sessionType}</span>
-                ${housecallBadge}
-            </div>
-        </div>
-        <div class="shift-card-details">
-            <div class="shift-card-detail">
-                ${getIcon('clock')}
-                <span>${need.startTime} - ${need.endTime}</span>
-            </div>
-            ${need.budgetRate ? `<div class="shift-card-detail">
-                ${getIcon('pound')}
-                <span>Budget: ${formatCurrency(need.budgetRate)}</span>
-            </div>` : ''}
-            <div class="shift-card-detail">
-                ${getIcon('users')}
-                <span>${need.offersCount || 0} offer${(need.offersCount || 0) !== 1 ? 's' : ''} sent</span>
-            </div>
-        </div>
-        ${showActions && need.status === 'open' ? `
-        <div class="shift-card-footer">
-            <div style="display:flex;align-items:center;gap:8px;">
-                <a href="find-locums.html?needId=${need.id}" class="btn btn-primary btn-small">Find Locum</a>
-                <button class="btn btn-small btn-ghost" onclick="cancelSessionNeed('${need.id}')">Cancel</button>
-            </div>
-        </div>` : ''}
-        ${need.notes ? `<div class="offer-comment"><strong>Notes:</strong> ${sanitizeHTML(need.notes)}</div>` : ''}
-    </div>`;
-}
-
-// ---- Legacy alias for any pages still calling renderShiftCard ----
-function renderShiftCard(shift, showActions) {
-    // Convert old shift format to session need format for backward compat
-    return renderSessionNeedCard(shift, showActions);
-}
-
 // ---- Stat Card Component ----
-function renderStatCard(icon, label, value, trend, color, helpText) {
+function renderStatCard(icon, label, value, trend, color, helpText, iconColor) {
+    // Translucent tint backgrounds need a solid ink for the icon —
+    // white on a 10%-opacity tint is invisible on a white card
+    const tintInk = {
+        'rgba(5,150,105': '#059669',
+        'rgba(245,158,11': '#B45309',
+        'rgba(34,197,94': '#15803D',
+        'rgba(11,15,25': '#0B0F19'
+    };
+    let fg = iconColor || 'var(--primary)';
+    if (!iconColor && color) {
+        const key = Object.keys(tintInk).find(k => color.replace(/\s+/g, '').startsWith(k));
+        fg = key ? tintInk[key] : 'var(--primary)';
+    }
     return `
     <div class="dash-stat-card">
-        <div class="dash-stat-icon" style="background: ${color || 'rgba(91,77,255,0.1)'}; color: ${color ? '#fff' : 'var(--primary)'}">
+        <div class="dash-stat-icon" style="background: ${color || 'rgba(91,77,255,0.1)'}; color: ${fg}">
             ${getIcon(icon)}
         </div>
         <div class="dash-stat-info">
@@ -315,21 +283,6 @@ function renderEmptyState(icon, title, message, actionLabel, actionHref) {
         <h3>${title}</h3>
         <p>${message}</p>
         ${actionLabel ? `<a href="${actionHref}" class="btn btn-primary">${actionLabel}</a>` : ''}
-    </div>`;
-}
-
-// ---- Pagination ----
-function renderPagination(current, total) {
-    if (total <= 1) return '';
-    let pages = '';
-    for (let i = 1; i <= total; i++) {
-        pages += `<button class="page-btn ${i === current ? 'active' : ''}" data-page="${i}">${i}</button>`;
-    }
-    return `
-    <div class="pagination">
-        <button class="page-btn" data-page="${Math.max(1, current - 1)}" ${current === 1 ? 'disabled' : ''}>${getIcon('chevron-left')}</button>
-        ${pages}
-        <button class="page-btn" data-page="${Math.min(total, current + 1)}" ${current === total ? 'disabled' : ''}>${getIcon('chevron-right')}</button>
     </div>`;
 }
 
@@ -388,50 +341,6 @@ function renderOfferCard(offer) {
     </div>`;
 }
 
-// ---- Offer Card (Practice view — offers sent to locums) ----
-function renderPracticeOfferCard(offer) {
-    const data = getMockData();
-    const locum = data.locums.find(l => l.id === offer.locumId);
-    const locumName = locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown';
-    const sessionDate = offer.sessionDate || offer.shiftDate;
-    const rate = offer.agreedRate || offer.proposedRate || 0;
-    return `
-    <div class="offer-card" data-offer-id="${offer.id}">
-        <div class="offer-card-header">
-            <div>
-                <h3 class="offer-card-title">${sanitizeHTML(locumName)}</h3>
-                <p class="offer-card-location">${offer.sessionType} &bull; ${DateUtils.format(sessionDate, 'medium')}</p>
-            </div>
-            <span class="badge ${getStatusBadge(offer.status)}">${getStatusLabel(offer.status)}</span>
-        </div>
-        <div class="offer-card-details">
-            <div class="offer-detail">
-                ${getIcon('clock')}
-                <span>${offer.startTime} - ${offer.endTime}</span>
-            </div>
-            <div class="offer-detail">
-                ${getIcon('pound')}
-                <span>Rate: ${formatCurrency(rate)}</span>
-                ${offer.locumPublishedRate ? `<span style="font-size:0.75rem;color:var(--dark-600);margin-left:4px;">(Locum asks: ${formatCurrency(offer.locumPublishedRate)})</span>` : ''}
-            </div>
-        </div>
-        ${['sent', 'viewed'].includes(offer.status) ? `
-        <div class="offer-actions">
-            <button class="btn btn-small btn-ghost" onclick="withdrawSentOffer('${offer.id}')">Withdraw</button>
-        </div>` : ''}
-        ${offer.status === 'negotiating' ? `
-        <div class="offer-actions">
-            <button class="btn btn-small btn-primary" onclick="practiceRespondNegotiation('${offer.id}', 'accept')">Accept Rate</button>
-            <button class="btn btn-small btn-warning" onclick="practiceRespondNegotiation('${offer.id}', 'counter')">Counter</button>
-            <button class="btn btn-small btn-ghost" onclick="practiceRespondNegotiation('${offer.id}', 'withdraw')">Withdraw</button>
-        </div>` : ''}
-        ${offer.status === 'accepted' ? `
-        <div class="offer-actions">
-            <button class="btn btn-small btn-primary" onclick="confirmOffer('${offer.id}')">Confirm Booking</button>
-        </div>` : ''}
-    </div>`;
-}
-
 // ---- SVG Icons ----
 function getIcon(name) {
     const phMap = {
@@ -472,21 +381,11 @@ function getIcon(name) {
         'external-link': 'ph-arrow-square-out',
         'arrow-left': 'ph-arrow-left'
     };
-    const cls = phMap[name];
-    if (!cls) return '';
+    let cls = phMap[name];
+    // Fall back to the name itself — almost all requested names are valid
+    // Phosphor classes (chat-circle-text, buildings, warning, trash, ...)
+    if (!cls) cls = name === 'alert-triangle' ? 'ph-warning' : 'ph-' + name;
     return `<i class="ph ${cls}" style="font-size:20px;line-height:1"></i>`;
-}
-
-// ---- Common page head ----
-function getPageHead(title) {
-    return `
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${title} - GPRN</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">`;
 }
 
 // ---- Rating Stars Component ----
@@ -511,34 +410,6 @@ function renderBarredWarning(practiceId, locumId) {
     return '';
 }
 
-// ---- Message Thread Component ----
-function renderMessageBubble(msg, currentUserId) {
-    const isMine = msg.fromId === currentUserId;
-    const time = new Date(msg.timestamp);
-    const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const dateStr = DateUtils.format(msg.timestamp, 'medium');
-    return `<div class="message-bubble ${isMine ? 'sent' : 'received'}">
-        <div class="message-content">${sanitizeHTML(msg.body)}</div>
-        <div class="message-time">${dateStr} ${timeStr}${isMine ? ' <span style="color:var(--gray-400);margin-left:6px;">Delivered</span>' : ''}</div>
-    </div>`;
-}
-
-// ---- Invoice Component ----
-function renderInvoiceRow(inv) {
-    return `<tr>
-        <td><strong>${inv.invoiceNumber}</strong></td>
-        <td>${DateUtils.format(inv.generatedDate, 'short')}</td>
-        <td>${sanitizeHTML(inv.locumName)}</td>
-        <td>${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}</td>
-        <td>${inv.sessionType}</td>
-        <td><strong>${formatCurrency(inv.total)}</strong></td>
-        <td><span class="badge ${getStatusBadge(inv.status)}">${inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}</span></td>
-        <td>
-            <a href="invoice-view.html?id=${inv.id}" class="btn btn-small btn-ghost">View</a>
-        </td>
-    </tr>`;
-}
-
 // ---- Document Expiry Check ----
 function getDocumentExpiryStatus(expiryDate) {
     if (!expiryDate) return { status: 'ok', label: 'No expiry' };
@@ -548,12 +419,4 @@ function getDocumentExpiryStatus(expiryDate) {
     if (daysUntil < 0) return { status: 'expired', label: 'EXPIRED', badge: 'badge-danger' };
     if (daysUntil <= 30) return { status: 'expiring', label: `Expires in ${daysUntil} days`, badge: 'badge-warning' };
     return { status: 'ok', label: `Expires ${DateUtils.format(expiryDate, 'medium')}`, badge: 'badge-neutral' };
-}
-
-// ---- Common scripts ----
-function getPageScripts() {
-    return `
-    <script src="mock-data.js"><\/script>
-    <script src="app.js"><\/script>
-    <script src="components.js"><\/script>`;
 }

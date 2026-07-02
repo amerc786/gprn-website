@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <script>
+        // Safety-net: if a Supabase password-recovery link lands on the homepage
+        // (e.g. because Site URL points here), forward the recovery hash to the
+        // real reset page so the user isn't stuck looking at the landing page.
+        (function() {
+            try {
+                var h = window.location.hash || '';
+                if (h && h.indexOf('type=recovery') !== -1 && h.indexOf('access_token=') !== -1) {
+                    window.location.replace('reset-password.html' + h);
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <title>GPRN | The Premier Welsh Locum Network</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Clash Display', 'sans-serif'],
+                        sans: ['Manrope', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            50: '#F8FAFC',
+                            100: '#F1F5F9',
+                            800: '#1E293B',
+                            900: '#0F172A',
+                            950: '#020617',
+                        },
+                        emerald: {
+                            500: '#10B981',
+                            700: '#047857',
+                            900: '#064E3B',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'float-delayed': 'float 6s ease-in-out 3s infinite',
+                        'float-soft': 'floatSoft 7s ease-in-out infinite',
+                        'slide-up': 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'reveal': 'reveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'marquee': 'marquee 30s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-15px)' },
+                        },
+                        floatSoft: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: 0, transform: 'translateY(30px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        },
+                        reveal: {
+                            '0%': { clipPath: 'inset(100% 0 0 0)', opacity: '0' },
+                            '100%': { clipPath: 'inset(0 0 0 0)', opacity: '1' },
+                        },
+                        marquee: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-100%)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #F8FAFC; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Utilities */
+        .glass-nav {
+            background: rgba(248, 250, 252, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #0F172A 0%, #047857 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .bento-hover { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .bento-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -10px rgba(4, 120, 87, 0.1);
+            border-color: rgba(4, 120, 87, 0.2);
+        }
+
+        /* Logged-in user pill (injected by session script, styled to match the light glass nav) */
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .nav-user-link {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.4rem 0.85rem 0.4rem 0.4rem;
+            border-radius: 999px;
+            background: #0F172A;
+            color: #ffffff;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .nav-user-link:hover { background: #047857; }
+        .nav-user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #047857;
+            color: #ffffff;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 0.02em;
+        }
+        .nav-user-name {
+            color: #ffffff;
+            font-size: 0.8rem;
+            font-weight: 600;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .nav-user-logout {
+            color: #475569;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 0.5rem 0.75rem;
+            border-radius: 999px;
+            transition: all 0.2s;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .nav-user-logout:hover { color: #0F172A; background: #F1F5F9; }
+
+        /* Mobile menu overlay */
+        .nav-mobile-menu {
+            position: fixed;
+            inset: 0;
+            background: #0F172A;
+            color: #ffffff;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            padding: 5rem 2rem 2rem;
+            gap: 1.25rem;
+        }
+        .nav-mobile-menu.active { display: flex; }
+        .nav-mobile-menu a {
+            color: #F8FAFC;
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .nav-mobile-menu a:hover { color: #10B981; }
+        .nav-mobile-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            font-size: 2rem;
+            background: none;
+            border: none;
+            color: #ffffff;
+            cursor: pointer;
+        }
+        body.mobile-menu-open { overflow: hidden; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900 antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- NAVIGATION (Floating Macro-Architecture) -->
+    <nav class="fixed top-3 md:top-6 left-1/2 -translate-x-1/2 w-[94%] max-w-7xl rounded-full glass-nav z-50 px-4 md:px-6 py-3 md:py-4 flex justify-between items-center transition-all duration-300 shadow-sm border border-slate-200/50">
+        <a href="index.html" class="flex items-center gap-[6px] md:gap-[8px] cursor-pointer select-none group shrink-0">
+            <div class="w-[32px] h-[32px] md:w-[38px] md:h-[38px] bg-[#101524] rounded-[10px] md:rounded-[12px] flex items-center justify-center shadow-sm group-hover:bg-[#0F8B5A] transition-colors">
+                <span class="text-white font-black text-[20px] md:text-[24px] leading-none tracking-tight pt-[2px]">G</span>
+            </div>
+            <div class="flex items-baseline pt-1">
+                <span class="text-[#101524] font-black text-[26px] md:text-[32px] leading-[0.8] tracking-[-0.05em]">PRN</span>
+                <div class="w-[7px] h-[7px] md:w-[9px] md:h-[9px] bg-[#0F8B5A] ml-[3px] md:ml-[4px] mb-[2px] md:mb-[3px]"></div>
+            </div>
+        </a>
+
+        <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+            <a href="#how-it-works" class="hover:text-slate-900 transition-colors">For GPs</a>
+            <a href="#surgeries" class="hover:text-slate-900 transition-colors">For Surgeries</a>
+            <a href="#platform" class="hover:text-slate-900 transition-colors">Platform</a>
+            <a href="help-faq.html" class="hover:text-slate-900 transition-colors">Insights</a>
+        </div>
+
+        <div class="nav-auth flex items-center gap-4">
+            <a href="login.html" class="hidden md:block text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Log In</a>
+            <a href="register.html" class="bg-slate-900 text-white px-3.5 py-2 md:px-5 md:py-2.5 rounded-full text-xs md:text-sm font-semibold hover:bg-emerald-700 transition-all active:scale-95 flex items-center gap-1.5 md:gap-2">
+                <span class="hidden sm:inline">Join Network</span><span class="sm:hidden">Join</span> <i class="ph ph-arrow-right"></i>
+            </a>
+        </div>
+
+        <button class="md:hidden ml-2 text-slate-900" aria-label="Open menu" onclick="document.querySelector('.nav-mobile-menu').classList.add('active'); document.body.classList.add('mobile-menu-open')">
+            <i class="ph ph-list text-2xl"></i>
+        </button>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div class="nav-mobile-menu">
+        <button class="nav-mobile-close" onclick="this.parentElement.classList.remove('active'); document.body.classList.remove('mobile-menu-open')">&times;</button>
+        <a href="#how-it-works" onclick="document.querySelector('.nav-mobile-menu').classList.remove('active'); document.body.classList.remove('mobile-menu-open')">For GPs</a>
+        <a href="#surgeries" onclick="document.querySelector('.nav-mobile-menu').classList.remove('active'); document.body.classList.remove('mobile-menu-open')">For Surgeries</a>
+        <a href="#platform" onclick="document.querySelector('.nav-mobile-menu').classList.remove('active'); document.body.classList.remove('mobile-menu-open')">Platform</a>
+        <a href="help-faq.html">Insights</a>
+        <a href="login.html">Log In</a>
+        <a href="register-locum.html" style="color: #10B981;">Register as Locum</a>
+        <a href="register-practice.html" style="opacity: 0.8;">Practice? Register here</a>
+    </div>
+
+    <!-- Logged-in state: swap nav auth links with user pill if session exists -->
+    <script>
+        (function() {
+            try {
+                var raw = localStorage.getItem('gprn_session');
+                if (!raw) return;
+                var session = JSON.parse(raw);
+                if (!session || !session.role) return;
+
+                var isAdmin = session.is_admin === true;
+                var dashUrl = isAdmin
+                    ? 'admin-approvals.html'
+                    : (session.role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html');
+                var displayName = session.firstName || (session.name ? session.name.split(' ')[0] : 'Account');
+                var initials = (session.name || displayName).split(' ').map(function(p){ return p.charAt(0); }).join('').slice(0, 2).toUpperCase();
+
+                function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+                // Live admin check — session may have been cached before bootstrap_admin ran.
+                // Hit Supabase REST directly and, if the server says we're admin, re-render the pill.
+                function syncAdminFromServer() {
+                    if (!session.access_token || !session.supabase_user_id) return;
+                    var SUPABASE_URL = 'https://fysilmypgpewbzyxkymx.supabase.co';
+                    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5c2lsbXlwZ3Bld2J6eXhreW14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzODQwNjYsImV4cCI6MjA5MDk2MDA2Nn0.BEgSiUO_RWvk0ixZSORuKFqwMG6nYNGsCqWCftukBnE';
+                    try {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('GET', SUPABASE_URL + '/rest/v1/profiles?id=eq.' + encodeURIComponent(session.supabase_user_id) + '&select=is_admin', true);
+                        xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+                        xhr.setRequestHeader('Authorization', 'Bearer ' + session.access_token);
+                        xhr.onload = function() {
+                            if (xhr.status !== 200) return;
+                            try {
+                                var rows = JSON.parse(xhr.responseText);
+                                if (!Array.isArray(rows) || !rows.length) return;
+                                var serverIsAdmin = rows[0].is_admin === true;
+                                if (serverIsAdmin && !isAdmin) {
+                                    session.is_admin = true;
+                                    localStorage.setItem('gprn_session', JSON.stringify(session));
+                                    isAdmin = true;
+                                    dashUrl = 'admin-approvals.html';
+                                    renderPill();
+                                } else if (!serverIsAdmin && isAdmin) {
+                                    session.is_admin = false;
+                                    localStorage.setItem('gprn_session', JSON.stringify(session));
+                                }
+                            } catch (e) {}
+                        };
+                        xhr.send();
+                    } catch (e) {}
+                }
+
+                function renderPill() {
+                    // Desktop nav
+                    var navAuth = document.querySelector('.nav-auth');
+                    if (navAuth) {
+                        var linkLabel = isAdmin ? ('Admin · ' + displayName) : displayName;
+                        var linkTitle = isAdmin ? 'Go to admin panel' : 'Go to your dashboard';
+                        navAuth.innerHTML =
+                            '<div class="nav-user">' +
+                                '<a href="' + dashUrl + '" class="nav-user-link" title="' + linkTitle + '">' +
+                                    '<span class="nav-user-avatar">' + escapeHtml(initials) + '</span>' +
+                                    '<span class="nav-user-name">' + escapeHtml(linkLabel) + '</span>' +
+                                '</a>' +
+                                '<button type="button" class="nav-user-logout" onclick="localStorage.removeItem(\'gprn_session\'); window.location.reload();">Log out</button>' +
+                            '</div>';
+                    }
+
+                    // Mobile menu
+                    var mobileMenu = document.querySelector('.nav-mobile-menu');
+                    if (mobileMenu) {
+                        var logInLink = mobileMenu.querySelector('a[href="login.html"], a[data-session-link="login"]');
+                        var regLocumLink = mobileMenu.querySelector('a[href="register-locum.html"], a[data-session-link="register-locum"]');
+                        var regPracticeLink = mobileMenu.querySelector('a[href="register-practice.html"], a[data-session-link="register-practice"]');
+                        if (logInLink) {
+                            logInLink.href = dashUrl;
+                            logInLink.setAttribute('data-session-link', 'login');
+                            logInLink.textContent = isAdmin ? 'Go to Admin Panel' : 'Go to Dashboard';
+                            logInLink.style.color = '#10B981';
+                            logInLink.style.fontWeight = '700';
+                        }
+                        if (regLocumLink) {
+                            regLocumLink.href = dashUrl;
+                            regLocumLink.setAttribute('data-session-link', 'register-locum');
+                            regLocumLink.textContent = isAdmin
+                                ? 'Open Admin Panel'
+                                : ('Open ' + (session.role === 'locum' ? 'Locum' : 'Practice') + ' Portal');
+                        }
+                        if (regPracticeLink) {
+                            regPracticeLink.href = '#';
+                            regPracticeLink.setAttribute('data-session-link', 'register-practice');
+                            regPracticeLink.textContent = 'Log out';
+                            regPracticeLink.onclick = function(e) { e.preventDefault(); localStorage.removeItem('gprn_session'); window.location.reload(); };
+                        }
+                    }
+                }
+
+                renderPill();
+                syncAdminFromServer();
+            } catch (e) { /* fail silently — stay logged-out appearance */ }
+        })();
+    </script>
+
+    <!-- HERO SECTION (Asymmetrical Structural Shell) -->
+    <main class="relative pt-24 pb-12 md:pt-32 md:pb-20 lg:pt-48 lg:pb-32 overflow-hidden px-5 md:px-6 lg:px-12 max-w-[100rem] mx-auto">
+        <!-- Background decorative elements -->
+        <div class="absolute top-0 right-0 w-[800px] h-[800px] bg-emerald-50 rounded-full blur-3xl opacity-50 -z-10 translate-x-1/3 -translate-y-1/4"></div>
+        <div class="absolute bottom-0 left-0 w-[600px] h-[600px] bg-sky-50 rounded-full blur-3xl opacity-50 -z-10 -translate-x-1/3 translate-y-1/4"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8 items-start relative z-10">
+
+            <!-- Left: Typography & Action -->
+            <div class="lg:col-span-5 flex flex-col gap-5 md:gap-8 opacity-0 animate-slide-up">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 w-fit">
+                    <span class="flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                    <span class="text-xs font-semibold text-emerald-800 tracking-wide uppercase">Designed for Welsh General Practice</span>
+                </div>
+
+                <h1 class="font-display text-[2.25rem] md:text-5xl lg:text-7xl font-semibold leading-[1.08] tracking-tight text-slate-950">
+                    Smarter locum matching across <span class="text-gradient">Wales.</span>
+                </h1>
+
+                <p class="text-base md:text-lg lg:text-xl text-slate-600 font-medium leading-relaxed max-w-lg">
+                    We synchronize top-tier General Practitioners with high-demand surgeries. Integrated calendar, in-app messaging, automated invoicing, and instant compliance processing &mdash; your one-stop shop for locum organisation.
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                    <a href="register-locum.html" class="bg-slate-900 group text-white px-6 py-3.5 md:px-8 md:py-4 rounded-full text-sm md:text-base font-semibold hover:bg-slate-800 transition-all flex items-center justify-center gap-3">
+                        Join as a Locum
+                        <div class="bg-white/20 rounded-full p-1 group-hover:translate-x-1 transition-transform">
+                            <i class="ph ph-arrow-right text-white"></i>
+                        </div>
+                    </a>
+                    <a href="login.html" id="heroCreateSessionCta" class="bg-white border-2 border-slate-200 text-slate-900 px-6 py-3.5 md:px-8 md:py-4 rounded-full text-sm md:text-base font-semibold hover:border-slate-300 hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+                        Create Session
+                    </a>
+                    <script>
+                        (function() {
+                            try {
+                                var cta = document.getElementById('heroCreateSessionCta');
+                                if (!cta) return;
+                                var raw = localStorage.getItem('gprn_session');
+                                if (!raw) { cta.href = 'login.html'; return; }
+                                var s = JSON.parse(raw);
+                                if (!s || !s.role) { cta.href = 'login.html'; return; }
+                                if (s.role === 'practice') {
+                                    cta.href = 'post-shift.html';
+                                } else if (s.role === 'locum') {
+                                    cta.href = 'locum-dashboard.html';
+                                } else {
+                                    cta.href = 'login.html';
+                                }
+                            } catch (e) { /* fall back to default href */ }
+                        })();
+                    </script>
+                </div>
+
+                <div class="flex items-center gap-4 pt-6 pb-2 border-t border-slate-200 mt-2">
+                    <div class="flex -space-x-3">
+                        <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=100&q=80" alt="Doctor profile" class="w-10 h-10 rounded-full border-2 border-white object-cover">
+                        <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&q=80" alt="Doctor profile" class="w-10 h-10 rounded-full border-2 border-white object-cover">
+                        <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZG9jdG9yfGVufDB8fDB8fHww" alt="Doctor profile" class="w-10 h-10 rounded-full border-2 border-white object-cover">
+                        <div class="w-10 h-10 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">+2k</div>
+                    </div>
+                    <div class="text-sm font-medium text-slate-600">
+                        <span class="text-slate-900 font-bold">2,104</span> GPs registered.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Immersive Composition & Visual Tension -->
+            <div class="lg:col-span-7 relative h-[560px] w-full hidden lg:block opacity-0 animate-reveal delay-200">
+                <!-- Main Image Mask -->
+                <div class="absolute right-0 top-0 w-[85%] h-full rounded-[2.5rem] overflow-hidden shadow-2xl z-10 animate-float-soft">
+                    <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80" alt="Modern Medical Professional" class="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-1000">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
+                </div>
+
+                <!-- Floating UI Element 1: Shift Alert -->
+                <div class="absolute left-0 top-[15%] glass-card p-4 rounded-2xl w-64 animate-float z-20">
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-emerald-100 rounded-lg text-emerald-700">
+                            <i class="ph-fill ph-bell-ringing text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-emerald-700 mb-1">New Shift Match</p>
+                            <p class="text-sm font-semibold text-slate-900">Riverside Medical Centre</p>
+                            <p class="text-xs text-slate-500 mt-1">Tomorrow • 09:00 - 17:00</p>
+                            <p class="text-sm font-display font-bold text-slate-900 mt-2">Fee Agreed</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Floating UI Element 2: Compliance -->
+                <div class="absolute right-[-2rem] bottom-[15%] glass-card p-4 rounded-2xl w-56 animate-float-delayed z-20 flex items-center gap-3">
+                    <div class="relative w-10 h-10 flex items-center justify-center">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                            <path class="text-slate-200" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path class="text-emerald-500" stroke-width="3" stroke-dasharray="100, 100" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        </svg>
+                        <i class="ph-fill ph-check-circle text-emerald-500 absolute bg-white rounded-full"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-900">Compliance</p>
+                        <p class="text-xs text-slate-500">100% Verified</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- TRUST STRIP (Meso-Architecture & Micro-interaction) -->
+    <div class="border-y border-slate-200 bg-white overflow-hidden py-6">
+        <div class="max-w-7xl mx-auto px-6 flex items-center">
+            <p class="text-sm font-semibold text-slate-400 whitespace-nowrap mr-8 shrink-0">Trusted across Health Boards</p>
+            <div class="relative flex overflow-hidden w-full">
+                <div class="flex shrink-0 animate-marquee whitespace-nowrap gap-16 items-center pr-16">
+                    <span class="font-display text-xl font-bold text-slate-300">Aneurin Bevan</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Cardiff &amp; Vale</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Cwm Taf Morgannwg</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Hywel Dda</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Swansea Bay</span>
+                </div>
+                <div class="flex shrink-0 animate-marquee whitespace-nowrap gap-16 items-center pr-16" aria-hidden="true">
+                    <span class="font-display text-xl font-bold text-slate-300">Aneurin Bevan</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Cardiff &amp; Vale</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Cwm Taf Morgannwg</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Hywel Dda</span>
+                    <span class="font-display text-xl font-bold text-slate-300">Swansea Bay</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BENTO GRID SYSTEM (Data Density & Vibe) -->
+    <section class="py-14 md:py-24 px-5 md:px-6 lg:px-12 max-w-[100rem] mx-auto bg-slate-50" id="how-it-works">
+        <div class="mb-10 md:mb-16 max-w-2xl">
+            <h2 class="font-display text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-900 mb-3 md:mb-4">Re-engineering Locum Work.</h2>
+            <p class="text-base md:text-lg text-slate-600">We stripped away agency bloat to build a platform that respects your time (and your bank account). High-density architecture for medical professionals.</p>
+        </div>
+
+        <!-- Bento Layout -->
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-auto md:auto-rows-[280px]">
+
+            <!-- Large Card: Financials -->
+            <div class="md:col-span-2 lg:col-span-2 bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 border border-slate-200 bento-hover relative overflow-hidden flex flex-col justify-between group">
+                <div class="absolute -right-10 -top-10 w-64 h-64 bg-emerald-50 rounded-full blur-3xl opacity-50 group-hover:bg-emerald-100 transition-colors"></div>
+                <div class="relative z-10">
+                    <div class="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center mb-6">
+                        <i class="ph ph-wallet text-2xl"></i>
+                    </div>
+                    <h3 class="font-display text-2xl font-bold text-slate-900 mb-2">Market-Leading Rates</h3>
+                    <p class="text-slate-600">By removing middlemen, surgeries pay less while you earn more. Automated invoicing and transparent rate agreements mean no hidden fees and no agency markups eating into your day.</p>
+                </div>
+                <!-- Mini visualization -->
+                <div class="relative z-10 w-full mt-6 flex items-end gap-2 h-16">
+                    <div class="w-1/6 bg-slate-100 rounded-t-sm h-[30%]"></div>
+                    <div class="w-1/6 bg-slate-100 rounded-t-sm h-[50%]"></div>
+                    <div class="w-1/6 bg-slate-100 rounded-t-sm h-[40%]"></div>
+                    <div class="w-1/6 bg-slate-100 rounded-t-sm h-[70%]"></div>
+                    <div class="w-1/6 bg-slate-200 rounded-t-sm h-[60%]"></div>
+                    <div class="w-1/6 bg-emerald-500 rounded-t-md h-[100%] shadow-[0_0_15px_rgba(16,185,129,0.4)] relative">
+                        <span class="absolute -top-7 left-1/2 -translate-x-1/2 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">GPRN</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Square Card: Practice-Led Booking -->
+            <div class="bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 border border-slate-200 bento-hover flex flex-col justify-between group">
+                <div>
+                    <div class="w-12 h-12 bg-slate-50 border border-slate-100 text-slate-900 rounded-xl flex items-center justify-center mb-4 md:mb-6 group-hover:bg-sky-50 group-hover:border-sky-100 transition-colors">
+                        <i class="ph ph-calendar-check text-2xl group-hover:text-sky-600 transition-colors"></i>
+                    </div>
+                    <h3 class="font-display text-lg md:text-xl font-bold text-slate-900 mb-2">Availability-First Booking</h3>
+                    <p class="text-slate-600 text-sm">You publish the days you're free. Surgeries browse locums by availability and send offers directly. No scrambling for shifts.</p>
+                </div>
+                <div class="mt-4 p-3 bg-slate-900 rounded-xl text-white flex justify-between items-center group-hover:scale-[1.02] transition-transform">
+                    <span class="text-xs font-medium">Offer Received</span>
+                    <i class="ph-fill ph-paper-plane-tilt text-emerald-400"></i>
+                </div>
+            </div>
+
+            <!-- Tall Card: Location -->
+            <div class="md:col-span-3 lg:col-span-1 md:row-span-2 bg-[#0F172A] rounded-2xl md:rounded-3xl p-6 md:p-8 border border-slate-800 relative overflow-hidden bento-hover group flex flex-col justify-between">
+                <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 24px 24px;"></div>
+                <div class="relative z-10 flex flex-col h-full">
+                    <div>
+                        <div class="w-12 h-12 bg-white/10 text-white rounded-xl flex items-center justify-center mb-6 backdrop-blur-sm">
+                            <i class="ph ph-map-pin text-2xl"></i>
+                        </div>
+                        <h3 class="font-display text-2xl font-bold text-white mb-2">Built for Wales</h3>
+                        <p class="text-slate-300 text-sm opacity-80">From urban clusters in Cardiff and Newport to rural practices in Powys. Filter specific health boards instantly.</p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 mt-auto pt-8">
+                        <span class="px-3 py-1 bg-white/10 border border-white/10 rounded-full text-xs text-white backdrop-blur-sm">Cardiff</span>
+                        <span class="px-3 py-1 bg-white/10 border border-white/10 rounded-full text-xs text-white backdrop-blur-sm">Swansea</span>
+                        <span class="px-3 py-1 bg-white/10 border border-white/10 rounded-full text-xs text-white backdrop-blur-sm">Wrexham</span>
+                        <span class="px-3 py-1 bg-white/10 border border-white/10 rounded-full text-xs text-slate-400 backdrop-blur-sm">+ 12 More</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Square Card: Compliance -->
+            <div class="bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 border border-slate-200 bento-hover flex flex-col justify-between">
+                <div class="flex justify-between items-start mb-4 md:mb-6">
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-700 rounded-xl flex items-center justify-center">
+                        <i class="ph ph-shield-check text-2xl"></i>
+                    </div>
+                    <span class="flex h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                </div>
+                <div>
+                    <h3 class="font-display text-xl font-bold text-slate-900 mb-2">Digital Passport</h3>
+                    <p class="text-slate-600 text-sm mb-4">Upload documents once. Our smart system keeps you compliant and notifies you before expiry.</p>
+                </div>
+            </div>
+
+            <!-- Wide Card: Calendar/Control -->
+            <div class="md:col-span-2 lg:col-span-2 bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 border border-slate-200 bento-hover flex flex-col sm:flex-row items-start sm:items-center gap-4 md:gap-6">
+                <div class="hidden sm:flex flex-col gap-2 w-1/3 border-r border-slate-100 pr-6">
+                     <div class="h-2 w-full bg-slate-100 rounded-full"></div>
+                     <div class="h-2 w-3/4 bg-slate-100 rounded-full"></div>
+                     <div class="h-2 w-5/6 bg-slate-100 rounded-full"></div>
+                     <div class="mt-4 p-2 bg-emerald-50 border border-emerald-100 rounded text-center">
+                        <span class="text-xs font-bold text-emerald-700">Auto-Invoicing Active</span>
+                     </div>
+                </div>
+                <div class="w-full sm:w-2/3">
+                    <h3 class="font-display text-xl font-bold text-slate-900 mb-2">Total Control Workflow</h3>
+                    <p class="text-slate-600 text-sm">Manage your entire locum lifestyle from one dashboard. Set availability blocks, track upcoming revenue, and export tax-ready statements with a single click.</p>
+                </div>
+            </div>
+
+            <!-- Wide Card: In-App Messaging -->
+            <div class="md:col-span-3 lg:col-span-4 bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 border border-slate-200 bento-hover flex flex-col lg:flex-row items-stretch gap-6 md:gap-8 group relative overflow-hidden">
+                <div class="absolute -left-10 -bottom-10 w-64 h-64 bg-sky-50 rounded-full blur-3xl opacity-60 group-hover:bg-sky-100 transition-colors"></div>
+                <div class="relative z-10 lg:w-1/2 flex flex-col justify-center">
+                    <div class="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center mb-6">
+                        <i class="ph ph-chats-circle text-2xl"></i>
+                    </div>
+                    <h3 class="font-display text-2xl font-bold text-slate-900 mb-2">Talk Directly. No Email Threads.</h3>
+                    <p class="text-slate-600">Every conversation lives inside GPRN. Practices and locums message each other in real time to confirm timings, share handover notes, and finalise offers &mdash; no chasing inboxes, no lost attachments, no missed replies.</p>
+                </div>
+                <div class="relative z-10 lg:w-1/2 flex items-center">
+                    <div class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 shadow-subtle">
+                        <div class="flex items-center gap-3 pb-3 border-b border-slate-200">
+                            <div class="w-9 h-9 rounded-full bg-[#0F8B5A] text-white flex items-center justify-center font-bold text-sm">CM</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold text-slate-900 truncate">Oakfield Medical Centre</p>
+                                <p class="text-xs text-emerald-600 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Online now</p>
+                            </div>
+                            <i class="ph ph-phone text-slate-400"></i>
+                        </div>
+                        <div class="mt-4 space-y-3">
+                            <div class="flex justify-start">
+                                <div class="max-w-[80%] bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-2 text-sm text-slate-700">Hi Dr Hughes &mdash; are you free to cover Tuesday AM? Rate &pound;520.</div>
+                            </div>
+                            <div class="flex justify-end">
+                                <div class="max-w-[80%] bg-slate-900 text-white rounded-2xl rounded-tr-sm px-4 py-2 text-sm">Yes, happy to take it. Sending availability through now.</div>
+                            </div>
+                            <div class="flex justify-start">
+                                <div class="max-w-[80%] bg-emerald-50 border border-emerald-100 rounded-2xl rounded-tl-sm px-4 py-2 text-sm text-emerald-700 font-medium flex items-center gap-2"><i class="ph-fill ph-check-circle"></i>Offer confirmed &middot; Tue 07, 08:00&ndash;13:00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- REAL-TIME PLATFORM PREVIEW (Meso-Architecture Shell) -->
+    <section class="py-14 md:py-24 bg-white" id="platform">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-8 md:mb-16 px-2">
+                <h2 class="font-display text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-900 mb-3 md:mb-4">Inside the Workspace.</h2>
+                <p class="text-base md:text-lg text-slate-600">Stop scrolling through endless WhatsApp groups. This is what an optimized locum dashboard looks like.</p>
+            </div>
+
+            <!-- The Mock UI Shell (Practice Manager View) -->
+            <div class="w-full max-w-[1200px] mx-auto bg-white rounded-2xl md:rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden flex flex-col md:flex-row h-auto md:h-[700px] relative group pointer-events-auto">
+
+                <!-- Overlay glow effect -->
+                <div class="absolute -inset-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-slate-200/10 rounded-[2.2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none z-[-1]"></div>
+
+                <!-- Sidebar (Light bento theme) -->
+                <div class="w-full md:w-[220px] bg-white border-r border-slate-200 flex-col hidden md:flex shrink-0">
+                    <!-- Logo area -->
+                    <div class="h-[68px] px-5 flex items-center border-b border-slate-100">
+                        <div class="flex items-center gap-[7px] select-none">
+                            <div class="w-[32px] h-[32px] bg-[#101524] rounded-[10px] flex items-center justify-center shadow-sm">
+                                <span class="text-white font-black text-[20px] leading-none tracking-tight pt-[2px]">G</span>
+                            </div>
+                            <div class="flex items-baseline pt-0.5">
+                                <span class="text-[#101524] font-black text-[26px] leading-[0.8] tracking-[-0.05em]">PRN</span>
+                                <div class="w-[7px] h-[7px] bg-[#0F8B5A] ml-[3px] mb-[2px]"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto px-3 py-5 no-scrollbar flex flex-col gap-6">
+                        <div class="flex flex-col gap-1">
+                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] px-3 mb-2">Platform</p>
+
+                            <div class="relative flex items-center gap-2.5 px-3 py-2 bg-slate-50 text-[#101524] rounded-lg text-[12px] font-bold">
+                                <span class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#0F8B5A] rounded-r"></span>
+                                <i class="ph-fill ph-squares-four text-base"></i> Dashboard
+                            </div>
+                            <div class="flex items-center gap-2.5 px-3 py-2 text-slate-500 rounded-lg text-[12px] font-semibold">
+                                <i class="ph ph-calendar-plus text-base"></i> Create Session
+                            </div>
+                            <div class="flex items-center gap-2.5 px-3 py-2 text-slate-500 rounded-lg text-[12px] font-semibold">
+                                <i class="ph ph-clipboard-text text-base"></i> Manage Shifts
+                            </div>
+                            <div class="flex items-center gap-2.5 px-3 py-2 text-slate-500 rounded-lg text-[12px] font-semibold">
+                                <i class="ph ph-users text-base"></i> Locum Network
+                            </div>
+                            <div class="flex items-center gap-2.5 px-3 py-2 text-slate-500 rounded-lg text-[12px] font-semibold">
+                                <i class="ph ph-receipt text-base"></i> Compliance & Billing
+                            </div>
+                            <div class="flex items-center justify-between px-3 py-2 text-slate-500 rounded-lg text-[12px] font-semibold">
+                                <div class="flex items-center gap-2.5"><i class="ph ph-chat-circle-dots text-base"></i> Messages</div>
+                                <span class="text-[9px] font-bold bg-rose-500 text-white px-1.5 py-0.5 rounded-full">2</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-3 py-4 border-t border-slate-100 flex flex-col gap-1">
+                        <div class="flex items-center gap-2.5 px-3 py-2 text-slate-500 rounded-lg text-[12px] font-semibold">
+                            <i class="ph ph-gear-six text-base"></i> Practice Settings
+                        </div>
+                        <div class="flex items-center gap-2.5 px-3 py-2 text-slate-500 rounded-lg text-[12px] font-semibold">
+                            <i class="ph ph-sign-out text-base"></i> Log Out
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Workspace Area -->
+                <div class="flex-1 flex flex-col bg-[#F8F9FA] overflow-hidden relative">
+
+                    <!-- Top header with search + profile pill -->
+                    <div class="h-[56px] md:h-[68px] bg-[#F8F9FA]/80 backdrop-blur-md px-4 md:px-8 flex justify-between items-center shrink-0 z-20">
+                        <div class="relative w-40 md:w-80">
+                            <i class="ph ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" disabled placeholder="Search locums, shifts, or invoices..." class="w-full bg-white border border-slate-200 rounded-full py-2 pl-10 pr-4 text-[12px] font-medium text-slate-700 placeholder-slate-400 focus:outline-none shadow-sm">
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="bg-[#101524] rounded-full p-1 pl-1.5 pr-3.5 flex items-center gap-2 shadow-md">
+                                <div class="bg-[#0F8B5A] text-white w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold tracking-wider">AC</div>
+                                <span class="text-white text-[12px] font-semibold pr-0.5">Amer</span>
+                                <i class="ph-bold ph-caret-down text-slate-400 text-[9px]"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scrollable Viewport -->
+                    <div class="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 pb-8 md:pb-10 pt-2 no-scrollbar relative z-10">
+
+                        <!-- Header & Greeting -->
+                        <div class="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-3 md:gap-4">
+                            <div>
+                                <div class="inline-flex items-center gap-1.5 bg-emerald-50 text-[#0F8B5A] px-2.5 py-1 rounded-full text-[8px] md:text-[9px] font-bold tracking-widest uppercase mb-2 border border-emerald-200/50">
+                                    <span class="w-1 h-1 bg-[#0F8B5A] rounded-full"></span>
+                                    Practice Manager Portal
+                                </div>
+                                <h1 class="text-[22px] md:text-[32px] font-extrabold text-[#101524] tracking-tight leading-[1.15]" style="font-family: 'Plus Jakarta Sans', sans-serif;">Good evening, Amer.</h1>
+                                <p class="text-slate-500 text-[12px] font-medium mt-1">Oakfield Medical Centre</p>
+                            </div>
+                            <div class="bg-[#101524] text-white px-3 py-2 md:px-4 md:py-2.5 rounded-full text-[10px] md:text-[11px] font-bold flex items-center gap-1.5 shadow-md shrink-0">
+                                Create Session <i class="ph-bold ph-arrow-right text-[10px]"></i>
+                            </div>
+                        </div>
+
+                        <!-- 4 KPI stat cards -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-4 md:mb-5">
+                            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col gap-2">
+                                <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
+                                    <i class="ph ph-calendar text-sm"></i>
+                                </div>
+                                <div class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">3</div>
+                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Open Sessions</div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col gap-2">
+                                <div class="w-8 h-8 rounded-full bg-[#101524] flex items-center justify-center text-white">
+                                    <i class="ph-fill ph-envelope text-sm"></i>
+                                </div>
+                                <div class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">5</div>
+                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Pending Offers</div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col gap-2">
+                                <div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-[#0F8B5A] border border-emerald-100">
+                                    <i class="ph ph-trend-up text-sm"></i>
+                                </div>
+                                <div class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">92%</div>
+                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Fill Rate (30d)</div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col gap-2">
+                                <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
+                                    <i class="ph ph-currency-gbp text-sm"></i>
+                                </div>
+                                <div class="text-[20px] md:text-[28px] font-extrabold text-[#101524] leading-none mt-1">£6,840</div>
+                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Spend (This Mo)</div>
+                            </div>
+                        </div>
+
+                        <!-- Schedule Coverage + Activity -->
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                            <!-- Schedule Coverage -->
+                            <div class="col-span-1 md:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                                <div class="px-5 py-4 flex justify-between items-center border-b border-slate-100">
+                                    <h3 class="text-[13px] font-bold text-[#101524]">Schedule Coverage</h3>
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">This Week</span>
+                                </div>
+                                <div class="px-4 py-3 flex flex-col divide-y divide-slate-100">
+                                    <!-- Mon -->
+                                    <div class="flex items-center gap-3 py-2">
+                                        <div class="w-9 text-center">
+                                            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Mon</div>
+                                            <div class="font-extrabold text-[#101524] text-sm">06</div>
+                                        </div>
+                                        <div class="flex-1 flex gap-1.5">
+                                            <div class="h-6 px-2.5 bg-emerald-50 border border-emerald-200 rounded-md flex items-center gap-1.5">
+                                                <div class="w-1 h-1 rounded-full bg-[#0F8B5A]"></div>
+                                                <span class="text-[10px] font-bold text-emerald-800">Dr A. Hughes</span>
+                                            </div>
+                                            <div class="h-6 px-2.5 bg-emerald-50 border border-emerald-200 rounded-md flex items-center gap-1.5">
+                                                <div class="w-1 h-1 rounded-full bg-[#0F8B5A]"></div>
+                                                <span class="text-[10px] font-bold text-emerald-800">Dr P. Patel</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Tue -->
+                                    <div class="flex items-center gap-3 py-2">
+                                        <div class="w-9 text-center">
+                                            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Tue</div>
+                                            <div class="font-extrabold text-[#101524] text-sm">07</div>
+                                        </div>
+                                        <div class="flex-1 flex gap-1.5">
+                                            <div class="h-6 px-2.5 bg-rose-50 border border-dashed border-rose-300 rounded-md flex items-center gap-1.5">
+                                                <i class="ph-fill ph-warning-circle text-rose-500 text-[10px]"></i>
+                                                <span class="text-[10px] font-bold text-rose-700">1 Unfilled</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Wed -->
+                                    <div class="flex items-center gap-3 py-2">
+                                        <div class="w-9 text-center">
+                                            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Wed</div>
+                                            <div class="font-extrabold text-[#101524] text-sm">08</div>
+                                        </div>
+                                        <div class="flex-1 flex gap-1.5">
+                                            <div class="h-6 px-2.5 bg-emerald-50 border border-emerald-200 rounded-md flex items-center gap-1.5">
+                                                <div class="w-1 h-1 rounded-full bg-[#0F8B5A]"></div>
+                                                <span class="text-[10px] font-bold text-emerald-800">Dr M. Jones</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Thu -->
+                                    <div class="flex items-center gap-3 py-2">
+                                        <div class="w-9 text-center">
+                                            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Thu</div>
+                                            <div class="font-extrabold text-[#101524] text-sm">09</div>
+                                        </div>
+                                        <div class="flex-1 flex gap-1.5">
+                                            <div class="h-6 px-2.5 bg-emerald-50 border border-emerald-200 rounded-md flex items-center gap-1.5">
+                                                <div class="w-1 h-1 rounded-full bg-[#0F8B5A]"></div>
+                                                <span class="text-[10px] font-bold text-emerald-800">Dr E. Morgan</span>
+                                            </div>
+                                            <div class="h-6 px-2.5 bg-slate-50 border border-dashed border-slate-300 rounded-md flex items-center gap-1.5">
+                                                <i class="ph ph-plus text-slate-400 text-[10px]"></i>
+                                                <span class="text-[10px] font-bold text-slate-500">Add Session</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Fri -->
+                                    <div class="flex items-center gap-3 py-2">
+                                        <div class="w-9 text-center">
+                                            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Fri</div>
+                                            <div class="font-extrabold text-[#101524] text-sm">10</div>
+                                        </div>
+                                        <div class="flex-1 flex gap-1.5">
+                                            <div class="h-6 px-2.5 bg-emerald-50 border border-emerald-200 rounded-md flex items-center gap-1.5">
+                                                <div class="w-1 h-1 rounded-full bg-[#0F8B5A]"></div>
+                                                <span class="text-[10px] font-bold text-emerald-800">Dr C. Thomas</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Activity Box -->
+                            <div class="col-span-1 md:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                                <div class="px-5 py-4 flex justify-between items-center border-b border-slate-100">
+                                    <h3 class="text-[13px] font-bold text-[#101524]">Activity Box</h3>
+                                    <span class="text-[9px] font-bold bg-rose-500 text-white px-1.5 py-0.5 rounded-full">3 new</span>
+                                </div>
+                                <div class="flex flex-col divide-y divide-slate-100">
+                                    <div class="px-4 py-3 flex items-start gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center text-[#0F8B5A] shrink-0">
+                                            <i class="ph-fill ph-check-circle text-xs"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[11px] font-bold text-[#101524] leading-tight">Offer accepted</p>
+                                            <p class="text-[10px] text-slate-500 mt-0.5 truncate">Dr M. Jones · Wed 08 Apr</p>
+                                        </div>
+                                    </div>
+                                    <div class="px-4 py-3 flex items-start gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                            <i class="ph-fill ph-user-plus text-xs"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[11px] font-bold text-[#101524] leading-tight">New application</p>
+                                            <p class="text-[10px] text-slate-500 mt-0.5 truncate">Dr S. Khan applied · Tue 07</p>
+                                        </div>
+                                    </div>
+                                    <div class="px-4 py-3 flex items-start gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                                            <i class="ph-fill ph-warning text-xs"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[11px] font-bold text-[#101524] leading-tight">Session unfilled</p>
+                                            <p class="text-[10px] text-slate-500 mt-0.5 truncate">Tue 07 Apr · Open 2d</p>
+                                        </div>
+                                    </div>
+                                    <div class="px-4 py-3 flex items-start gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 shrink-0">
+                                            <i class="ph-fill ph-receipt text-xs"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[11px] font-bold text-[#101524] leading-tight">Invoice received</p>
+                                            <p class="text-[10px] text-slate-500 mt-0.5 truncate">Dr A. Hughes · £380.00</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- IMMERSIVE CTA (Anti-Boredom Visual Tension) -->
+    <section class="py-16 md:py-24 relative overflow-hidden bg-[#0F172A]" id="surgeries">
+        <div class="absolute inset-0 z-0 opacity-20 object-cover w-full h-full">
+            <img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1600&q=80" alt="Clinical Environment Abstract" class="w-full h-full object-cover">
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-[#0F172A] z-0"></div>
+
+        <div class="max-w-4xl mx-auto px-6 relative z-10 text-center">
+            <div class="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm">
+                <i class="ph ph-stethoscope text-3xl text-emerald-400"></i>
+            </div>
+            <h2 class="font-display text-3xl md:text-4xl lg:text-6xl font-semibold text-white mb-4 md:mb-6 tracking-tight">Your practice, elevated.</h2>
+            <p class="text-base md:text-xl text-slate-300 font-medium mb-8 md:mb-10 max-w-2xl mx-auto">Join the fastest-growing network of independent GPs in Wales. Registration takes 3 minutes. Zero commitments.</p>
+
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <a href="register-locum.html" class="w-full sm:w-auto bg-emerald-600 text-white px-6 py-3.5 md:px-8 md:py-4 rounded-full text-base md:text-lg font-semibold hover:bg-emerald-500 transition-colors shadow-[0_0_20px_rgba(4,120,87,0.4)]">
+                    Create GP Account
+                </a>
+                <div class="text-slate-400 text-sm hidden sm:block">or</div>
+                <a href="register-practice.html" class="w-full sm:w-auto bg-white/5 border border-white/10 text-white px-6 py-3.5 md:px-8 md:py-4 rounded-full text-base md:text-lg font-semibold hover:bg-white/10 transition-colors backdrop-blur-sm">
+                    Surgeries: Find Coverage
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ARCHITECTURAL FOOTER -->
+    <footer class="bg-slate-50 border-t border-slate-200 pt-16 pb-8">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                <div class="col-span-1 md:col-span-1">
+                    <div class="flex items-center gap-[8px] mb-4 select-none">
+                        <div class="w-[38px] h-[38px] bg-[#101524] rounded-[12px] flex items-center justify-center shadow-sm">
+                            <span class="text-white font-black text-[24px] leading-none tracking-tight pt-[2px]">G</span>
+                        </div>
+                        <div class="flex items-baseline pt-1">
+                            <span class="text-[#101524] font-black text-[32px] leading-[0.8] tracking-[-0.05em]">PRN</span>
+                            <div class="w-[9px] h-[9px] bg-[#0F8B5A] ml-[4px] mb-[3px]"></div>
+                            <span class="text-slate-500 font-bold text-sm ml-1.5">.co.uk</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-slate-500 leading-relaxed pr-4">The modern infrastructure for Locum GPs and Surgeries across Wales.</p>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">For GPs</h4>
+                    <ul class="space-y-3 text-sm text-slate-600">
+                        <li><a href="register-locum.html" class="hover:text-emerald-700 transition-colors">Register as Locum</a></li>
+                        <li><a href="login.html" class="hover:text-emerald-700 transition-colors">Rates &amp; Billing</a></li>
+                        <li><a href="help-faq.html" class="hover:text-emerald-700 transition-colors">Compliance Guide</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">For Surgeries</h4>
+                    <ul class="space-y-3 text-sm text-slate-600">
+                        <li><a href="register-practice.html" class="hover:text-emerald-700 transition-colors">Register Practice</a></li>
+                        <li><a href="login.html" class="hover:text-emerald-700 transition-colors">Pricing Structure</a></li>
+                        <li><a href="login.html" class="hover:text-emerald-700 transition-colors">Roster Management</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">Legal</h4>
+                    <ul class="space-y-3 text-sm text-slate-600">
+                        <li><a href="privacy-policy.html" class="hover:text-emerald-700 transition-colors">Privacy Policy</a></li>
+                        <li><a href="terms-conditions.html" class="hover:text-emerald-700 transition-colors">Terms of Service</a></li>
+                        <li><a href="help-faq.html#contact" class="hover:text-emerald-700 transition-colors">Contact Support</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+                <p class="text-xs text-slate-400 font-medium">&copy; 2026 GPRN. All rights reserved.</p>
+                <div class="flex items-center gap-4">
+                    <a href="#" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors" rel="nofollow"><i class="ph-fill ph-twitter-logo"></i></a>
+                    <a href="#" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors" rel="nofollow"><i class="ph-fill ph-linkedin-logo"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage()) throw new Error('Auth required');
 
@@ -49,9 +49,11 @@
         const pageContent = initAppLayout(role, 'cpd', 'CPD Events');
         const data = getMockData();
 
-        // Separate web-based CPD from events
+        // Separate web-based CPD from events (hide events whose date has passed)
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
         const webCpd = data.cpdEvents.filter(e => e.type === 'web');
-        const events = data.cpdEvents.filter(e => e.type === 'event');
+        const events = data.cpdEvents.filter(e => e.type === 'event' && new Date(e.date) >= todayStart);
 
         // Group events by health board
         const grouped = {};
@@ -83,7 +85,7 @@
                     </div>
                     <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-small">
                         ${getIcon('external-link')}
-                        Visit HEIW Portal
+                        Visit Resource
                     </a>
                 </div>
                 `).join('')}
@@ -135,7 +137,7 @@
                     </div>
                     <p style="font-size: 0.88rem; color: var(--dark-600); line-height: 1.6; margin-top: 12px; padding: 0 4px;">${evt.description}</p>
                     <div class="shift-card-footer" style="margin-top: 12px;">
-                        <p style="font-size: 0.75rem; color: var(--dark-600); margin-top: 4px;">You'll receive confirmation details. The organiser will be notified.</p>
+                        <p style="font-size: 0.75rem; color: var(--dark-600); margin-top: 4px;">You'll receive a confirmation email once registered.</p>
                         <button id="cpd-btn-${evt.id}" class="btn btn-primary btn-small" onclick="registerCPDInterest('${evt.id}')">Register Interest</button>
                     </div>
                 </div>`;
@@ -146,11 +148,20 @@
 
         pageContent.innerHTML = html;
 
+        // Registrations are stored as { eventId, userId, date } objects in the shared blob.
+        // Legacy plain-string entries (no userId) are ignored so they never leak between users.
+        function getMyRegisteredEventIds(data) {
+            return (data.cpdInterests || []).filter(function(entry) {
+                return entry && typeof entry === 'object' && entry.userId === session.id;
+            }).map(function(entry) { return entry.eventId; });
+        }
+
         // Render My Registrations section
         function renderMyRegistrations() {
             var data = getMockData();
-            if (!data.cpdInterests || data.cpdInterests.length === 0) return '';
-            var registeredEvents = data.cpdInterests.map(function(id) {
+            var myEventIds = getMyRegisteredEventIds(data);
+            if (myEventIds.length === 0) return '';
+            var registeredEvents = myEventIds.map(function(id) {
                 return data.cpdEvents.find(function(e) { return e.id === id; });
             }).filter(Boolean);
             if (registeredEvents.length === 0) return '';
@@ -182,31 +193,26 @@
             var data = getMockData();
             var session = Auth.getSession();
             if (!data.cpdInterests) data.cpdInterests = [];
-            if (data.cpdInterests.includes(eventId)) {
+            var alreadyRegistered = data.cpdInterests.some(function(entry) {
+                return entry && typeof entry === 'object' && entry.eventId === eventId && entry.userId === session.id;
+            });
+            if (alreadyRegistered) {
                 Toast.show('You have already registered interest for this event.', 'info');
                 return;
             }
-            data.cpdInterests.push(eventId);
+            data.cpdInterests.push({ eventId: eventId, userId: session.id, date: new Date().toISOString() });
+            saveMockData(data);
 
             var evt = data.cpdEvents.find(function(e) { return e.id === eventId; });
 
-            // Create confirmation notification
-            if (!data.notifications) data.notifications = [];
-            data.notifications.push({
-                userId: session.id,
-                type: 'cpd_registered',
-                title: 'CPD Registration Confirmed',
-                message: 'Your interest in "' + (evt ? evt.title : 'this event') + '" has been registered. The organiser will contact you with further details.',
-                date: new Date().toISOString(),
-                read: false
-            });
+            // Create confirmation notification (via Booking so it gets an id and reaches the notifications table)
+            Booking.addNotification(session.id, 'cpd_registered', 'CPD Registration Confirmed',
+                'Your interest in "' + (evt ? evt.title : 'this event') + '" has been registered.');
 
             // Log confirmation email to user
             EmailManager.send(session.id, 'CPD Registration Confirmed',
-                'You have registered interest for ' + (evt ? evt.title : 'a CPD event') + (evt ? ' on ' + DateUtils.format(evt.date, 'full') : '') + '. The event organiser has been notified and will contact you with joining instructions.',
+                'You have registered interest for ' + (evt ? evt.title : 'a CPD event') + (evt ? ' on ' + DateUtils.format(evt.date, 'full') : '') + '.',
                 'cpd_registration');
-
-            saveMockData(data);
 
             var btn = document.getElementById('cpd-btn-' + eventId);
             if (btn) {
@@ -219,19 +225,17 @@
             updateMyRegistrations();
         }
 
-        // Update buttons for already-registered events
+        // Update buttons for events this user has already registered for
         (function() {
             var data = getMockData();
-            if (data.cpdInterests) {
-                data.cpdInterests.forEach(function(id) {
-                    var btn = document.getElementById('cpd-btn-' + id);
-                    if (btn) {
-                        btn.textContent = 'Registered';
-                        btn.disabled = true;
-                        btn.style.opacity = '0.7';
-                    }
-                });
-            }
+            getMyRegisteredEventIds(data).forEach(function(id) {
+                var btn = document.getElementById('cpd-btn-' + id);
+                if (btn) {
+                    btn.textContent = 'Registered';
+                    btn.disabled = true;
+                    btn.style.opacity = '0.7';
+                }
+            });
         })();
     </script>
 </body>

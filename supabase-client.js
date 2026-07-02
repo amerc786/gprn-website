@@ -254,7 +254,7 @@
         } catch(e) {}
 
         if (_origGetMockData) return _origGetMockData();
-        return { locums: [], practices: [], shifts: [], offers: [], availability: {}, messages: [], invoices: [], notifications: [], cpdEvents: [], feedback: [] };
+        return { locums: [], practices: [], shifts: [], offers: [], availability: {}, messages: [], invoices: [], notifications: [], cpdEvents: [], feedback: [], jobs: [], cpdInterests: [], jobApplications: [] };
     };
 
     window.saveMockData = function(data) {
@@ -264,10 +264,21 @@
         if (_getAccessToken()) _writeBlobSync(data);
     };
 
+    // Guaranteed-unique blob user id (registration ids can collide across browsers)
+    function _uniqueBlobId(prefix) {
+        return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+    }
+
     // ============================================================
     // SupaRegister: create auth user + pending profile + sign out
     // ============================================================
     window.SupaRegister = function(email, password, role, profileData) {
+        // Normalise the email and never persist a plaintext password in profile_data
+        email = (email || '').trim().toLowerCase();
+        profileData = Object.assign({}, profileData);
+        delete profileData.password;
+        if (profileData.email) profileData.email = String(profileData.email).trim().toLowerCase();
+
         // 1. Create the auth user
         var signupRes = _syncRequest('POST', '/auth/v1/signup', { email: email, password: password }, {
             'apikey': SUPABASE_ANON_KEY,
@@ -374,26 +385,30 @@
                 return { error: 'data_unavailable' };
             }
 
-            var richProfile = null;
-            if (profile.role === 'locum') {
-                richProfile = (data.locums || []).find(function(l) { return l.email === email; });
-            } else {
-                richProfile = (data.practices || []).find(function(p) { return p.email === email; });
-            }
+            // Locate the rich profile: prefer the stored profile id, fall back to
+            // a case-insensitive email match (legacy rows may be mixed-case)
+            var emailLc = (email || '').toLowerCase();
+            var storedId = profile.profile_data && profile.profile_data.id;
+            var pool = profile.role === 'locum' ? (data.locums || []) : (data.practices || []);
+            var richProfile =
+                (storedId && pool.find(function(u) { return u.id === storedId; })) ||
+                pool.find(function(u) { return u.email && String(u.email).toLowerCase() === emailLc; }) ||
+                null;
 
             // Fallback: push profile_data into the blob if missing
             // (happens for bootstrap_admin users who never went through admin approval)
             if (!richProfile && profile.profile_data && Object.keys(profile.profile_data).length) {
                 var pd = JSON.parse(JSON.stringify(profile.profile_data));
+                delete pd.password; // never let a plaintext password reach the shared blob
                 data.locums = data.locums || [];
                 data.practices = data.practices || [];
                 if (profile.role === 'locum') {
-                    pd.id = pd.id || ('loc-' + String(data.locums.length + 1).padStart(3, '0'));
+                    pd.id = pd.id || _uniqueBlobId('loc');
                     pd.role = 'locum';
                     data.locums.push(pd);
                     richProfile = pd;
                 } else {
-                    pd.id = pd.id || ('prac-' + String(data.practices.length + 1).padStart(3, '0'));
+                    pd.id = pd.id || _uniqueBlobId('prac');
                     pd.role = 'practice';
                     data.practices.push(pd);
                     richProfile = pd;
@@ -467,21 +482,29 @@
             // 2. Push profile_data into the app_state blob
             var data = _fetchBlobSync();
             if (!data) {
-                data = { locums: [], practices: [], shifts: [], offers: [], availability: {}, messages: [], invoices: [], notifications: [], cpdEvents: [], feedback: [] };
+                data = { locums: [], practices: [], shifts: [], offers: [], availability: {}, messages: [], invoices: [], notifications: [], cpdEvents: [], feedback: [], jobs: [], cpdInterests: [], jobApplications: [] };
             }
             data.locums = data.locums || [];
             data.practices = data.practices || [];
 
             var pd = JSON.parse(JSON.stringify(p.profile_data || {}));
+            delete pd.password; // sanitize legacy rows: never copy a plaintext password into the shared blob
+            var approvedEmailLc = (p.email || '').toLowerCase();
+            var emailMatches = function(u) { return u.email && String(u.email).toLowerCase() === approvedEmailLc; };
+            var idTaken = function(id) {
+                return data.locums.some(function(l) { return l.id === id; }) ||
+                       data.practices.some(function(pr) { return pr.id === id; });
+            };
             if (p.role === 'locum') {
-                if (!data.locums.some(function(l) { return l.email === p.email; })) {
-                    pd.id = pd.id || ('loc-' + String(data.locums.length + 1).padStart(3, '0'));
+                if (!data.locums.some(emailMatches)) {
+                    // Assign a guaranteed-unique blob id (registration ids can collide across browsers)
+                    if (!pd.id || idTaken(pd.id)) pd.id = _uniqueBlobId('loc');
                     pd.role = 'locum';
                     data.locums.push(pd);
                 }
             } else {
-                if (!data.practices.some(function(pr) { return pr.email === p.email; })) {
-                    pd.id = pd.id || ('prac-' + String(data.practices.length + 1).padStart(3, '0'));
+                if (!data.practices.some(emailMatches)) {
+                    if (!pd.id || idTaken(pd.id)) pd.id = _uniqueBlobId('prac');
                     pd.role = 'practice';
                     data.practices.push(pd);
                 }
@@ -492,11 +515,13 @@
                 return { error: 'Failed to update app_state (HTTP ' + blobRes.status + ')' };
             }
 
-            // 3. Mark the profile approved
+            // 3. Mark the profile approved (and persist the final blob id so
+            //    login/getApprovedLocums resolve to the same user record)
             var patchRes = _syncRequest('PATCH', '/rest/v1/profiles?id=eq.' + encodeURIComponent(profileId), {
                 approval_status: 'approved',
                 approved_at: new Date().toISOString(),
-                approved_by: _getUserId()
+                approved_by: _getUserId(),
+                profile_data: pd
             });
             if (patchRes.status >= 400) {
                 return { error: 'Failed to approve profile (HTTP ' + patchRes.status + ')' };
@@ -547,20 +572,27 @@
             // Ensure the user exists in the app_state blob
             var data = _fetchBlobSync();
             if (!data) {
-                data = { locums: [], practices: [], shifts: [], offers: [], availability: {}, messages: [], invoices: [], notifications: [], cpdEvents: [], feedback: [] };
+                data = { locums: [], practices: [], shifts: [], offers: [], availability: {}, messages: [], invoices: [], notifications: [], cpdEvents: [], feedback: [], jobs: [], cpdInterests: [], jobApplications: [] };
             }
             data.locums = data.locums || [];
             data.practices = data.practices || [];
             var pd = JSON.parse(JSON.stringify(p.profile_data || {}));
+            delete pd.password; // sanitize legacy rows: never copy a plaintext password into the shared blob
+            var unsusEmailLc = (p.email || '').toLowerCase();
+            var unsusEmailMatches = function(u) { return u.email && String(u.email).toLowerCase() === unsusEmailLc; };
+            var unsusIdTaken = function(id) {
+                return data.locums.some(function(l) { return l.id === id; }) ||
+                       data.practices.some(function(pr) { return pr.id === id; });
+            };
             if (p.role === 'locum') {
-                if (!data.locums.some(function(l) { return l.email === p.email; })) {
-                    pd.id = pd.id || ('loc-' + String(data.locums.length + 1).padStart(3, '0'));
+                if (!data.locums.some(unsusEmailMatches)) {
+                    if (!pd.id || unsusIdTaken(pd.id)) pd.id = _uniqueBlobId('loc');
                     pd.role = 'locum';
                     data.locums.push(pd);
                 }
             } else {
-                if (!data.practices.some(function(pr) { return pr.email === p.email; })) {
-                    pd.id = pd.id || ('prac-' + String(data.practices.length + 1).padStart(3, '0'));
+                if (!data.practices.some(unsusEmailMatches)) {
+                    if (!pd.id || unsusIdTaken(pd.id)) pd.id = _uniqueBlobId('prac');
                     pd.role = 'practice';
                     data.practices.push(pd);
                 }
@@ -576,7 +608,8 @@
                 approved_by: _getUserId(),
                 rejected_at: null,
                 rejected_by: null,
-                rejection_reason: null
+                rejection_reason: null,
+                profile_data: pd
             });
             if (patchRes.status >= 400) {
                 return { error: 'Failed to unsuspend profile (HTTP ' + patchRes.status + ')' };
@@ -597,6 +630,7 @@
             var p = getRes.body[0];
 
             var merged = Object.assign({}, p.profile_data || {}, newProfileData || {});
+            delete merged.password; // never persist a plaintext password
             var patchRes = _syncRequest('PATCH', '/rest/v1/profiles?id=eq.' + encodeURIComponent(profileId), {
                 profile_data: merged
             });
@@ -608,8 +642,12 @@
             if (p.approval_status === 'approved') {
                 var data = _fetchBlobSync();
                 if (data) {
+                    var updEmailLc = (p.email || '').toLowerCase();
                     var arr = p.role === 'locum' ? (data.locums || []) : (data.practices || []);
-                    var idx = arr.findIndex(function(u) { return u.email === p.email; });
+                    var idx = arr.findIndex(function(u) {
+                        return (merged.id && u.id === merged.id) ||
+                               (u.email && String(u.email).toLowerCase() === updEmailLc);
+                    });
                     if (idx !== -1) {
                         Object.keys(newProfileData || {}).forEach(function(k) {
                             arr[idx][k] = newProfileData[k];
@@ -687,7 +725,7 @@
             var isPublic = publicPages.some(function(pp) { return path.indexOf(pp) !== -1; });
             if (path === '/' || path === '') isPublic = true;
             if (!isPublic) {
-                window.location.href = 'pending-approval.html';
+                window.location.href = 'pending-approval.html' + _pendingRedirectQs(profile);
             }
             return;
         }
@@ -720,6 +758,7 @@
         if (res.status === 200 && Array.isArray(res.body)) {
             return res.body.map(function(row) {
                 var pd = row.profile_data || {};
+                delete pd.password; // legacy rows may carry one; never serve it to other users
                 pd.supabase_id = row.id;
                 if (!pd.email) pd.email = row.email;
                 return pd;
@@ -734,7 +773,25 @@
         refresh: function() { _cache = null; _lastFetchAt = 0; return window.getMockData(); },
         forceWrite: function(data) { _writeBlobAsync(data); },
         getCurrentProfile: function() { _profileCache = null; return _fetchCurrentProfile(); },
-        getApprovedLocums: _fetchApprovedLocums
+        getApprovedLocums: _fetchApprovedLocums,
+        // Verify the current password, then set the new one on the auth user.
+        // Returns { success: true } | { error: 'incorrect_password' | 'update_failed' | 'not_signed_in' }
+        changePassword: function(currentPw, newPw) {
+            var s = null;
+            try { s = JSON.parse(localStorage.getItem('gprn_session') || 'null'); } catch (e) {}
+            if (!s || !s.email || !_getAccessToken()) return { error: 'not_signed_in' };
+            var plainHeaders = { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+            var verify = _syncRequest('POST', '/auth/v1/token?grant_type=password', { email: s.email, password: currentPw }, plainHeaders);
+            if (verify.status !== 200) return { error: 'incorrect_password' };
+            var token = (verify.body && verify.body.access_token) || _getAccessToken();
+            var update = _syncRequest('PUT', '/auth/v1/user', { password: newPw }, {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            });
+            if (update.status !== 200) return { error: 'update_failed' };
+            return { success: true };
+        }
     };
 
     // ============================================================
@@ -768,7 +825,17 @@
         if (detailed.unavailable) return;   // schema not migrated; skip
         if (detailed.missing || detailed.profile.approval_status !== 'approved') {
             _supabaseSignOut();
-            window.location.href = 'pending-approval.html';
+            window.location.href = 'pending-approval.html' + _pendingRedirectQs(detailed.profile);
         }
     }, 60000);
+
+    // Build the query string for pending-approval.html so rejected users see
+    // the proper rejection view (and reason) instead of the default 'under review'.
+    function _pendingRedirectQs(profile) {
+        if (!profile || profile.approval_status !== 'rejected') return '';
+        var qs = '?status=rejected';
+        if (profile.rejection_reason) qs += '&reason=' + encodeURIComponent(profile.rejection_reason);
+        if (profile.email) qs += '&email=' + encodeURIComponent(profile.email);
+        return qs;
+    }
 })();

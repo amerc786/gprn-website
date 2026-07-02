@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -56,10 +56,11 @@
             return (data.offers || []).filter(o => o.locumId === session.id);
         }
 
-        function renderBookingCard(offer) {
+        function renderBookingCard(offer, ratingsMap, reviewedOfferIds) {
             const now = new Date();
             const offerDate = offer.sessionDate || offer.shiftDate;
             const shiftDate = new Date(offerDate);
+            const sessionEnd = new Date(offerDate + 'T23:59:59');
             const hoursUntilShift = (shiftDate - now) / (1000 * 60 * 60);
             const proposedRate = offer.agreedRate || offer.proposedRate || 0;
 
@@ -75,12 +76,12 @@
                 case 'confirmed':
                     actionsHtml = `
                         <div class="offer-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            ${shiftDate < now ? `<button class="btn btn-small btn-primary" onclick="confirmComplete('${offer.id}')">Confirm Complete</button>` : `<span class="badge badge-success" style="font-size: 0.82rem; padding: 6px 12px;">Confirmed — awaiting session date</span>`}
+                            ${sessionEnd < now ? `<button class="btn btn-small btn-primary" onclick="confirmComplete('${offer.id}')">Confirm Complete</button>` : `<span class="badge badge-success" style="font-size: 0.82rem; padding: 6px 12px;">Confirmed — awaiting session date</span>`}
                             <button class="btn btn-small btn-ghost" style="color: var(--danger);" onclick="cancelBooking('${offer.id}', ${hoursUntilShift < 48})">Cancel</button>
                         </div>`;
                     break;
                 case 'completed':
-                    const hasReviewed = FeedbackManager.hasReviewed(session.id, offer.id);
+                    const hasReviewed = reviewedOfferIds.has(offer.id);
                     actionsHtml = `
                         <div class="offer-actions">
                             ${hasReviewed
@@ -116,14 +117,14 @@
             // Practice rating display
             let practiceRatingHtml = '';
             {
-                const avgRating = FeedbackManager.getPracticeAverageRating(offer.practiceId);
+                const avgRating = ratingsMap[offer.practiceId];
                 if (avgRating) {
                     const fullStars = Math.floor(avgRating);
                     let starsHtml = '';
                     for (let s = 0; s < 5; s++) {
                         starsHtml += `<svg width="14" height="14" viewBox="0 0 24 24" fill="${s < fullStars ? '#059669' : '#E2E8F0'}" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
                     }
-                    practiceRatingHtml = `<span style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer;" onclick="showPracticeRatings('${offer.practiceId}', '${offer.practiceName.replace(/'/g, "\\'")}')">${starsHtml} <span style="font-size: 0.78rem; color: var(--dark-600);">${avgRating}</span></span>`;
+                    practiceRatingHtml = `<span style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer;" onclick="showPracticeRatings('${offer.practiceId}')">${starsHtml} <span style="font-size: 0.78rem; color: var(--dark-600);">${avgRating}</span></span>`;
                 }
             }
 
@@ -145,9 +146,9 @@
             <div class="offer-card" data-offer-id="${offer.id}">
                 <div class="offer-card-header">
                     <div>
-                        <h3 class="offer-card-title"><a href="practice-profile-view.html?id=${offer.practiceId}" style="color:var(--dark);text-decoration:none;font-weight:700;" onmouseover="this.style.color='var(--primary)';this.style.textDecoration='underline'" onmouseout="this.style.color='var(--dark)';this.style.textDecoration='none'">${offer.practiceName}</a></h3>
+                        <h3 class="offer-card-title"><a href="practice-profile-view.html?id=${offer.practiceId}" style="color:var(--dark);text-decoration:none;font-weight:700;" onmouseover="this.style.color='var(--primary)';this.style.textDecoration='underline'" onmouseout="this.style.color='var(--dark)';this.style.textDecoration='none'">${sanitizeHTML(offer.practiceName)}</a></h3>
                         ${practiceRatingHtml ? `<div style="margin-top: 2px;">${practiceRatingHtml}</div>` : ''}
-                        <p class="offer-card-location">${offer.healthBoard}</p>
+                        <p class="offer-card-location">${sanitizeHTML(offer.healthBoard)}</p>
                     </div>
                     <span class="badge ${getStatusBadge(offer.status)}">${getStatusLabel(offer.status)}</span>
                 </div>
@@ -167,7 +168,9 @@
             </div>`;
         }
 
-        function showPracticeRatings(practiceId, practiceName) {
+        function showPracticeRatings(practiceId) {
+            const practiceRecord = (getMockData().practices || []).find(p => p.id === practiceId);
+            const practiceName = sanitizeHTML(practiceRecord ? practiceRecord.practiceName : 'Practice');
             const ratings = FeedbackManager.getPracticeRatings(practiceId);
             const avg = FeedbackManager.getPracticeAverageRating(practiceId);
             let starsHtml = '';
@@ -211,14 +214,14 @@
 
         function renderBookings() {
             const bookings = getBookings();
-            const now = new Date();
+            const todayStr = DateUtils.toISO(new Date());
 
-            // Active: accepted, confirmed (future)
-            const active = bookings.filter(o => ['accepted', 'confirmed'].includes(o.status) && new Date(o.sessionDate || o.shiftDate) >= now);
+            // Active: accepted, confirmed (today or future — a booking stays active on the day it is worked)
+            const active = bookings.filter(o => ['accepted', 'confirmed'].includes(o.status) && (o.sessionDate || o.shiftDate) >= todayStr);
             // Past: completed, cancelled, no_show, declined, withdrawn, expired, or past-date accepted/confirmed
             const past = bookings.filter(o =>
                 ['completed', 'cancelled', 'no_show', 'declined', 'withdrawn', 'expired'].includes(o.status) ||
-                (['accepted', 'confirmed'].includes(o.status) && new Date(o.sessionDate || o.shiftDate) < now)
+                (['accepted', 'confirmed'].includes(o.status) && (o.sessionDate || o.shiftDate) < todayStr)
             );
 
             let filtered;
@@ -234,6 +237,14 @@
             if (_bookingsPage >= totalPages) _bookingsPage = totalPages - 1;
             var pageStart = _bookingsPage * _bookingsPageSize;
             var pageSlice = filtered.slice(pageStart, pageStart + _bookingsPageSize);
+
+            // Fetch feedback once per render instead of per card (avoids blocking round-trips)
+            const myFeedback = DB.Feedback.getFromUser(session.id) || [];
+            const reviewedOfferIds = new Set(myFeedback.map(f => f.offerId));
+            const ratingsMap = {};
+            pageSlice.forEach(o => {
+                if (!(o.practiceId in ratingsMap)) ratingsMap[o.practiceId] = FeedbackManager.getPracticeAverageRating(o.practiceId);
+            });
 
             var pagerHtml = '';
             if (totalPages > 1) {
@@ -261,12 +272,15 @@
 
                 <div id="bookingsList">
                     ${filtered.length > 0
-                        ? pageSlice.map(o => renderBookingCard(o)).join('')
-                        : renderEmptyState('file-text', 'No bookings found', currentTab === 'active' ? 'No active bookings. Visit your invitations to review pending session offers.' : 'No past bookings.', 'View Invitations', 'available-shifts.html')
+                        ? pageSlice.map(o => renderBookingCard(o, ratingsMap, reviewedOfferIds)).join('')
+                        : (currentTab === 'past'
+                            ? renderEmptyState('file-text', 'No bookings found', 'Completed and cancelled bookings will appear here.')
+                            : renderEmptyState('file-text', 'No bookings found', currentTab === 'active' ? 'No active bookings. Visit your invitations to review pending session offers.' : 'Bookings will appear here once you accept an invitation.', 'View Invitations', 'available-shifts.html'))
                     }
                 </div>
                 ${pagerHtml}
             `;
+            showMobileContactBtns();
         }
 
         function showMobileContactBtns() {
@@ -279,13 +293,11 @@
             currentTab = tab;
             _bookingsPage = 0;
             renderBookings();
-            showMobileContactBtns();
         };
 
         window.pageBookings = function(dir) {
             _bookingsPage = Math.max(0, _bookingsPage + dir);
             renderBookings();
-            showMobileContactBtns();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
@@ -339,25 +351,25 @@
                     overlay.querySelector('#submitDisputeBtn').addEventListener('click', function() {
                         var reason = overlay.querySelector('#disputeReason').value.trim();
                         if (!reason) { Toast.show('Please provide a reason.', 'warning'); return; }
-                        var data = getMockData();
-                        var offer = data.offers.find(o => o.id === offerId);
+                        var offer = (getMockData().offers || []).find(o => o.id === offerId);
                         if (offer) {
-                            offer.disputeReason = reason;
+                            DB.Offers.update(offerId, { disputeReason: reason });
+                            var disputeMsg = 'A locum has disputed the no-show for ' + DateUtils.format(offer.sessionDate || offer.shiftDate, 'medium') + '. Reason: ' + reason;
                             if (typeof Booking.addNotification === 'function') {
-                                Booking.addNotification(offer.practiceId, 'no_show_disputed', 'No-Show Disputed',
-                                    'A locum has disputed the no-show for ' + DateUtils.format(offer.sessionDate || offer.shiftDate, 'medium') + '.');
+                                Booking.addNotification(offer.practiceId, 'no_show_disputed', 'No-Show Disputed', disputeMsg);
                             } else {
-                                if (!data.notifications) data.notifications = [];
-                                data.notifications.push({
+                                var freshData = getMockData();
+                                if (!freshData.notifications) freshData.notifications = [];
+                                freshData.notifications.push({
                                     userId: offer.practiceId,
                                     type: 'no_show_disputed',
                                     title: 'No-Show Disputed',
-                                    message: 'A locum has disputed the no-show for ' + DateUtils.format(offer.sessionDate || offer.shiftDate, 'medium') + '. Reason: ' + reason,
+                                    message: disputeMsg,
                                     date: new Date().toISOString(),
                                     read: false
                                 });
+                                saveMockData(freshData);
                             }
-                            saveMockData(data);
                         }
                         Modal.close(overlay);
                         Toast.show('Dispute submitted.', 'success');
@@ -368,7 +380,6 @@
         };
 
         renderBookings();
-        showMobileContactBtns();
     </script>
 </body>
 </html>

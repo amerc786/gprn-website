@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage()) throw new Error('Auth required');
 
@@ -53,7 +53,12 @@
         const offerId = new URLSearchParams(window.location.search).get('offerId');
         const offer = data.offers.find(o => o.id === offerId);
 
-        if (!offer) {
+        // Only a party to this offer may leave feedback against it (locums only after completion)
+        const ownsOffer = offer && (role === 'locum'
+            ? (offer.locumId === session.id && offer.status === 'completed')
+            : offer.practiceId === session.id);
+
+        if (!offer || !ownsOffer) {
             pageContent.innerHTML = `
                 <div style="text-align: center; padding: 60px 20px;">
                     <h2 style="margin-bottom: 12px;">Offer Not Found</h2>
@@ -69,10 +74,10 @@
         let targetName = '';
         if (isLocumReviewing) {
             const practice = data.practices.find(p => p.id === offer.practiceId);
-            targetName = practice ? practice.practiceName : offer.practiceName;
+            targetName = sanitizeHTML(practice ? practice.practiceName : offer.practiceName);
         } else {
             const locum = data.locums.find(l => l.id === offer.locumId);
-            targetName = locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown Locum';
+            targetName = sanitizeHTML(locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown Locum');
         }
 
         const alreadyReviewed = FeedbackManager.hasReviewed(session.id, offerId);
@@ -93,7 +98,9 @@
         }
 
         // GP submits practice rating
+        let ratingSubmitting = false;
         function submitPracticeRating() {
+            if (ratingSubmitting) return;
             if (starRating === 0) {
                 Toast.show('Please select a star rating.', 'warning');
                 return;
@@ -103,8 +110,13 @@
                 Toast.show('Feedback must be 200 characters or less.', 'warning');
                 return;
             }
+            ratingSubmitting = true;
+            const submitBtn = document.getElementById('submitRatingBtn');
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.7'; }
             const result = FeedbackManager.ratePractice(session.id, targetId, offerId, starRating, comment);
             if (result.error) {
+                ratingSubmitting = false;
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = ''; }
                 Toast.show(result.message, 'error');
                 return;
             }
@@ -218,7 +230,7 @@
                                 <textarea id="feedbackComment" class="form-input" rows="3" style="resize: vertical;" maxlength="200" placeholder="Share your experience at this practice..." oninput="document.getElementById('charCounter').textContent = this.value.length + '/200'">${commentVal}</textarea>
                                 <span id="charCounter" style="font-size: 0.78rem; color: ${charCount > 180 ? 'var(--danger)' : 'var(--dark-600)'}; float: right; margin-top: 4px;">${charCount}/200</span>
                             </div>
-                            <button class="btn btn-primary btn-large" onclick="submitPracticeRating()" style="width: 100%; justify-content: center; margin-top: 12px;">
+                            <button class="btn btn-primary btn-large" id="submitRatingBtn" onclick="submitPracticeRating()" style="width: 100%; justify-content: center; margin-top: 12px;">
                                 Submit Rating
                             </button>
                         </div>

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Dashboard - GPRN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Syne"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: { DEFAULT: '#0B0F19', 50: '#141C2F' },
+                        brand: { green: '#059669', mint: '#ECFDF5', dark: '#022C22' },
+                        surface: '#F8F9FA'
+                    },
+                    boxShadow: {
+                        'card': '0 4px 20px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
+                        'subtle': '0 1px 2px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <div id="pageLoader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#F8F9FA;z-index:9999;">
+        <div style="text-align:center;">
+            <div style="width:36px;height:36px;border:3px solid #E2E8F0;border-top-color:#059669;border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px;"></div>
+            <p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:#64748B;font-weight:500;">Loading...</p>
+        </div>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
+    <script>
+        if (!initPage('locum')) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const user = Auth.getCurrentUser();
+        const data = getMockData();
+        const pageContent = initAppLayout('locum', 'dashboard', 'Dashboard');
+
+        // Auto-expire old offers
+        Booking.expireOffers();
+
+        // Compute stats
+        const now = new Date();
+        const myOffers = data.offers.filter(o => o.locumId === session.id);
+        const upcomingAccepted = myOffers.filter(o => (o.status === 'accepted' || o.status === 'confirmed') && new Date(o.sessionDate || o.shiftDate) >= now);
+        const pendingInvitations = myOffers.filter(o => ['sent', 'viewed', 'negotiating'].includes(o.status));
+
+        // This month's earnings from completed offers
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const monthEarnings = myOffers
+            .filter(o => o.status === 'completed' && new Date(o.sessionDate || o.shiftDate).getMonth() === currentMonth && new Date(o.sessionDate || o.shiftDate).getFullYear() === currentYear)
+            .reduce((sum, o) => sum + (o.agreedRate || o.proposedRate || 0), 0);
+
+        const reliability = (user && typeof user.bookingReliability === 'number') ? user.bookingReliability : 100;
+
+        // Greeting
+        const greeting = `${getGreeting()}, ${session.firstName}`;
+
+        // Upcoming shifts (all accepted/confirmed future offers, sorted)
+        const upcomingShifts = upcomingAccepted
+            .sort((a, b) => new Date(a.sessionDate || a.shiftDate) - new Date(b.sessionDate || b.shiftDate));
+
+        // Notifications - filtered for current user
+        const notifications = (data.notifications || []).filter(n => n.userId === session.id || !n.userId);
+
+        // Document expiry warnings
+        const docWarnings = [];
+        if (user && user.documents) {
+            const docLabels = { indemnity: 'Indemnity Certificate', performerListStatus: 'Performer List Status', dbs: 'DBS Check', cv: 'CV' };
+            Object.entries(user.documents).forEach(([key, doc]) => {
+                if (doc.uploaded && doc.expiry) {
+                    const status = getDocumentExpiryStatus(doc.expiry);
+                    if (status.status === 'expired' || status.status === 'expiring') {
+                        docWarnings.push({ name: docLabels[key] || key, status: status });
+                    }
+                }
+            });
+        }
+
+        // Earnings mini chart - last 6 months
+        const invoices = InvoiceManager.getForLocum(session.id);
+        const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthsFull = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const earningsData = [];
+        for (let i = 5; i >= 0; i--) {
+            const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const mMonth = m.getMonth();
+            const mYear = m.getFullYear();
+            const monthInvoices = invoices.filter(inv => {
+                const d = new Date(inv.sessionDate || inv.shiftDate);
+                return d.getMonth() === mMonth && d.getFullYear() === mYear;
+            });
+            const total = monthInvoices.reduce((s, inv) => s + inv.total, 0);
+            earningsData.push({ label: monthsShort[mMonth], value: total, month: mMonth, year: mYear, fullLabel: monthsFull[mMonth] + ' ' + mYear });
+        }
+        const maxEarning = Math.max(...earningsData.map(e => e.value), 1);
+
+        function showMonthDetail(index) {
+            const m = earningsData[index];
+            if (!m) return;
+            const monthInvoices = invoices.filter(inv => {
+                const d = new Date(inv.sessionDate || inv.shiftDate);
+                return d.getMonth() === m.month && d.getFullYear() === m.year;
+            }).sort((a, b) => new Date(a.sessionDate || a.shiftDate) - new Date(b.sessionDate || b.shiftDate));
+
+            const paid = monthInvoices.filter(i => i.status === 'paid' || i.status === 'paid_pending');
+            const pending = monthInvoices.filter(i => i.status === 'pending');
+            const overdue = monthInvoices.filter(i => i.status === 'overdue');
+            const disputed = monthInvoices.filter(i => i.status === 'disputed' || i.status === 'revised');
+            const totalEarned = monthInvoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0);
+            const totalOutstanding = [...pending, ...overdue, ...disputed, ...monthInvoices.filter(i => i.status === 'paid_pending')].reduce((s, i) => s + i.total, 0);
+
+            const statusBadge = (status) => {
+                const map = { paid: 'badge-success', paid_pending: 'badge-info', pending: 'badge-warning', overdue: 'badge-danger', disputed: 'badge-info', revised: 'badge-warning' };
+                const label = status === 'revised' ? 'Under Review' : status === 'paid_pending' ? 'Awaiting Confirmation' : status.charAt(0).toUpperCase() + status.slice(1);
+                return '<span class="badge ' + (map[status] || 'badge-neutral') + '" style="font-size:0.75rem;">' + label + '</span>';
+            };
+
+            const rows = monthInvoices.length > 0 ? monthInvoices.map(inv => `
+                <tr style="cursor: pointer;" onclick="Modal.close(document.querySelector('.modal-overlay')); window.location.href='invoice-view.html?id=${inv.id}';">
+                    <td>${DateUtils.format(inv.sessionDate || inv.shiftDate, 'short')}</td>
+                    <td>${inv.practiceName}</td>
+                    <td>${inv.sessionType}</td>
+                    <td style="text-align:right;"><strong>${formatCurrency(inv.total)}</strong></td>
+                    <td style="text-align:center;">${statusBadge(inv.status)}</td>
+                </tr>
+            `).join('') : '<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--dark-600);">No shifts recorded this month</td></tr>';
+
+            Modal.show({
+                title: m.fullLabel,
+                size: 'large',
+                body: `
+                    <div style="display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <div style="flex:1; min-width: 120px; padding: 12px 16px; background: rgba(5,150,105,0.06); border-radius: 8px; border-left: 3px solid var(--primary);">
+                            <p style="font-size: 0.78rem; color: var(--dark-600); margin-bottom: 2px;">Paid</p>
+                            <p style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">${formatCurrency(totalEarned)}</p>
+                            <p style="font-size: 0.75rem; color: var(--dark-600);">${paid.length} shift${paid.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div style="flex:1; min-width: 120px; padding: 12px 16px; background: rgba(245,158,11,0.06); border-radius: 8px; border-left: 3px solid #F59E0B;">
+                            <p style="font-size: 0.78rem; color: var(--dark-600); margin-bottom: 2px;">Outstanding</p>
+                            <p style="font-size: 1.1rem; font-weight: 700; color: #D97706;">${formatCurrency(totalOutstanding)}</p>
+                            <p style="font-size: 0.75rem; color: var(--dark-600);">${pending.length + overdue.length + disputed.length} invoice${pending.length + overdue.length + disputed.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div style="flex:1; min-width: 120px; padding: 12px 16px; background: rgba(11,15,25,0.04); border-radius: 8px; border-left: 3px solid var(--dark);">
+                            <p style="font-size: 0.78rem; color: var(--dark-600); margin-bottom: 2px;">Total</p>
+                            <p style="font-size: 1.1rem; font-weight: 700; color: var(--dark);">${formatCurrency(m.value)}</p>
+                            <p style="font-size: 0.75rem; color: var(--dark-600);">${monthInvoices.length} shift${monthInvoices.length !== 1 ? 's' : ''}</p>
+                        </div>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Practice</th>
+                                <th>Session</th>
+                                <th style="text-align:right;">Amount</th>
+                                <th style="text-align:center;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <p style="margin-top: 12px; font-size: 0.78rem; color: var(--dark-600);">Click a row to view the full invoice.</p>
+                `,
+                footer: '<button class="btn btn-ghost" data-modal-close>Close</button>'
+            });
+        }
+
+        // Offers needing confirmation by practice (accepted status)
+        const needsConfirmation = myOffers.filter(o => o.status === 'accepted' && new Date(o.sessionDate || o.shiftDate) >= now);
+
+        // Leave feedback reminders (completed offers where user has not reviewed)
+        const needsFeedback = myOffers.filter(o => o.status === 'completed' && !FeedbackManager.hasReviewed(session.id, o.id));
+
+        // Unread messages count
+        const unreadMsgCount = MessageManager.getUnreadCount(session.id);
+
+        // Auto-detect overdue invoices
+        const overdueResult = InvoiceManager.checkOverdue(session.id);
+
+        pageContent.innerHTML = `
+            <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 44px; font-weight: 800; color: var(--dark); margin-bottom: 24px; letter-spacing: -0.025em; line-height: 1.1;">${greeting}</h2>
+
+            ${overdueResult.count > 0 ? `
+            <div class="content-card" style="margin-bottom: 20px; border-left: 4px solid var(--danger); background: rgba(239, 68, 68, 0.04);">
+                <div class="content-card-body" style="padding: 18px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                    <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(239, 68, 68, 0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        ${getIcon('warning')}
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <strong style="font-size: 0.95rem; color: var(--dark);">You have ${overdueResult.count} overdue invoice${overdueResult.count > 1 ? 's' : ''} totalling ${formatCurrency(overdueResult.total)}</strong>
+                        <p style="font-size: 0.85rem; color: var(--dark-600); margin-top: 2px;">Payment${overdueResult.count > 1 ? 's are' : ' is'} past the 30-day due date. Send a reminder to the practice${overdueResult.count > 1 ? 's' : ''}.</p>
+                    </div>
+                    <a href="my-invoices.html?status=overdue" class="btn btn-small" style="background: var(--danger); color: #fff; border: none;">View Overdue Invoices</a>
+                </div>
+            </div>
+            ` : ''}
+
+            ${docWarnings.length > 0 ? `
+            <div style="margin-bottom: 20px;">
+                ${docWarnings.map(w => `
+                    <div class="content-card" style="margin-bottom: 8px; border-left: 4px solid ${w.status.status === 'expired' ? 'var(--danger)' : 'var(--warning)'};">
+                        <div class="content-card-body" style="padding: 14px 18px; display: flex; align-items: center; gap: 12px;">
+                            ${getIcon('file-text')}
+                            <div style="flex: 1;">
+                                <strong style="font-size: 0.9rem;">${w.name}</strong>
+                                <span class="badge ${w.status.badge}" style="margin-left: 8px;">${w.status.label}</span>
+                            </div>
+                            <a href="my-profile.html" class="btn btn-small btn-ghost">Update</a>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            ` : ''}
+
+            ${upcomingAccepted.length === 0 && pendingInvitations.length === 0 ? `
+            <div class="content-card" style="margin-bottom: 24px; border-left: 4px solid var(--primary); background: rgba(5, 150, 105,0.03);">
+                <div class="content-card-body" style="padding: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--dark); margin-bottom: 6px;">Get started with GPRN</h3>
+                        <p style="font-size: 0.9rem; color: var(--dark-600); line-height: 1.6;">Set your availability so practices can find and invite you. Then complete your profile and set your rates.</p>
+                    </div>
+                    <a href="my-calendar.html" class="btn btn-primary btn-large">Set Your Availability</a>
+                </div>
+            </div>
+            ` : ''}
+
+            <div class="dash-stats-row">
+                ${renderStatCard('calendar', 'Upcoming Sessions', upcomingAccepted.length, null, 'rgba(5, 150, 105,0.1)')}
+                ${renderStatCard('mail', 'Pending Shifts', pendingInvitations.length, null, 'rgba(245,158,11,0.15)')}
+                ${renderStatCard('pound', "This Month's Earnings", formatCurrency(monthEarnings), null, 'rgba(34, 197, 94,0.15)')}
+                <div onclick="showReliabilityBreakdown()" style="cursor:pointer;" role="button" tabindex="0" aria-label="View reliability score breakdown">
+                ${renderStatCard('activity', 'Booking Reliability', reliability + '%', null, 'rgba(11, 15, 25,0.08)', 'Click for details')}
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2>Upcoming Sessions</h2>
+                        <a href="my-calendar.html" class="btn btn-ghost btn-small">View Calendar</a>
+                    </div>
+                    <div class="content-card-body">
+                        <div id="upcomingSessionsList"></div>
+                        <div id="upcomingSessionsPager" style="display:none; justify-content:center; align-items:center; gap:12px; margin-top:12px;">
+                            <button onclick="pageUpcoming(-1)" id="upcomingPrev" class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors" style="cursor:pointer;"><i class="ph-bold ph-caret-left text-sm"></i></button>
+                            <span id="upcomingPageInfo" style="font-size:0.82rem; font-weight:600; color:var(--dark-600);"></span>
+                            <button onclick="pageUpcoming(1)" id="upcomingNext" class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors" style="cursor:pointer;"><i class="ph-bold ph-caret-right text-sm"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2>Earnings (Last 6 Months)</h2>
+                    </div>
+                    <div class="content-card-body">
+                        <div class="bar-chart">
+                            ${earningsData.map((e, idx) => `
+                                <div class="bar-chart-item" onclick="showMonthDetail(${idx})" style="cursor: pointer;" title="Click to view ${e.fullLabel} details">
+                                    <div class="bar-chart-value">${e.value > 0 ? formatCurrency(e.value) : '-'}</div>
+                                    <div class="bar-chart-bar" style="height: ${e.value > 0 ? Math.max((e.value / maxEarning) * 120, 4) : 4}px;"></div>
+                                    <div class="bar-chart-label">${e.label}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            ${pendingInvitations.length > 0 ? `
+            <div class="content-card" style="margin-top: 8px;">
+                <div class="content-card-header">
+                    <h2>Pending Shifts</h2>
+                    <a href="available-shifts.html" class="btn btn-ghost btn-small">View All</a>
+                </div>
+                <div class="content-card-body">
+                    ${pendingInvitations.slice(0, 5).map(offer => `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+                            <div>
+                                <strong style="font-size: 0.9rem;">${offer.practiceName}</strong>
+                                <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${DateUtils.format(offer.sessionDate || offer.shiftDate, 'medium')} &bull; ${offer.sessionType}</span>
+                                <span style="font-size: 0.85rem; color: var(--primary); margin-left: 8px;">${formatCurrency(offer.proposedRate || 0)}</span>
+                            </div>
+                            <a href="shift-detail.html?id=${offer.id}" class="btn btn-primary btn-small">
+                                ${getIcon('eye')} Review
+                            </a>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+
+            ${needsConfirmation.length > 0 ? `
+            <div class="content-card" style="margin-top: 8px;">
+                <div class="content-card-header">
+                    <h2>Awaiting Practice Confirmation</h2>
+                    <span class="badge badge-warning">${needsConfirmation.length}</span>
+                </div>
+                <div class="content-card-body">
+                    ${needsConfirmation.slice(0, 5).map(offer => `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+                            <div>
+                                <strong style="font-size: 0.9rem;">${offer.practiceName}</strong>
+                                <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${DateUtils.format(offer.sessionDate || offer.shiftDate, 'medium')} &bull; ${offer.sessionType}</span>
+                            </div>
+                            <span class="badge badge-warning">Awaiting confirmation</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+
+            ${needsFeedback.length > 0 ? `
+            <div class="content-card" style="margin-top: 8px;">
+                <div class="content-card-header">
+                    <h2>Leave Feedback</h2>
+                    <span class="badge badge-info">${needsFeedback.length}</span>
+                </div>
+                <div class="content-card-body">
+                    ${needsFeedback.slice(0, 5).map(offer => `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+                            <div>
+                                <strong style="font-size: 0.9rem;">${offer.practiceName}</strong>
+                                <span style="font-size: 0.85rem; color: var(--dark-600); margin-left: 8px;">${DateUtils.format(offer.sessionDate || offer.shiftDate, 'medium')} &bull; ${offer.sessionType}</span>
+                            </div>
+                            <button class="btn btn-secondary btn-small" onclick="leaveFeedback('${offer.id}', '${offer.practiceId}')">
+                                ${getIcon('award')} Rate
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+
+            <div class="grid-2" style="margin-top: 8px;">
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2>Recent Notifications</h2>
+                    </div>
+                    <div class="content-card-body">
+                        <div id="notifList"></div>
+                        <div id="notifPager" style="display:none; justify-content:center; align-items:center; gap:12px; margin-top:12px;">
+                            <button onclick="pageNotifs(-1)" id="notifPrev" class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors" style="cursor:pointer;"><i class="ph-bold ph-caret-left text-sm"></i></button>
+                            <span id="notifPageInfo" style="font-size:0.82rem; font-weight:600; color:var(--dark-600);"></span>
+                            <button onclick="pageNotifs(1)" id="notifNext" class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors" style="cursor:pointer;"><i class="ph-bold ph-caret-right text-sm"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2>Quick Actions</h2>
+                    </div>
+                    <div class="content-card-body">
+                        <div class="quick-actions">
+                            <a href="available-shifts.html" class="quick-action-btn">
+                                ${getIcon('mail')}
+                                <span>View Invitations</span>
+                            </a>
+                            <a href="my-calendar.html" class="quick-action-btn">
+                                ${getIcon('calendar')}
+                                <span>View Calendar</span>
+                            </a>
+                            <a href="messages.html" class="quick-action-btn" style="position: relative;">
+                                ${getIcon('mail')}
+                                <span>Messages${unreadMsgCount > 0 ? ' (' + unreadMsgCount + ')' : ''}</span>
+                            </a>
+                            <a href="my-rates.html" class="quick-action-btn">
+                                ${getIcon('pound')}
+                                <span>Update Rates</span>
+                            </a>
+                            <a href="my-profile.html" class="quick-action-btn">
+                                ${getIcon('user')}
+                                <span>View Profile</span>
+                            </a>
+                            <a href="my-invoices.html" class="quick-action-btn">
+                                ${getIcon('pound')}
+                                <span>Invoices</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Useful Numbers & Referral Pathways -->
+            <div class="content-card" style="margin-top: 24px; border-left: 3px solid var(--primary);">
+                <div class="content-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>${getIcon('phone')} Useful Numbers & Referral Pathways</h2>
+                    <a href="links-resources.html#referral-pathways" class="btn btn-ghost btn-small">View All</a>
+                </div>
+                <div class="content-card-body">
+                    <p style="font-size: 0.85rem; color: var(--dark-600); margin-bottom: 12px;">Quick access to key Wales-wide numbers for locum sessions.</p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px;">
+                        <div style="padding: 10px 14px; background: var(--gray-50); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div><strong style="font-size: 0.85rem;">NHS 111 Wales</strong><br><span style="font-size: 0.78rem; color: var(--dark-600);">Out-of-hours advice</span></div>
+                            <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem;">111</span>
+                        </div>
+                        <div style="padding: 10px 14px; background: var(--gray-50); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div><strong style="font-size: 0.85rem;">Mental Health Crisis</strong><br><span style="font-size: 0.78rem; color: var(--dark-600);">C.A.L.L. Helpline (24/7)</span></div>
+                            <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem;">0800 132 737</span>
+                        </div>
+                        <div style="padding: 10px 14px; background: var(--gray-50); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div><strong style="font-size: 0.85rem;">Safeguarding</strong><br><span style="font-size: 0.78rem; color: var(--dark-600);">Wales Safeguarding</span></div>
+                            <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem;">0808 100 2500</span>
+                        </div>
+                        <div style="padding: 10px 14px; background: var(--gray-50); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <div><strong style="font-size: 0.85rem;">Poison Information</strong><br><span style="font-size: 0.78rem; color: var(--dark-600);">NPIS (24/7)</span></div>
+                            <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem;">0344 892 0111</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // ===== PAGINATION: Upcoming Sessions =====
+        var _upcomingPage = 0;
+        var _upcomingPageSize = 4;
+        var _isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+
+        function renderUpcomingSessions() {
+            var el = document.getElementById('upcomingSessionsList');
+            var pager = document.getElementById('upcomingSessionsPager');
+            if (!el) return;
+            if (upcomingShifts.length === 0) {
+                el.innerHTML = renderEmptyState('calendar', 'No upcoming sessions', 'You have no confirmed sessions coming up. Check your invitations for new offers from practices.', 'View Invitations', 'available-shifts.html');
+                pager.style.display = 'none';
+                return;
+            }
+            var start = _upcomingPage * _upcomingPageSize;
+            var page = upcomingShifts.slice(start, start + _upcomingPageSize);
+            var totalPages = Math.ceil(upcomingShifts.length / _upcomingPageSize);
+
+            el.innerHTML = page.map(function(offer) {
+                var practice = data.practices.find(function(p) { return p.id === offer.practiceId; });
+                var phone = practice ? (practice.phone || practice.contactPhone || '') : '';
+                var mobileBtns = (_isMobile && phone) ? '<div style="display:flex;gap:8px;margin-top:10px;">'
+                    + '<a href="tel:' + phone + '" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--success);color:white;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;">' + getIcon('phone') + ' Call</a>'
+                    + '<a href="sms:' + phone + '" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--primary);color:white;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;">' + getIcon('chat-circle-text') + ' Text</a>'
+                    + '</div>' : '';
+                return '<div class="shift-card-full" style="margin-bottom: 12px;">'
+                    + '<div class="shift-card-header">'
+                    + '<div>'
+                    + '<h3 class="shift-card-title"><a href="practice-profile-view.html?id=' + offer.practiceId + '" style="color:var(--dark);text-decoration:none;font-weight:700;" onmouseover="this.style.color=\'var(--primary)\';this.style.textDecoration=\'underline\'" onmouseout="this.style.color=\'var(--dark)\';this.style.textDecoration=\'none\'">' + offer.practiceName + '</a></h3>'
+                    + '<p class="shift-card-location">' + (offer.healthBoard || '') + '</p>'
+                    + '</div>'
+                    + '<div class="shift-card-badges">'
+                    + '<span class="badge badge-success">' + (offer.status === 'confirmed' ? 'Confirmed' : 'Accepted') + '</span>'
+                    + '<span class="badge badge-primary">' + offer.sessionType + '</span>'
+                    + '</div></div>'
+                    + '<div class="shift-card-details">'
+                    + '<div class="shift-card-detail">' + getIcon('calendar') + ' <span>' + DateUtils.format(offer.sessionDate || offer.shiftDate, 'full') + '</span></div>'
+                    + '<div class="shift-card-detail">' + getIcon('clock') + ' <span>' + offer.startTime + ' - ' + offer.endTime + '</span></div>'
+                    + '</div>'
+                    + mobileBtns
+                    + '</div>';
+            }).join('');
+
+            if (totalPages > 1) {
+                pager.style.display = 'flex';
+                document.getElementById('upcomingPageInfo').textContent = (_upcomingPage + 1) + ' / ' + totalPages;
+                document.getElementById('upcomingPrev').style.opacity = _upcomingPage === 0 ? '0.4' : '1';
+                document.getElementById('upcomingPrev').style.pointerEvents = _upcomingPage === 0 ? 'none' : 'auto';
+                document.getElementById('upcomingNext').style.opacity = _upcomingPage >= totalPages - 1 ? '0.4' : '1';
+                document.getElementById('upcomingNext').style.pointerEvents = _upcomingPage >= totalPages - 1 ? 'none' : 'auto';
+            } else {
+                pager.style.display = 'none';
+            }
+        }
+        window.pageUpcoming = function(dir) {
+            var totalPages = Math.ceil(upcomingShifts.length / _upcomingPageSize);
+            _upcomingPage = Math.max(0, Math.min(totalPages - 1, _upcomingPage + dir));
+            renderUpcomingSessions();
+        };
+        renderUpcomingSessions();
+
+        // ===== PAGINATION: Notifications =====
+        var _notifPage = 0;
+        var _notifPageSize = 4;
+
+        function getNotifDotColor(type) {
+            if (['offer_accepted','booking_confirmed','payment_received','payment_confirmed','revision_approved'].includes(type)) return 'var(--success)';
+            if (['shift_cancelled','cancellation','no_show','offer_withdrawn','invoice_disputed','revision_rejected','invoice_overdue','payment_reminder'].includes(type)) return 'var(--danger)';
+            if (['payment_awaiting_confirmation','counter_offer'].includes(type)) return 'var(--warning)';
+            if (['new_offer','offer_received'].includes(type)) return 'var(--primary)';
+            return 'var(--coral)';
+        }
+
+        function renderNotifications() {
+            var el = document.getElementById('notifList');
+            var pager = document.getElementById('notifPager');
+            if (!el) return;
+            if (notifications.length === 0) {
+                el.innerHTML = '<p style="color: var(--dark-600); font-size: 0.88rem;">No notifications.</p>';
+                pager.style.display = 'none';
+                return;
+            }
+            var start = _notifPage * _notifPageSize;
+            var page = notifications.slice(start, start + _notifPageSize);
+            var totalPages = Math.ceil(notifications.length / _notifPageSize);
+
+            el.innerHTML = page.map(function(n) {
+                return '<div class="notif-item">'
+                    + '<div class="notif-dot ' + (n.read ? 'read' : 'unread') + '" style="background:' + getNotifDotColor(n.type) + ';"></div>'
+                    + '<div>'
+                    + '<div class="notif-title">' + n.title + '</div>'
+                    + '<div class="notif-message">' + n.message + '</div>'
+                    + '<div class="notif-time">' + DateUtils.relative(n.date) + '</div>'
+                    + '</div></div>';
+            }).join('');
+
+            if (totalPages > 1) {
+                pager.style.display = 'flex';
+                document.getElementById('notifPageInfo').textContent = (_notifPage + 1) + ' / ' + totalPages;
+                document.getElementById('notifPrev').style.opacity = _notifPage === 0 ? '0.4' : '1';
+                document.getElementById('notifPrev').style.pointerEvents = _notifPage === 0 ? 'none' : 'auto';
+                document.getElementById('notifNext').style.opacity = _notifPage >= totalPages - 1 ? '0.4' : '1';
+                document.getElementById('notifNext').style.pointerEvents = _notifPage >= totalPages - 1 ? 'none' : 'auto';
+            } else {
+                pager.style.display = 'none';
+            }
+        }
+        window.pageNotifs = function(dir) {
+            var totalPages = Math.ceil(notifications.length / _notifPageSize);
+            _notifPage = Math.max(0, Math.min(totalPages - 1, _notifPage + dir));
+            renderNotifications();
+        };
+        renderNotifications();
+
+        // Add barred practices section if applicable
+        (function() {
+            try {
+                if (typeof BarredList !== 'undefined' && typeof BarredList.getBarredPracticesForLocum === 'function') {
+                    var barredAt = BarredList.getBarredPracticesForLocum(session.id);
+                    if (barredAt && barredAt.length > 0) {
+                        var barredHtml = '<div class="content-card" style="margin-top:24px;border-left:3px solid var(--danger);">'
+                            + '<div class="content-card-header"><h2>Practice Restrictions</h2></div>'
+                            + '<div class="content-card-body">'
+                            + '<p style="font-size:0.85rem;color:var(--dark-600);margin-bottom:12px;">You are currently restricted from working with the following practices:</p>';
+                        barredAt.forEach(function(b) {
+                            barredHtml += '<div style="padding:8px 12px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;">'
+                                + '<div><strong>' + (b.practiceName || 'Unknown Practice') + '</strong><br><span style="font-size:0.8rem;color:var(--dark-600);">Reason: ' + (b.reason || 'Not specified') + '</span></div>'
+                                + '<span class="badge badge-danger">Restricted</span></div>';
+                        });
+                        barredHtml += '<p style="font-size:0.8rem;color:var(--dark-600);margin-top:12px;">If you believe this is an error, contact <a href="mailto:support@gprn.wales">support@gprn.wales</a> to request a review.</p></div></div>';
+                        pageContent.innerHTML += barredHtml;
+                    }
+                }
+            } catch(e) {
+                // BarredList method not available yet, skip
+            }
+        })();
+
+        function showReliabilityBreakdown() {
+            var scoreColor = reliability >= 95 ? 'var(--success)' : (reliability >= 70 ? 'var(--warning)' : 'var(--danger)');
+            var scoreLabel = reliability >= 95 ? 'Priority visibility' : (reliability >= 70 ? 'Standard visibility' : 'Reduced visibility');
+            Modal.show({
+                title: 'Reliability Score Breakdown',
+                size: 'medium',
+                body: '<div style="text-align:center;margin-bottom:20px;">'
+                    + '<div style="font-size:3rem;font-weight:800;color:' + scoreColor + ';">' + reliability + '%</div>'
+                    + '<div style="font-size:0.9rem;color:var(--dark-600);">' + scoreLabel + '</div>'
+                    + '</div>'
+                    + '<p style="font-size:0.88rem;color:var(--dark-600);margin-bottom:16px;">Your reliability score affects your visibility to practices when they search for available locums.</p>'
+                    + '<div style="border:1px solid var(--gray-100);border-radius:var(--radius);overflow:hidden;">'
+                    + '<div style="padding:10px 14px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;"><span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--success);margin-right:8px;"></span>95%+ Green</span><span style="font-size:0.85rem;color:var(--dark-600);">Priority visibility</span></div>'
+                    + '<div style="padding:10px 14px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;"><span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--warning);margin-right:8px;"></span>70-94% Orange</span><span style="font-size:0.85rem;color:var(--dark-600);">Standard visibility</span></div>'
+                    + '<div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;"><span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--danger);margin-right:8px;"></span>Below 70% Red</span><span style="font-size:0.85rem;color:var(--dark-600);">Reduced visibility, practices may be warned</span></div>'
+                    + '</div>'
+                    + '<div style="margin-top:16px;padding:14px;background:var(--gray-50);border-radius:var(--radius);">'
+                    + '<h4 style="font-size:0.88rem;font-weight:600;margin-bottom:8px;">How your score changes:</h4>'
+                    + '<div style="font-size:0.85rem;color:var(--dark-600);line-height:1.8;">'
+                    + '<div><span style="color:var(--danger);font-weight:600;">Late cancellations:</span> -5 points</div>'
+                    + '<div><span style="color:var(--danger);font-weight:600;">No-shows:</span> -10 points</div>'
+                    + '<div><span style="color:var(--success);font-weight:600;">Completed sessions:</span> Score gradually recovers</div>'
+                    + '</div></div>'
+            });
+        }
+
+        function leaveFeedback(offerId, practiceId) {
+            Modal.show({
+                title: 'Leave Feedback',
+                size: 'medium',
+                body: `
+                    <div style="margin-bottom: 16px;">
+                        <label class="form-label">Overall Rating</label>
+                        <div id="ratingStars" style="display: flex; gap: 8px; cursor: pointer;">
+                            ${[1,2,3,4,5].map(i => `<svg data-star="${i}" width="28" height="28" viewBox="0 0 24 24" fill="#E2E8F0" stroke="#E2E8F0" stroke-width="1" style="cursor:pointer;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`).join('')}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Comment (optional)</label>
+                        <textarea id="feedbackComment" class="form-textarea" rows="3" placeholder="How was your experience?"></textarea>
+                    </div>
+                `,
+                footer: `<button class="btn btn-primary" id="submitFeedbackBtn">Submit Feedback</button>`,
+                onOpen: (overlay) => {
+                    let selectedRating = 0;
+                    const stars = overlay.querySelectorAll('#ratingStars svg');
+                    stars.forEach(star => {
+                        star.addEventListener('click', () => {
+                            selectedRating = parseInt(star.dataset.star);
+                            stars.forEach((s, idx) => {
+                                s.setAttribute('fill', idx < selectedRating ? '#14B8A6' : '#E2E8F0');
+                                s.setAttribute('stroke', idx < selectedRating ? '#14B8A6' : '#E2E8F0');
+                            });
+                        });
+                    });
+                    overlay.querySelector('#submitFeedbackBtn').addEventListener('click', () => {
+                        if (selectedRating === 0) {
+                            Toast.show('Please select a rating.', 'warning');
+                            return;
+                        }
+                        const comment = overlay.querySelector('#feedbackComment').value;
+                        FeedbackManager.submit(session.id, practiceId, offerId, { overall: selectedRating }, comment, 'locum');
+                        Modal.close(overlay);
+                        Toast.show('Feedback submitted. Thank you!', 'success');
+                        setTimeout(() => location.reload(), 500);
+                    });
+                }
+            });
+        }
+        // Remove loading screen
+        var loader = document.getElementById('pageLoader');
+        if (loader) loader.remove();
+    </script>
+</body>
+</html>

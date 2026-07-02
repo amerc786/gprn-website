@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -68,6 +68,63 @@
         }
 
         function renderPage() {
+            pageContent.innerHTML = `
+                <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 8px;">
+                    Invitations
+                </h1>
+                <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 20px;">
+                    Review session offers from practices. Accept or decline.
+                </p>
+
+                <div class="filter-bar">
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="filterStatus">
+                            <option value="">All</option>
+                            <option value="viewed">New</option>
+                            <option value="negotiating">Negotiating</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Health Board</label>
+                        <select class="form-select" id="filterHealthBoard">
+                            ${healthBoards.map(hb => `<option value="${hb === 'All Health Boards' ? '' : hb}">${hb}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Session Type</label>
+                        <select class="form-select" id="filterSessionType">
+                            <option value="">Any</option>
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                            <option value="Full Day">Full Day</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-input" id="filterSearch" placeholder="Practice name...">
+                    </div>
+                </div>
+
+                <p style="font-size: 0.88rem; color: var(--dark-600); margin-bottom: 16px;" id="invitationsCount"></p>
+
+                <div id="invitationsList"></div>
+            `;
+
+            // Bind filters
+            ['filterStatus', 'filterHealthBoard', 'filterSessionType'].forEach(id => {
+                document.getElementById(id).addEventListener('change', applyFilters);
+            });
+            var searchTimer = null;
+            document.getElementById('filterSearch').addEventListener('input', function() {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(applyFilters, 300);
+            });
+
+            renderList();
+        }
+
+        function renderList() {
             let invitations = getInvitations();
 
             // Auto-mark sent offers as viewed
@@ -96,64 +153,12 @@
                 );
             }
 
-            pageContent.innerHTML = `
-                <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 8px;">
-                    Invitations
-                </h1>
-                <p style="font-size: 0.9rem; color: var(--dark-600); margin-bottom: 20px;">
-                    Review session offers from practices. Accept or decline.
-                </p>
+            document.getElementById('invitationsCount').innerHTML =
+                `<strong>${invitations.length}</strong> open invitation${invitations.length !== 1 ? 's' : ''}`;
 
-                <div class="filter-bar">
-                    <div class="form-group">
-                        <label class="form-label">Status</label>
-                        <select class="form-select" id="filterStatus">
-                            <option value="">All</option>
-                            <option value="viewed">New</option>
-                                                    </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Health Board</label>
-                        <select class="form-select" id="filterHealthBoard">
-                            ${healthBoards.map(hb => `<option value="${hb === 'All Health Boards' ? '' : hb}">${hb}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Session Type</label>
-                        <select class="form-select" id="filterSessionType">
-                            <option value="">Any</option>
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                            <option value="Full Day">Full Day</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Search</label>
-                        <input type="text" class="form-input" id="filterSearch" placeholder="Practice name...">
-                    </div>
-                </div>
-
-                <p style="font-size: 0.88rem; color: var(--dark-600); margin-bottom: 16px;">
-                    <strong>${invitations.length}</strong> invitation${invitations.length !== 1 ? 's' : ''} awaiting your response
-                </p>
-
-                <div id="invitationsList">
-                    ${invitations.length === 0
-                        ? renderEmptyState('mail', 'No invitations', 'You have no pending invitations from practices. Make sure your availability is up to date so practices can find you.', 'Update Calendar', 'my-calendar.html')
-                        : invitations.map(offer => renderOfferCard(offer)).join('')
-                    }
-                </div>
-            `;
-
-            // Bind filters
-            ['filterStatus', 'filterHealthBoard', 'filterSessionType'].forEach(id => {
-                document.getElementById(id).addEventListener('change', applyFilters);
-            });
-            var searchTimer = null;
-            document.getElementById('filterSearch').addEventListener('input', function() {
-                clearTimeout(searchTimer);
-                searchTimer = setTimeout(applyFilters, 300);
-            });
+            document.getElementById('invitationsList').innerHTML = invitations.length === 0
+                ? renderEmptyState('mail', 'No invitations', 'You have no pending invitations from practices. Make sure your availability is up to date so practices can find you.', 'Update Calendar', 'my-calendar.html')
+                : invitations.map(offer => renderOfferCard(offer)).join('');
         }
 
         function applyFilters() {
@@ -161,7 +166,7 @@
             currentFilter.healthBoard = document.getElementById('filterHealthBoard').value;
             currentFilter.sessionType = document.getElementById('filterSessionType').value;
             currentFilter.search = document.getElementById('filterSearch').value.trim();
-            renderPage();
+            renderList();
         }
 
         // Action handlers called by renderOfferCard
@@ -178,7 +183,7 @@
             } else {
                 Toast.show((result && result.message) || 'Failed to accept offer.', 'error');
             }
-            renderPage();
+            renderList();
         };
 
         window.declineOffer = function(offerId) {
@@ -195,7 +200,7 @@
                         } else {
                             Toast.show((result && result.message) || 'Failed to decline.', 'error');
                         }
-                        renderPage();
+                        renderList();
                     });
                 }
             });
@@ -233,7 +238,7 @@
                         } else {
                             Toast.show((result && result.message) || 'Failed to send counter.', 'error');
                         }
-                        renderPage();
+                        renderList();
                     });
                 }
             });

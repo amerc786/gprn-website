@@ -114,11 +114,11 @@
 </head>
 <body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
 
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-    <script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+    <script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
     </script>
@@ -379,6 +379,12 @@
         const minDate = tomorrow.toISOString().split('T')[0];
         document.getElementById('shiftDate').min = minDate;
 
+        // Pre-fill date from ?date= query param (e.g. dashboard "Add Session" links)
+        const queryDate = new URLSearchParams(window.location.search).get('date');
+        if (queryDate && queryDate >= minDate) {
+            document.getElementById('shiftDate').value = queryDate;
+        }
+
         // Load templates for this practice
         function getTemplates() {
             const data = getMockData();
@@ -468,25 +474,23 @@
             const comments = document.getElementById('comments').value;
             const budgetRate = Number(document.getElementById('budgetRate').value) || null;
 
-            // Check for duplicate session needs on repeat dates
+            // Check for duplicate session needs on all target dates (single and repeat)
             const repeat = document.getElementById('repeatShift').checked;
             const repeatWeeks = repeat ? parseInt(document.getElementById('repeatWeeks').value) : 0;
             const totalSessionsToCreate = 1 + repeatWeeks;
-            if (repeat) {
-                const existingData = getMockData();
-                const existingNeeds = (existingData.sessionNeeds || []).filter(n => n.practiceId === session.id && n.status === 'open');
-                const duplicateDates = [];
-                for (let w = 0; w < totalSessionsToCreate; w++) {
-                    const checkDate = new Date(date);
-                    checkDate.setDate(checkDate.getDate() + (w * 7));
-                    const checkDateStr = checkDate.toISOString().split('T')[0];
-                    const dup = existingNeeds.find(n => n.date === checkDateStr && n.sessionType === sessionType);
-                    if (dup) duplicateDates.push(DateUtils.format(checkDateStr, 'short'));
-                }
-                if (duplicateDates.length > 0) {
-                    Toast.show('Duplicate sessions already exist on: ' + duplicateDates.join(', ') + '. Please review your dates.', 'error');
-                    return;
-                }
+            const existingData = getMockData();
+            const existingNeeds = (existingData.sessionNeeds || []).filter(n => n.practiceId === session.id && n.status === 'open');
+            const duplicateDates = [];
+            for (let w = 0; w < totalSessionsToCreate; w++) {
+                const checkDate = new Date(date);
+                checkDate.setDate(checkDate.getDate() + (w * 7));
+                const checkDateStr = checkDate.toISOString().split('T')[0];
+                const dup = existingNeeds.find(n => n.date === checkDateStr && n.sessionType === sessionType);
+                if (dup) duplicateDates.push(DateUtils.format(checkDateStr, 'short'));
+            }
+            if (duplicateDates.length > 0) {
+                Toast.show('Duplicate sessions already exist on: ' + duplicateDates.join(', ') + '. Please review your dates.', 'error');
+                return;
             }
 
             // Save as template if checked
@@ -558,6 +562,13 @@
                     <a href="find-locums.html" class="btn btn-primary">Find Locums</a>
                 `
             });
+        });
+
+        // Search bar — navigates to find-locums with query
+        document.getElementById('dashSearch').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.value.trim()) {
+                window.location.href = 'find-locums.html?q=' + encodeURIComponent(e.target.value.trim());
+            }
         });
     </script>
 </body>

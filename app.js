@@ -289,7 +289,9 @@ const DateUtils = {
     },
 
     toISO(date) {
-        return date.toISOString().split('T')[0];
+        // Build from local date components — toISOString() is UTC and shifts
+        // to the previous day between 00:00 and 01:00 during BST.
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     },
 
     timeAgo(dateStr) {
@@ -328,10 +330,25 @@ const FormValidator = {
     },
 
     validateField(field) {
+        // Radio groups: "value" is always truthy on the input, so check the group's checked state
+        if (field.type === 'radio') {
+            if (!field.required) return null;
+            const group = field.form ? field.form.querySelectorAll(`input[name="${field.name}"]`) : [field];
+            return Array.from(group).some(r => r.checked) ? null : 'Please select an option';
+        }
+
         const value = field.value.trim();
         const type = field.dataset.validate || field.type;
 
         if (field.required && !value) return 'This field is required';
+
+        // Number inputs: enforce min/max when set
+        if (value && field.type === 'number') {
+            const num = parseFloat(value);
+            if (isNaN(num)) return 'Please enter a valid number';
+            if (field.min !== '' && num < parseFloat(field.min)) return `Must be at least ${field.min}`;
+            if (field.max !== '' && num > parseFloat(field.max)) return `Must be at most ${field.max}`;
+        }
 
         if (value) {
             switch (type) {
@@ -366,6 +383,7 @@ const Toast = {
         if (!this.container) {
             this.container = document.createElement('div');
             this.container.className = 'toast-container';
+            this.container.setAttribute('aria-live', 'polite');
             document.body.appendChild(this.container);
         }
     },
@@ -404,7 +422,7 @@ const Modal = {
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
-            <div class="modal modal-${config.size || 'medium'}">
+            <div class="modal modal-${config.size || 'medium'}" role="dialog" aria-modal="true" aria-label="${sanitizeHTML(config.title || 'Dialog')}">
                 <div class="modal-header">
                     <h3>${config.title}</h3>
                     <button class="modal-close" data-modal-close>&times;</button>
@@ -417,19 +435,23 @@ const Modal = {
         document.body.appendChild(overlay);
         setTimeout(() => overlay.classList.add('modal-visible'), 10);
 
-        overlay.querySelector('[data-modal-close]').addEventListener('click', () => this.close(overlay));
+        overlay.querySelectorAll('[data-modal-close]').forEach(btn => btn.addEventListener('click', () => this.close(overlay)));
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) this.close(overlay);
         });
 
-        // Close on Escape key
+        // Close on Escape key — handler stored on the overlay so close()
+        // always removes it, however the modal was dismissed
         const escHandler = (e) => {
-            if (e.key === 'Escape') {
-                this.close(overlay);
-                document.removeEventListener('keydown', escHandler);
-            }
+            if (e.key === 'Escape') this.close(overlay);
         };
+        overlay._escHandler = escHandler;
         document.addEventListener('keydown', escHandler);
+
+        // Move focus into the modal; restore it on close
+        overlay._prevFocus = document.activeElement;
+        const firstFocusable = overlay.querySelector('input, select, textarea, button:not(.modal-close), [href]');
+        if (firstFocusable) firstFocusable.focus();
 
         if (config.onOpen) config.onOpen(overlay);
         return overlay;
@@ -438,6 +460,13 @@ const Modal = {
     close(overlay) {
         if (!overlay) overlay = document.querySelector('.modal-overlay');
         if (overlay) {
+            if (overlay._escHandler) {
+                document.removeEventListener('keydown', overlay._escHandler);
+                overlay._escHandler = null;
+            }
+            if (overlay._prevFocus && typeof overlay._prevFocus.focus === 'function' && document.contains(overlay._prevFocus)) {
+                overlay._prevFocus.focus();
+            }
             overlay.classList.remove('modal-visible');
             setTimeout(() => overlay.remove(), 300);
         }
@@ -511,6 +540,8 @@ function getStatusBadge(status) {
         pending: 'badge-warning',
         overdue: 'badge-danger',
         disputed: 'badge-info',
+        revised: 'badge-warning',
+        paid_pending: 'badge-info',
         // Legacy
         rejected_by_locum: 'badge-danger'
     };
@@ -536,7 +567,9 @@ function getStatusLabel(status) {
         paid: 'Paid',
         pending: 'Pending',
         overdue: 'Overdue',
-        disputed: 'Disputed'
+        disputed: 'Disputed',
+        revised: 'Under Review',
+        paid_pending: 'Awaiting Confirmation'
     };
     return labels[status] || status;
 }
@@ -789,6 +822,8 @@ const Booking = {
         const offer = DB.Offers.getById(offerId);
         if (!offer) return false;
         if (!['accepted', 'confirmed'].includes(offer.status)) return false;
+        // Backstop: a session cannot be marked complete before the end of its day
+        if (attended && new Date((offer.sessionDate || offer.shiftDate) + 'T23:59:59') > new Date()) return 'too_early';
         if (attended) {
             DB.Offers.update(offerId, { status: 'completed', completedDate: DateUtils.toISO(new Date()), completedBy: completedBy });
             InvoiceManager.generateFromOffer(offer);
@@ -812,8 +847,8 @@ const Booking = {
             return { error: 'already_cancelled', message: 'This booking has already been cancelled.' };
         }
         if (!['accepted', 'confirmed'].includes(offer.status)) return false;
-        const daysBefore = Math.ceil((new Date(offer.sessionDate) - new Date()) / (1000 * 60 * 60 * 24));
-        const lateCancellation = daysBefore < 2;
+        // Late cancellation = within 48 hours of the session day (matches all UI copy)
+        const lateCancellation = (new Date(offer.sessionDate + 'T00:00:00') - new Date()) < 48 * 3600 * 1000;
         DB.Offers.update(offerId, { status: 'cancelled', cancelledBy: cancelledBy, cancelledDate: DateUtils.toISO(new Date()), lateCancellation: lateCancellation });
         DB.SessionNeeds.update(offer.sessionNeedId, { status: 'open' });
         if (cancelledBy === 'locum' && lateCancellation) {
@@ -909,27 +944,24 @@ const Booking = {
         return DB.Offers.getForSessionNeed(needId);
     },
 
-    // Valid state transitions for the new model
-    validTransitions: {
-        'sent': ['viewed', 'withdrawn', 'expired'],
-        'viewed': ['negotiating', 'accepted', 'declined', 'withdrawn', 'expired'],
-        'negotiating': ['accepted', 'declined', 'withdrawn'],
-        'accepted': ['confirmed', 'cancelled'],
-        'confirmed': ['completed', 'no_show', 'cancelled'],
-        'completed': [],
-        'declined': [],
-        'withdrawn': [],
-        'expired': [],
-        'cancelled': [],
-        'no_show': []
-    },
-
-    canTransition(fromStatus, toStatus) {
-        const allowed = this.validTransitions[fromStatus];
-        return allowed ? allowed.includes(toStatus) : false;
+    // Map notification types to the push-preference toggles saved in My Settings.
+    // Unmapped types (and unset preferences) always send.
+    _pushPrefFor(type) {
+        if (['new_offer', 'new_invitation'].includes(type)) return 'pushShifts';
+        if (['offer_accepted', 'offer_declined', 'offer_viewed', 'offer_withdrawn', 'counter_offer', 'rate_agreed', 'booking_confirmed'].includes(type)) return 'pushOffers';
+        if (['payment_reminder', 'leave_feedback'].includes(type)) return 'pushReminders';
+        if (['cancellation', 'no_show', 'late_cancellation', 'invoice_overdue', 'invoice_disputed'].includes(type)) return 'pushUrgent';
+        return null;
     },
 
     addNotification(userId, type, title, message) {
+        // Respect the user's push preferences (default = send when unset)
+        const prefKey = this._pushPrefFor(type);
+        if (prefKey) {
+            const data = getMockData();
+            const prefs = (data.userSettings && data.userSettings[userId]) || {};
+            if (prefs[prefKey] === false) return;
+        }
         DB.Notifications.insert({
             id: 'notif-' + Date.now() + Math.random().toString(36).substr(2, 5),
             userId: userId,
@@ -1002,19 +1034,10 @@ const OnlineStatus = {
     },
 
     formatStatus(userId) {
-        const st = this.getStatus(userId);
-        if (st.online) return { text: 'Online now', online: true };
-        if (!st.lastSeen) return { text: 'Offline', online: false };
-        const d = new Date(st.lastSeen);
-        const now = new Date();
-        const diffMs = now - d;
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        let when;
-        if (diffDays === 0) when = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        else if (diffDays === 1) when = 'yesterday';
-        else if (diffDays < 7) when = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
-        else when = d.toLocaleDateString([], { day: 'numeric', month: 'short' });
-        return { text: 'Last seen ' + when, online: false };
+        // Presence is only tracked in THIS browser's localStorage, so any
+        // status shown for another user on a different device would be
+        // fabricated. Show nothing until presence is server-backed.
+        return { text: '', online: false };
     }
 };
 
@@ -1028,6 +1051,11 @@ const MessageManager = {
     },
 
     canLocumMessage(locumId, practiceId) {
+        // A locum can message a practice that has an active offer/booking with them...
+        const hasActiveOffer = DB.Offers.getForLocum(locumId).some(o =>
+            o.practiceId === practiceId && !['declined', 'withdrawn', 'expired', 'cancelled'].includes(o.status));
+        if (hasActiveOffer) return true;
+        // ...or reply to a practice that messaged them first
         const msgs = DB.Messages.getAll(locumId);
         return msgs.some(m => m.fromId === practiceId && m.toId === locumId);
     },
@@ -1038,7 +1066,7 @@ const MessageManager = {
         if (fromRole === toRole) return { allowed: false, reason: fromRole === 'locum' ? 'GPs cannot message other GPs.' : 'Practices cannot message other practices.' };
         if (fromRole === 'locum') {
             if (!this.canLocumMessage(fromId, toId)) {
-                return { allowed: false, reason: 'You can only reply to messages from practices. You cannot initiate conversations.' };
+                return { allowed: false, reason: 'You can message practices that have sent you an offer, or reply to practices that message you first.' };
             }
         }
         return { allowed: true };
@@ -1149,8 +1177,25 @@ const MessageManager = {
 
 // ---- Email Manager (Simulated) ----
 const EmailManager = {
+    // Map email types to the email-preference toggles saved in My Settings.
+    // Unmapped types (account/security emails) and unset preferences always send.
+    _emailPrefFor(type) {
+        if (!type) return null;
+        if (type.indexOf('cpd') === 0) return 'emailCpd';
+        if (type === 'newsletter') return 'emailNewsletter';
+        if (type === 'new_invitation' || type.indexOf('shift') === 0) return 'emailShiftAlerts';
+        if (/^(offer|booking|payment|invoice|rate|revision|counter|job)/.test(type) || ['cancellation', 'no_show', 'late_cancellation'].includes(type)) return 'emailOfferUpdates';
+        return null;
+    },
+
     send(toUserId, subject, body, type) {
         const data = getMockData();
+        // Respect the recipient's email preferences (default = send when unset)
+        const prefKey = this._emailPrefFor(type);
+        if (prefKey) {
+            const prefs = (data.userSettings && data.userSettings[toUserId]) || {};
+            if (prefs[prefKey] === false) return;
+        }
         if (!data.emailLog) data.emailLog = [];
         const locum = data.locums.find(l => l.id === toUserId);
         const practice = data.practices.find(p => p.id === toUserId);
@@ -1185,10 +1230,11 @@ const InvoiceManager = {
         if (existing.some(i => i.offerId === offer.id)) return;
         const data = getMockData(); // For locum profile lookup
         const locum = data.locums.find(l => l.id === offer.locumId);
+        const locumRates = (locum && locum.rates) || {};
         const rate = offer.agreedRate || offer.proposedRate ||
-            (offer.sessionType === 'Full Day' ? (locum ? locum.rates.fullDay : 0) :
-            offer.sessionType === 'AM' ? (locum ? locum.rates.am : 0) : (locum ? locum.rates.pm : 0));
-        const housecallFee = offer.housecalls ? (offer.housecallRate || (locum ? locum.rates.housecall : 0) || 0) : 0;
+            (offer.sessionType === 'Full Day' ? (locumRates.fullDay || 0) :
+            offer.sessionType === 'AM' ? (locumRates.am || 0) : (locumRates.pm || 0));
+        const housecallFee = offer.housecalls ? (offer.housecallRate || locumRates.housecall || 0) : 0;
         const total = rate + housecallFee;
         const allInvoices = DB.Invoices.getForLocum(offer.locumId).concat(DB.Invoices.getForPractice(offer.practiceId));
         const existingNums = allInvoices.map(i => parseInt((i.invoiceNumber || '').replace('GPRN-', '')) || 0);
@@ -1305,7 +1351,9 @@ const InvoiceManager = {
         const inv = DB.Invoices.getById(invoiceId);
         if (!inv || inv.status !== 'revised') return false;
         const newTotal = inv.revisedTotal;
-        DB.Invoices.update(invoiceId, { total: newTotal, sessionRate: newTotal, status: 'pending', revisedTotal: null });
+        // Keep line items summing to the total: the revised total includes any
+        // housecall fee, so the session rate is the remainder
+        DB.Invoices.update(invoiceId, { total: newTotal, sessionRate: Math.max(0, newTotal - (inv.housecallFee || 0)), status: 'pending', revisedTotal: null });
 
         const threadId = MessageManager._findActiveThread(inv.practiceId, inv.locumId)
             || MessageManager._findActiveThread(inv.locumId, inv.practiceId)
@@ -1348,7 +1396,11 @@ const InvoiceManager = {
     chasePayment(invoiceId) {
         const inv = DB.Invoices.getById(invoiceId);
         if (!inv) return false;
-        DB.Invoices.update(invoiceId, { status: 'overdue' });
+        // Only flip to overdue when the invoice is actually past its due date
+        const isPastDue = inv.dueDate && new Date(inv.dueDate) < new Date();
+        if (isPastDue && inv.status === 'pending') {
+            DB.Invoices.update(invoiceId, { status: 'overdue' });
+        }
 
         const threadId = MessageManager._findActiveThread(inv.locumId, inv.practiceId)
             || MessageManager._findActiveThread(inv.practiceId, inv.locumId)
@@ -1357,13 +1409,13 @@ const InvoiceManager = {
             id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
             threadId, fromId: inv.locumId, toId: inv.practiceId,
             subject: 'Payment Reminder: ' + inv.invoiceNumber,
-            body: `Payment reminder for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) for ${inv.sessionType} session on ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}. Payment was due on ${DateUtils.format(inv.dueDate, 'medium')}. Please review and arrange payment.`,
+            body: `Payment reminder for invoice ${inv.invoiceNumber} (${formatCurrency(inv.total)}) for ${inv.sessionType} session on ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}. Payment ${isPastDue ? 'was' : 'is'} due on ${DateUtils.format(inv.dueDate, 'medium')}. Please review and arrange payment.`,
             shiftId: null, timestamp: new Date().toISOString(), read: false, _deletedFor: [], _invoiceId: inv.id
         });
         Booking.addNotification(inv.practiceId, 'payment_reminder', 'Payment Reminder',
-            `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is overdue. Check your messages.`);
+            `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is ${isPastDue ? 'overdue' : 'awaiting payment'}. Check your messages.`);
         EmailManager.send(inv.practiceId, 'Payment Reminder: ' + inv.invoiceNumber,
-            `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is overdue. Session: ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}, Locum: ${inv.locumName}. Please log in to review.`, 'payment_reminder');
+            `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} is ${isPastDue ? 'overdue' : 'awaiting payment'}. Session: ${DateUtils.format(inv.sessionDate || inv.shiftDate, 'medium')}, Locum: ${inv.locumName}. Please log in to review.`, 'payment_reminder');
         return true;
     },
 
@@ -1464,6 +1516,13 @@ const FeedbackManager = {
             return { error: 'comment_too_long', message: 'Comment must be 200 characters or less.' };
         }
         const offer = DB.Offers.getById(offerId);
+        // Ownership + status guard: only the locum who worked this completed shift may rate it
+        if (!offer || offer.locumId !== locumId || offer.practiceId !== practiceId || offer.status !== 'completed') {
+            return { error: 'invalid_offer', message: 'You can only rate practices for your own completed sessions.' };
+        }
+        if (this.hasReviewed(locumId, offerId)) {
+            return { error: 'already_reviewed', message: 'You have already left feedback for this session.' };
+        }
         DB.Feedback.insert({
             id: 'fb-' + Date.now(),
             fromId: locumId, toId: practiceId, offerId,
@@ -1484,6 +1543,13 @@ const FeedbackManager = {
         const offer = DB.Offers.getById(offerId);
         if (!offer || offer.status !== 'completed') {
             return { error: 'invalid_offer', message: 'Can only report issues on completed shifts.' };
+        }
+        // Ownership guard: only the practice that owns this shift may report the locum who worked it
+        if (offer.practiceId !== practiceId || offer.locumId !== locumId) {
+            return { error: 'not_owner', message: 'You can only report issues on your own shifts.' };
+        }
+        if (this.hasReviewed(practiceId, offerId)) {
+            return { error: 'already_reported', message: 'An issue has already been reported for this shift.' };
         }
         if (issueType === 'late_cancellation') {
             const shiftDate = new Date(offer.sessionDate || offer.shiftDate);

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,15 +7,56 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Account Under Review - GPRN</title>
+
+    <!-- Fonts -->
+    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@800;900&display=swap" rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
     <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Manrope', sans-serif; background: #F8FAFC; color: #0F172A; margin: 0;
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+        }
+        .font-display { font-family: 'Clash Display', sans-serif; }
+
+        /* GPRN logo (same as login) */
+        .gprn-logo { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; justify-content: center; }
+        .gprn-logo-mark {
+            width: 38px; height: 38px; border-radius: 12px; background: #101524;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 1px 2px rgba(16,21,36,0.08);
+        }
+        .gprn-logo-mark span {
+            color: #ffffff; font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 900; font-size: 24px; line-height: 1;
+            letter-spacing: -0.025em; padding-top: 2px;
+        }
+        .gprn-logo-word {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #101524; font-weight: 900; font-size: 32px;
+            line-height: 0.8; letter-spacing: -0.05em;
+            display: inline-flex; align-items: baseline; padding-top: 4px;
+        }
+        .gprn-logo-word::after {
+            content: ''; display: inline-block; width: 9px; height: 9px;
+            background: #0F8B5A; margin-left: 4px; margin-bottom: 3px; align-self: flex-end;
+        }
+
         .status-card {
-            max-width: 520px;
+            width: 100%; max-width: 520px; background: #ffffff;
+            border: 1px solid #E2E8F0; border-radius: 24px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -4px rgba(0,0,0,0.05);
+            padding: 40px 36px;
             text-align: center;
         }
+        @media (max-width: 480px) { .status-card { padding: 32px 24px; } }
+
         .status-icon {
             width: 72px;
             height: 72px;
@@ -23,61 +64,57 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 1.5rem;
+            margin: 28px auto 20px;
         }
         .status-icon.pending {
-            background: linear-gradient(135deg, rgba(5, 150, 105, 0.15), rgba(20, 184, 166, 0.15));
-            color: #059669;
+            background: rgba(15, 139, 90, 0.1);
+            color: #0F8B5A;
         }
         .status-icon.rejected {
-            background: rgba(239, 68, 68, 0.15);
-            color: #EF4444;
+            background: rgba(220, 38, 38, 0.1);
+            color: #DC2626;
         }
-        .status-icon svg {
-            width: 36px;
-            height: 36px;
-        }
+        .status-icon i { font-size: 36px; }
         .status-title {
-            font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+            font-family: 'Clash Display', sans-serif;
             font-size: 1.75rem;
-            font-weight: 800;
+            font-weight: 600;
             color: #0F172A;
-            margin-bottom: 0.75rem;
-            letter-spacing: -0.01em;
+            margin: 0 0 12px;
         }
         .status-lede {
             color: #475569;
-            font-size: 1rem;
+            font-size: 0.95rem;
             line-height: 1.6;
-            margin-bottom: 1.5rem;
+            margin: 0 0 20px;
         }
         .status-email {
             display: inline-block;
-            background: rgba(5, 150, 105, 0.08);
-            border: 1px solid rgba(5, 150, 105, 0.25);
+            background: rgba(15, 139, 90, 0.08);
+            border: 1px solid rgba(15, 139, 90, 0.25);
             color: #047857;
             padding: 0.5rem 1rem;
-            border-radius: 8px;
+            border-radius: 9999px;
             font-weight: 600;
-            font-size: 0.95rem;
-            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            margin-bottom: 24px;
             word-break: break-all;
         }
         .status-info {
             background: #F8FAFC;
             border: 1px solid #E2E8F0;
-            border-radius: 12px;
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 24px;
             text-align: left;
         }
         .status-info h4 {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 700;
             color: #0F172A;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 0.75rem;
+            margin: 0 0 10px;
         }
         .status-info ul {
             list-style: none;
@@ -93,30 +130,30 @@
             line-height: 1.5;
             padding: 0.35rem 0;
         }
-        .status-info li svg {
+        .status-info li i {
             flex-shrink: 0;
             margin-top: 2px;
-            color: #14B8A6;
+            color: #0F8B5A;
         }
         .reason-box {
-            background: rgba(239, 68, 68, 0.06);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 12px;
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
+            background: rgba(220, 38, 38, 0.05);
+            border: 1px solid rgba(220, 38, 38, 0.25);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 24px;
             text-align: left;
         }
         .reason-box h4 {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 700;
             color: #B91C1C;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
+            margin: 0 0 8px;
         }
         .reason-box p {
             color: #334155;
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             line-height: 1.5;
             margin: 0;
         }
@@ -126,30 +163,39 @@
             justify-content: center;
             flex-wrap: wrap;
         }
+        .btn-primary {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 8px; padding: 13px 24px; border-radius: 9999px;
+            background: #101524; color: #ffffff; font-weight: 600; font-size: 0.92rem;
+            border: none; cursor: pointer; font-family: inherit; text-decoration: none;
+            transition: transform .15s, background .15s;
+        }
+        .btn-primary:hover { background: #1E293B; transform: translateY(-1px); }
+        .btn-ghost {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 13px 24px; border-radius: 9999px; background: transparent;
+            color: #475569; font-weight: 600; font-size: 0.92rem;
+            border: 1px solid #E2E8F0; cursor: pointer; font-family: inherit;
+            text-decoration: none; transition: background .15s;
+        }
+        .btn-ghost:hover { background: #F1F5F9; }
+
+        @keyframes rise { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
+        .rise { animation: rise .6s cubic-bezier(0.16, 1, 0.3, 1) both; }
     </style>
 </head>
 <body>
-    <div class="auth-page">
-        <div class="hero-bg-shapes">
-            <div class="shape shape-1"></div>
-            <div class="shape shape-2"></div>
-            <div class="shape shape-3"></div>
-        </div>
+    <div class="status-card rise">
+        <a href="index.html" class="gprn-logo">
+            <span class="gprn-logo-mark"><span>G</span></span>
+            <span class="gprn-logo-word">PRN</span>
+        </a>
 
-        <div class="auth-card status-card">
-            <div class="auth-logo">
-                <a href="index.html" class="logo">
-                    <span class="logo-icon">GP</span><span class="logo-text">RN</span>
-                </a>
-                <p>The Right GP, Right Now</p>
-            </div>
+        <div id="stateContainer"></div>
 
-            <div id="stateContainer"></div>
-
-            <div class="status-actions">
-                <a href="index.html" class="btn btn-ghost">Back to Home</a>
-                <a href="login.html" class="btn btn-primary">Go to Login</a>
-            </div>
+        <div class="status-actions" id="statusActions">
+            <a href="index.html" class="btn-ghost">Back to Home</a>
+            <a href="login.html" class="btn-primary">Go to Login</a>
         </div>
     </div>
 
@@ -162,6 +208,7 @@
             var reason = params.get('reason') || '';
 
             var container = document.getElementById('stateContainer');
+            var actions = document.getElementById('statusActions');
 
             if (status === 'rejected') {
                 var reasonHtml = '';
@@ -173,7 +220,7 @@
                 }
                 container.innerHTML = ''
                     + '<div class="status-icon rejected">'
-                    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+                    + '<i class="ph ph-x-circle"></i>'
                     + '</div>'
                     + '<h1 class="status-title">Your application was not approved</h1>'
                     + '<p class="status-lede">We have reviewed your registration and are unable to activate your account at this time.</p>'
@@ -182,15 +229,19 @@
                     + '<div class="status-info">'
                     +   '<h4>What now?</h4>'
                     +   '<ul>'
-                    +     '<li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>If you believe this is a mistake, please contact support.</li>'
-                    +     '<li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>You will not be able to log in with this account.</li>'
+                    +     '<li><i class="ph ph-check"></i>If you believe this is a mistake, please contact support.</li>'
+                    +     '<li><i class="ph ph-check"></i>You will not be able to log in with this account.</li>'
                     +   '</ul>'
                     + '</div>';
+                // Login is impossible for a rejected account — don't offer it.
+                actions.innerHTML = ''
+                    + '<a href="mailto:support@gprn.wales" class="btn-ghost"><i class="ph ph-envelope-simple"></i> Contact support</a>'
+                    + '<a href="index.html" class="btn-primary">Back to Home</a>';
             } else {
                 // Default: pending
                 container.innerHTML = ''
                     + '<div class="status-icon pending">'
-                    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+                    + '<i class="ph ph-clock"></i>'
                     + '</div>'
                     + '<h1 class="status-title">Your account is under review</h1>'
                     + '<p class="status-lede">Thanks for registering with GPRN. Every new account is reviewed manually by our team to keep the platform trusted and safe for locum GPs and practices.</p>'
@@ -198,9 +249,9 @@
                     + '<div class="status-info">'
                     +   '<h4>What happens next</h4>'
                     +   '<ul>'
-                    +     '<li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>We\'ll review your registration details.</li>'
-                    +     '<li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>You\'ll receive an email confirming the outcome.</li>'
-                    +     '<li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Once approved, you can log in and start using the platform.</li>'
+                    +     '<li><i class="ph ph-check"></i>We\'ll review your registration details.</li>'
+                    +     '<li><i class="ph ph-check"></i>You\'ll receive an email confirming the outcome.</li>'
+                    +     '<li><i class="ph ph-check"></i>Once approved, you can log in and start using the platform.</li>'
                     +   '</ul>'
                     + '</div>';
             }

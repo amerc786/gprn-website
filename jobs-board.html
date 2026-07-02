@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-<script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+<script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage()) throw new Error('Auth required');
 
@@ -50,9 +50,18 @@
         const data = getMockData();
 
         function renderJobs(filterBoard) {
+            const allJobs = data.jobs || [];
             const jobs = filterBoard
-                ? data.jobs.filter(j => j.healthBoard === filterBoard)
-                : data.jobs;
+                ? allJobs.filter(j => j.healthBoard === filterBoard)
+                : allJobs;
+
+            // Jobs this user has already expressed interest in (fresh read so filtering keeps the state)
+            const session = Auth.getSession();
+            const appliedJobIds = new Set(
+                (getMockData().jobApplications || [])
+                    .filter(a => a.userId === session.id)
+                    .map(a => a.jobId)
+            );
 
             // Group by health board
             const grouped = {};
@@ -62,7 +71,7 @@
             });
 
             // Get all health boards for filter
-            const allBoards = [...new Set(data.jobs.map(j => j.healthBoard))].sort();
+            const allBoards = [...new Set(allJobs.map(j => j.healthBoard))].sort();
 
             let html = `
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
@@ -87,7 +96,9 @@
                     </h3>`;
 
                     grouped[board].forEach(job => {
-                        const isClosed = new Date(job.closingDate) < new Date();
+                        // Deadline is inclusive: the job stays open until the end of its closing date
+                        const isClosed = new Date(job.closingDate).setHours(23, 59, 59, 999) < Date.now();
+                        const hasApplied = appliedJobIds.has(job.id);
                         const typeBadgeClass = job.type === 'Partnership' ? 'badge-coral' :
                                                job.type === 'Permanent' ? 'badge-success' :
                                                job.type === 'Maternity Cover' ? 'badge-warning' : 'badge-info';
@@ -131,9 +142,9 @@
                                     </a>
                                     <span style="font-size:0.8rem;color:var(--dark-600);">Contact for full job specification</span>
                                 </div>
-                                <button class="btn btn-primary btn-small" id="job-interest-${job.id}" ${isClosed ? 'disabled style="opacity: 0.5; pointer-events: none;"' : ''} onclick="expressInterest('${job.id}')">
+                                <button class="btn btn-primary btn-small" id="job-interest-${job.id}" ${isClosed || hasApplied ? `disabled style="opacity: ${hasApplied ? '0.7' : '0.5'}; pointer-events: none;"` : ''} onclick="expressInterest('${job.id}')">
                                     ${getIcon('mail')}
-                                    Enquire About Role
+                                    ${hasApplied ? 'Interest Sent' : 'Enquire About Role'}
                                 </button>
                             </div>
                         </div>`;
@@ -179,9 +190,16 @@
                     overlay.querySelector('#submitInterestBtn').addEventListener('click', function() {
                         var coverMsg = overlay.querySelector('#jobCoverMsg').value.trim();
                         if (!coverMsg) { Toast.show('Please include a message introducing yourself.', 'warning'); return; }
+                        this.disabled = true;
 
                         var freshData = getMockData();
                         if (!freshData.jobApplications) freshData.jobApplications = [];
+                        var duplicate = freshData.jobApplications.some(function(a) { return a.jobId === jobId && a.userId === session.id; });
+                        if (duplicate) {
+                            Modal.close(overlay);
+                            Toast.show('You have already expressed interest in this position.', 'info');
+                            return;
+                        }
                         freshData.jobApplications.push({
                             id: 'jobapp-' + Date.now(),
                             jobId: jobId,
@@ -192,25 +210,25 @@
                             status: 'sent'
                         });
 
-                        // Create notification for the practice
-                        if (!freshData.notifications) freshData.notifications = [];
-                        freshData.notifications.push({
-                            userId: job.practiceId || job.contactEmail,
-                            type: 'job_interest',
-                            title: 'New Job Interest',
-                            message: session.name + ' has expressed interest in the "' + job.title + '" position.',
-                            date: new Date().toISOString(),
-                            read: false
-                        });
-
                         saveMockData(freshData);
 
-                        // Log email to practice contact
-                        EmailManager.send(job.practiceId || session.id, 'Job Interest: ' + job.title,
-                            session.name + ' has expressed interest in the "' + job.title + '" position at ' + job.practiceName + '. Cover message: ' + coverMsg,
-                            'job_interest');
+                        // Only notify in-app when the job is linked to a real practice account
+                        var practiceUser = job.practiceId ? freshData.practices.find(function(p) { return p.id === job.practiceId; }) : null;
                         Modal.close(overlay);
-                        Toast.show('Your interest has been sent to ' + job.practiceName + '!', 'success');
+                        if (practiceUser) {
+                            Booking.addNotification(job.practiceId, 'job_interest', 'New Job Interest',
+                                session.name + ' has expressed interest in the "' + job.title + '" position.');
+                            EmailManager.send(job.practiceId, 'Job Interest: ' + job.title,
+                                session.name + ' has expressed interest in the "' + job.title + '" position at ' + job.practiceName + '. Cover message: ' + coverMsg,
+                                'job_interest');
+                            Toast.show('Your interest has been sent to ' + job.practiceName + '!', 'success');
+                        } else {
+                            // Curated listing with no GPRN account — open the applicant's email app instead
+                            window.location.href = 'mailto:' + job.contactEmail
+                                + '?subject=' + encodeURIComponent('Job Interest: ' + job.title)
+                                + '&body=' + encodeURIComponent(coverMsg);
+                            Toast.show('Interest saved. Your email app has been opened so you can contact ' + job.practiceName + ' directly.', 'info');
+                        }
 
                         var btn = document.getElementById('job-interest-' + jobId);
                         if (btn) {
@@ -224,24 +242,6 @@
         }
 
         renderJobs(null);
-
-        // Mark already-applied jobs
-        (function() {
-            var currentData = getMockData();
-            var session = Auth.getSession();
-            if (currentData.jobApplications) {
-                currentData.jobApplications.forEach(function(app) {
-                    if (app.userId === session.id) {
-                        var btn = document.getElementById('job-interest-' + app.jobId);
-                        if (btn) {
-                            btn.textContent = 'Interest Sent';
-                            btn.disabled = true;
-                            btn.style.opacity = '0.7';
-                        }
-                    }
-                });
-            }
-        })();
     </script>
 </body>
 </html>

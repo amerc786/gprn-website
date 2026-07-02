@@ -41,8 +41,21 @@
         return h;
     }
 
+    // Short-lived GET cache: collapses the many repeated synchronous reads
+    // fired during a single render pass (each one blocks the main thread for
+    // a full network round-trip). Invalidated by any write and by a short TTL
+    // so pages that poll still pick up fresh data.
+    var _getCache = {};
+    var GET_CACHE_TTL = 3000;
+
     // Synchronous REST helper (matches existing pattern in supabase-client.js)
     function _req(method, path, payload, extraHeaders) {
+        if (method === 'GET') {
+            var cached = _getCache[path];
+            if (cached && (Date.now() - cached.at) < GET_CACHE_TTL) return cached.res;
+        } else {
+            _getCache = {}; // any write invalidates cached reads
+        }
         var xhr = new XMLHttpRequest();
         xhr.open(method, SUPABASE_URL + path, false);
         var hdrs = _headers(extraHeaders);
@@ -54,11 +67,16 @@
         }
         var body = null;
         try { body = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch(e) { body = xhr.responseText; }
-        return { status: xhr.status, body: body };
+        var result = { status: xhr.status, body: body };
+        if (method === 'GET' && xhr.status === 200) {
+            _getCache[path] = { at: Date.now(), res: result };
+        }
+        return result;
     }
 
     // Async REST helper for writes (non-blocking)
     function _reqAsync(method, path, payload, extraHeaders) {
+        _getCache = {}; // writes invalidate cached reads
         var hdrs = _headers(extraHeaders);
         fetch(SUPABASE_URL + path, {
             method: method,
@@ -176,7 +194,9 @@
             });
             if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/messages?or=(from_id.eq.' + userId + ',to_id.eq.' + userId + ')&order=timestamp.asc');
-            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) {
+                return _toCamelArray(res.body).filter(function(m) { return !(m._deletedFor || []).includes(userId); });
+            }
             return blobResult;
         },
 
@@ -186,7 +206,9 @@
             });
             if (!_hasAuth()) return blobResult;
             var res = _req('GET', '/rest/v1/messages?thread_id=eq.' + encodeURIComponent(threadId) + '&order=timestamp.asc');
-            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return _toCamelArray(res.body);
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) {
+                return _toCamelArray(res.body).filter(function(m) { return !(m._deletedFor || []).includes(userId); });
+            }
             return blobResult;
         },
 
@@ -241,8 +263,10 @@
                 return m.toId === userId && !m.read && !(m._deletedFor || []).includes(userId);
             }).length;
             if (!_hasAuth()) return blobCount;
-            var res = _req('GET', '/rest/v1/messages?to_id=eq.' + userId + '&read=eq.false&select=id', { 'Prefer': 'count=exact' });
-            if (res.status === 200 && Array.isArray(res.body) && res.body.length) return res.body.length;
+            var res = _req('GET', '/rest/v1/messages?to_id=eq.' + userId + '&read=eq.false&select=id,deleted_for', { 'Prefer': 'count=exact' });
+            if (res.status === 200 && Array.isArray(res.body) && res.body.length) {
+                return res.body.filter(function(m) { return !(m.deleted_for || []).includes(userId); }).length;
+            }
             return blobCount;
         }
     };
@@ -531,6 +555,23 @@
                 return res.body[0][session] || 'none';
             }
             return blobResult;
+        },
+
+        // Set AM+PM for many dates at once: one blob write + one async upsert
+        // (used by the calendar's bulk week/availability tools; ~130x fewer requests)
+        bulkSet: function(locumId, dates, status) {
+            var data = _blobData();
+            if (!data.availability) data.availability = {};
+            if (!data.availability[locumId]) data.availability[locumId] = {};
+            var rows = [];
+            (dates || []).forEach(function(date) {
+                data.availability[locumId][date] = { am: status, pm: status };
+                rows.push({ locum_id: locumId, date: date, am: status, pm: status });
+            });
+            saveMockData(data);
+            if (_hasAuth() && rows.length) {
+                _reqAsync('POST', '/rest/v1/availability', rows, { 'Prefer': 'resolution=merge-duplicates,return=minimal' });
+            }
         }
     };
 

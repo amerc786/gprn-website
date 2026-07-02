@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Leave Feedback - GPRN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Syne"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: { DEFAULT: '#0B0F19', 50: '#141C2F' },
+                        brand: { green: '#059669', mint: '#ECFDF5', dark: '#022C22' },
+                        surface: '#F8F9FA'
+                    },
+                    boxShadow: {
+                        'card': '0 4px 20px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
+                        'subtle': '0 1px 2px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
+    <script>
+        if (!initPage()) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const role = Auth.getRole();
+        const data = getMockData();
+        const pageContent = initAppLayout(role, 'dashboard', 'Leave Feedback');
+
+        const offerId = new URLSearchParams(window.location.search).get('offerId');
+        const offer = data.offers.find(o => o.id === offerId);
+
+        if (!offer) {
+            pageContent.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <h2 style="margin-bottom: 12px;">Offer Not Found</h2>
+                    <p style="color: var(--dark-600); margin-bottom: 20px;">The offer you are looking for could not be found.</p>
+                    <a href="${role === 'locum' ? 'locum-dashboard.html' : 'practice-dashboard.html'}" class="btn btn-primary">Back to Dashboard</a>
+                </div>`;
+            throw new Error('Offer not found');
+        }
+
+        const isLocumReviewing = role === 'locum';
+        const targetId = isLocumReviewing ? offer.practiceId : offer.locumId;
+
+        let targetName = '';
+        if (isLocumReviewing) {
+            const practice = data.practices.find(p => p.id === offer.practiceId);
+            targetName = practice ? practice.practiceName : offer.practiceName;
+        } else {
+            const locum = data.locums.find(l => l.id === offer.locumId);
+            targetName = locum ? `${locum.title} ${locum.firstName} ${locum.lastName}` : 'Unknown Locum';
+        }
+
+        const alreadyReviewed = FeedbackManager.hasReviewed(session.id, offerId);
+        let starRating = 0;
+
+        function renderStarsInput() {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                const fill = i <= starRating ? '#059669' : '#E2E8F0';
+                stars += `<svg onclick="setRating(${i})" width="36" height="36" viewBox="0 0 24 24" fill="${fill}" stroke="${fill}" stroke-width="1" style="cursor:pointer;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+            }
+            return `<div style="display: flex; gap: 4px; align-items: center;">${stars}</div>`;
+        }
+
+        function setRating(value) {
+            starRating = value;
+            render();
+        }
+
+        // GP submits practice rating
+        function submitPracticeRating() {
+            if (starRating === 0) {
+                Toast.show('Please select a star rating.', 'warning');
+                return;
+            }
+            const comment = document.getElementById('feedbackComment').value.trim();
+            if (comment.length > 200) {
+                Toast.show('Feedback must be 200 characters or less.', 'warning');
+                return;
+            }
+            const result = FeedbackManager.ratePractice(session.id, targetId, offerId, starRating, comment);
+            if (result.error) {
+                Toast.show(result.message, 'error');
+                return;
+            }
+            Toast.show('Rating submitted. Thank you!', 'success');
+            setTimeout(() => { window.location.href = 'my-offers.html'; }, 1200);
+        }
+
+        // Practice reports locum issue
+        function reportIssue(issueType) {
+            Modal.show({
+                title: issueType === 'no_show' ? 'Report No-Show' : 'Report Late Cancellation',
+                size: 'small',
+                body: `<p style="color: var(--dark-600); line-height: 1.6;">
+                    ${issueType === 'no_show'
+                        ? `Are you sure you want to report <strong>${targetName}</strong> as a no-show for this shift? This will reduce their reliability score by <strong>10 points</strong>.`
+                        : `Are you sure you want to report <strong>${targetName}</strong> for a late cancellation? This will reduce their reliability score by <strong>5 points</strong>.`
+                    }</p>`,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-danger" id="confirmReport">Confirm Report</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#confirmReport').addEventListener('click', () => {
+                        const result = FeedbackManager.reportLocumIssue(session.id, targetId, offerId, issueType);
+                        Modal.close(overlay);
+                        if (result.error) {
+                            Toast.show(result.message, 'error');
+                            return;
+                        }
+                        Toast.show('Issue reported. The locum has been notified.', 'success');
+                        setTimeout(() => { window.location.href = 'practice-dashboard.html'; }, 1200);
+                    });
+                }
+            });
+        }
+
+        // Check if late cancellation is still allowed (within 24hrs of shift)
+        const shiftDate = new Date(offer.sessionDate || offer.shiftDate);
+        const hoursSinceShift = (new Date() - shiftDate) / (1000 * 60 * 60);
+        const canReportLateCancellation = hoursSinceShift <= 24;
+
+        function render() {
+            const backUrl = isLocumReviewing ? 'my-offers.html' : 'practice-dashboard.html';
+
+            if (alreadyReviewed) {
+                pageContent.innerHTML = `
+                    <a href="${backUrl}" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
+                        ${getIcon('arrow-left')} Back
+                    </a>
+                    <div class="content-card">
+                        <div class="content-card-body" style="text-align: center; padding: 60px 20px;">
+                            <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(34, 197, 94,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                                ${getIcon('check')}
+                            </div>
+                            <h2 style="font-size: 1.4rem; font-weight: 700; margin-bottom: 8px;">Already Submitted</h2>
+                            <p style="font-size: 0.92rem; color: var(--dark-600);">You have already submitted feedback for this shift.</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            const commentVal = document.getElementById('feedbackComment') ? document.getElementById('feedbackComment').value : '';
+            const charCount = commentVal.length;
+
+            // Shift details section (shared)
+            const shiftInfoHtml = `
+                <div class="content-card" style="margin-bottom: 24px;">
+                    <div class="content-card-header"><h2>Shift Details</h2></div>
+                    <div class="content-card-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div>
+                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">${isLocumReviewing ? 'Practice' : 'Locum'}</span>
+                                <p style="font-size: 0.95rem; font-weight: 600; color: var(--dark); margin-top: 4px;">${targetName}</p>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Date</span>
+                                <p style="font-size: 0.95rem; color: var(--dark); margin-top: 4px;">${DateUtils.format(offer.sessionDate || offer.shiftDate, 'full')}</p>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Session Type</span>
+                                <p style="font-size: 0.95rem; color: var(--dark); margin-top: 4px;">${offer.sessionType}</p>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.78rem; font-weight: 600; color: var(--dark-600); text-transform: uppercase; letter-spacing: 0.05em;">Time</span>
+                                <p style="font-size: 0.95rem; color: var(--dark); margin-top: 4px;">${offer.startTime} - ${offer.endTime}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+
+            if (isLocumReviewing) {
+                // GP rates practice: single star rating + 200 char comment
+                pageContent.innerHTML = `
+                    <a href="${backUrl}" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
+                        ${getIcon('arrow-left')} Back to My Bookings
+                    </a>
+                    <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">Rate Practice</h1>
+                    ${shiftInfoHtml}
+                    <div class="content-card" style="margin-bottom: 24px;">
+                        <div class="content-card-header"><h2>Rate ${targetName}</h2></div>
+                        <div class="content-card-body">
+                            <div style="margin-bottom: 20px;">
+                                <label class="form-label" style="margin-bottom: 8px;">Overall Rating</label>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    ${renderStarsInput()}
+                                    <span style="font-size: 1.1rem; font-weight: 700; color: var(--dark);">${starRating > 0 ? starRating + '/5' : ''}</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Feedback (Optional, max 200 characters)</label>
+                                <textarea id="feedbackComment" class="form-input" rows="3" style="resize: vertical;" maxlength="200" placeholder="Share your experience at this practice..." oninput="document.getElementById('charCounter').textContent = this.value.length + '/200'">${commentVal}</textarea>
+                                <span id="charCounter" style="font-size: 0.78rem; color: ${charCount > 180 ? 'var(--danger)' : 'var(--dark-600)'}; float: right; margin-top: 4px;">${charCount}/200</span>
+                            </div>
+                            <button class="btn btn-primary btn-large" onclick="submitPracticeRating()" style="width: 100%; justify-content: center; margin-top: 12px;">
+                                Submit Rating
+                            </button>
+                        </div>
+                    </div>`;
+            } else {
+                // Practice reports locum issue: no-show or late cancellation only
+                pageContent.innerHTML = `
+                    <a href="${backUrl}" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; color: var(--primary); margin-bottom: 24px;">
+                        ${getIcon('arrow-left')} Back to Dashboard
+                    </a>
+                    <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--dark); margin-bottom: 24px;">Report Issue</h1>
+                    ${shiftInfoHtml}
+                    <div class="content-card" style="margin-bottom: 24px;">
+                        <div class="content-card-header"><h2>Report an Issue with ${targetName}</h2></div>
+                        <div class="content-card-body">
+                            <p style="color: var(--dark-600); margin-bottom: 20px; line-height: 1.6;">
+                                If there were no issues with this shift, no action is needed — the locum's reliability score will remain unaffected.
+                                Only report genuine issues below.
+                            </p>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <button class="btn btn-danger btn-large" onclick="reportIssue('no_show')" style="width: 100%; justify-content: center;">
+                                    ${getIcon('warning-circle')} Report No-Show
+                                </button>
+                                <p style="font-size: 0.82rem; color: var(--dark-600); margin-top: -4px; padding-left: 4px;">The locum did not attend the shift. Reliability score will be reduced by 10 points.</p>
+
+                                <button class="btn btn-warning btn-large" onclick="reportIssue('late_cancellation')" style="width: 100%; justify-content: center; ${canReportLateCancellation ? '' : 'opacity: 0.4; pointer-events: none;'}" ${canReportLateCancellation ? '' : 'disabled'}>
+                                    ${getIcon('clock')} Report Late Cancellation
+                                </button>
+                                <p style="font-size: 0.82rem; color: var(--dark-600); margin-top: -4px; padding-left: 4px;">
+                                    ${canReportLateCancellation
+                                        ? 'The locum cancelled at short notice. Reliability score will be reduced by 5 points. Must be reported within 24 hours of the shift.'
+                                        : 'Late cancellation can no longer be reported — more than 24 hours have passed since this shift.'
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+        }
+
+        render();
+    </script>
+</body>
+</html>

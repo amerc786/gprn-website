@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Invoice - GPRN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Syne"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: { DEFAULT: '#0B0F19', 50: '#141C2F' },
+                        brand: { green: '#059669', mint: '#ECFDF5', dark: '#022C22' },
+                        surface: '#F8F9FA'
+                    },
+                    boxShadow: {
+                        'card': '0 4px 20px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
+                        'subtle': '0 1px 2px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-layout">
+    <script src="mock-data.js?v=20260610a"></script>
+    <script src="app.js?v=20260610a"></script>
+<script src="supabase-client.js?v=20260610a"></script>
+    <script src="supabase-tables.js?v=20260610a"></script>
+    <script src="components.js?v=20260610a"></script>
+    <script>
+        if (!initPage()) throw new Error('Auth required');
+
+        const session = Auth.getSession();
+        const role = Auth.getRole();
+        const data = getMockData();
+        const activePage = role === 'locum' ? 'invoices' : 'billing';
+        const pageContent = initAppLayout(role, activePage, 'Invoice', [
+            { label: role === 'locum' ? 'My Invoices' : 'Billing', href: role === 'locum' ? 'my-invoices.html' : 'billing.html' },
+            { label: 'Invoice' }
+        ]);
+
+        // Get invoice ID from URL
+        const params = new URLSearchParams(window.location.search);
+        const invoiceId = params.get('id');
+
+        if (!data.invoices) data.invoices = [];
+        const invoice = data.invoices.find(i => i.id === invoiceId);
+
+        function getInvoiceStatusBadge(status) {
+            const map = {
+                pending: 'badge-warning',
+                paid: 'badge-success',
+                paid_pending: 'badge-info',
+                overdue: 'badge-danger',
+                disputed: 'badge-info',
+                revised: 'badge-warning'
+            };
+            return map[status] || 'badge-neutral';
+        }
+
+        function handleMarkPaid() {
+            Modal.show({
+                title: 'Confirm Payment',
+                size: 'small',
+                body: `<p style="color: var(--dark-600); line-height: 1.6;">Mark invoice <strong>${invoice.invoiceNumber}</strong> for <strong>${formatCurrency(invoice.total)}</strong> as paid? The locum will be notified and asked to confirm receipt.</p>`,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" id="confirmPaidBtn">Confirm Payment</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#confirmPaidBtn').addEventListener('click', () => {
+                        if (InvoiceManager.updateStatus(invoiceId, 'paid_pending')) {
+                            invoice.status = 'paid_pending';
+                            invoice.practiceMarkedPaidDate = new Date().toISOString().split('T')[0];
+                            Modal.close(overlay);
+                            Toast.show('Invoice marked as paid. Locum will be asked to confirm receipt.', 'success');
+                            setTimeout(() => render(), 500);
+                        } else {
+                            Toast.show('Failed to update invoice. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function handleConfirmPayment() {
+            Modal.show({
+                title: 'Confirm Payment Received',
+                size: 'small',
+                body: `<p style="color: var(--dark-600); line-height: 1.6;">Confirm that you have received payment of <strong>${formatCurrency(invoice.total)}</strong> from <strong>${invoice.practiceName}</strong> for invoice <strong>${invoice.invoiceNumber}</strong>?</p>`,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" id="confirmReceiptBtn">Confirm Received</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#confirmReceiptBtn').addEventListener('click', () => {
+                        if (InvoiceManager.confirmPayment(invoiceId)) {
+                            invoice.status = 'paid';
+                            invoice.paidDate = invoice.practiceMarkedPaidDate || new Date().toISOString().split('T')[0];
+                            invoice.confirmedDate = new Date().toISOString().split('T')[0];
+                            Modal.close(overlay);
+                            Toast.show('Payment confirmed. Invoice is now complete.', 'success');
+                            setTimeout(() => render(), 500);
+                        } else {
+                            Toast.show('Failed to confirm payment. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function handleDispute() {
+            Modal.show({
+                title: 'Dispute Invoice',
+                size: 'medium',
+                body: `
+                    <p style="margin-bottom: 16px; color: var(--dark-600);">Please provide a reason for disputing this invoice. The locum will be notified.</p>
+                    <div class="form-group">
+                        <label class="form-label">Dispute Reason</label>
+                        <textarea id="disputeReason" class="form-textarea" rows="4" placeholder="Describe the reason for the dispute..." required></textarea>
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-danger" id="submitDispute">Submit Dispute</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#submitDispute').addEventListener('click', () => {
+                        const reason = overlay.querySelector('#disputeReason').value.trim();
+                        if (!reason) {
+                            Toast.show('Please provide a dispute reason.', 'warning');
+                            return;
+                        }
+                        if (InvoiceManager.updateStatus(invoiceId, 'disputed', reason)) {
+                            Modal.close(overlay);
+                            Toast.show('Invoice disputed. The locum has been notified via messages.', 'info');
+                            setTimeout(() => render(), 500);
+                        } else {
+                            Toast.show('Failed to dispute invoice. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function handleChasePayment() {
+            if (InvoiceManager.chasePayment(invoiceId)) {
+                Toast.show('Payment reminder sent to the practice\'s inbox.', 'success');
+                Modal.show({
+                    title: 'Reminder Sent',
+                    size: 'small',
+                    body: `<p style="color: var(--dark-600); line-height: 1.6;">A payment reminder has been sent to <strong>${invoice.practiceName}</strong>. They will see it in their messages and can approve or dispute the invoice from there.</p>`,
+                    footer: `
+                        <a href="messages.html" class="btn btn-primary">Go to Messages</a>
+                        <button class="btn btn-ghost" data-modal-close>Stay Here</button>
+                    `
+                });
+                setTimeout(() => render(), 500);
+            } else {
+                Toast.show('Could not send reminder. Please try again.', 'error');
+            }
+        }
+
+        function handleReviseInvoice() {
+            Modal.show({
+                title: 'Revise Invoice Amount',
+                size: 'medium',
+                body: `
+                    <p style="margin-bottom: 16px; color: var(--dark-600);">Enter the revised amount for this invoice. The practice will be notified and must approve before payment can proceed.</p>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label">Current Amount</label>
+                        <p style="font-size: 1.2rem; font-weight: 700; color: var(--dark);">${formatCurrency(invoice.total)}</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Revised Amount (£)</label>
+                        <input type="number" id="revisedAmount" class="form-input" step="0.01" min="0" value="${invoice.total.toFixed(2)}" placeholder="Enter new amount" style="font-size: 1.1rem; padding: 10px 14px;" required>
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" id="submitRevision">Submit Revision</button>
+                `,
+                onOpen(overlay) {
+                    const input = overlay.querySelector('#revisedAmount');
+                    input.focus();
+                    input.select();
+                    overlay.querySelector('#submitRevision').addEventListener('click', () => {
+                        const newAmount = parseFloat(input.value);
+                        if (isNaN(newAmount) || newAmount <= 0) {
+                            Toast.show('Please enter a valid amount.', 'warning');
+                            return;
+                        }
+                        if (newAmount === invoice.total) {
+                            Toast.show('The revised amount is the same as the current amount. Please enter a different amount.', 'warning');
+                            return;
+                        }
+                        if (InvoiceManager.reviseAmount(invoiceId, newAmount)) {
+                            Modal.close(overlay);
+                            Toast.show('Invoice revised. The practice has been notified for approval.', 'success');
+                            // Update local invoice object for re-render
+                            invoice.originalTotal = invoice.originalTotal || invoice.total;
+                            invoice.revisedTotal = newAmount;
+                            invoice.status = 'revised';
+                            setTimeout(() => render(), 500);
+                        } else {
+                            Toast.show('Failed to revise invoice. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function handleApproveRevision() {
+            Modal.show({
+                title: 'Approve Revised Amount',
+                size: 'small',
+                body: `
+                    <p style="color: var(--dark-600); line-height: 1.6;">Approve the revised amount of <strong>${formatCurrency(invoice.revisedTotal)}</strong> for invoice <strong>${invoice.invoiceNumber}</strong>?</p>
+                    <p style="color: var(--dark-600); margin-top: 8px;">Original amount was ${formatCurrency(invoice.originalTotal || invoice.total)}. Once approved, you can proceed to mark the invoice as paid.</p>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-primary" id="confirmApproveRevision">Approve</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#confirmApproveRevision').addEventListener('click', () => {
+                        if (InvoiceManager.approveRevision(invoiceId)) {
+                            Modal.close(overlay);
+                            Toast.show('Revised amount approved. You can now mark the invoice as paid.', 'success');
+                            // Update local invoice object
+                            invoice.total = invoice.revisedTotal;
+                            invoice.sessionRate = invoice.revisedTotal;
+                            invoice.status = 'pending';
+                            delete invoice.revisedTotal;
+                            setTimeout(() => render(), 500);
+                        } else {
+                            Toast.show('Failed to approve revision. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function handleRejectRevision() {
+            Modal.show({
+                title: 'Reject Revised Amount',
+                size: 'medium',
+                body: `
+                    <p style="margin-bottom: 16px; color: var(--dark-600);">Reject the revised amount of <strong>${formatCurrency(invoice.revisedTotal)}</strong>? The invoice will return to disputed status so you can discuss further.</p>
+                    <div class="form-group">
+                        <label class="form-label">Reason (optional)</label>
+                        <textarea id="rejectReason" class="form-textarea" rows="3" placeholder="Why is this amount not acceptable..."></textarea>
+                    </div>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+                    <button class="btn btn-danger" id="confirmRejectRevision">Reject Revision</button>
+                `,
+                onOpen(overlay) {
+                    overlay.querySelector('#confirmRejectRevision').addEventListener('click', () => {
+                        const reason = overlay.querySelector('#rejectReason').value.trim();
+                        if (InvoiceManager.rejectRevision(invoiceId, reason)) {
+                            Modal.close(overlay);
+                            Toast.show('Revision rejected. The locum has been notified to discuss further.', 'info');
+                            invoice.status = 'disputed';
+                            delete invoice.revisedTotal;
+                            setTimeout(() => render(), 500);
+                        } else {
+                            Toast.show('Failed to reject revision. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function render() {
+            if (!invoice) {
+                pageContent.innerHTML = `
+                    <div class="empty-state" style="padding: 60px;">
+                        <div class="empty-state-icon">${getIcon('file-text')}</div>
+                        <h3>Invoice Not Found</h3>
+                        <p>The requested invoice could not be found.</p>
+                        <a href="${role === 'locum' ? 'my-invoices.html' : 'billing.html'}" class="btn btn-primary">Back to ${role === 'locum' ? 'Invoices' : 'Billing'}</a>
+                    </div>
+                `;
+                return;
+            }
+
+            // Look up full locum and practice details
+            const locum = data.locums.find(l => l.id === invoice.locumId);
+            const practice = data.practices.find(p => p.id === invoice.practiceId);
+
+            const statusLabel = invoice.status === 'paid_pending' ? 'Awaiting Confirmation' : invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
+
+            // Build line items
+            const lineItems = [];
+            lineItems.push({
+                description: `${invoice.sessionType} Session - ${DateUtils.format(invoice.shiftDate, 'full')}`,
+                time: `${invoice.startTime || '08:30'} - ${invoice.endTime || '17:00'}`,
+                amount: invoice.sessionRate || invoice.total
+            });
+            if (invoice.housecallFee && invoice.housecallFee > 0) {
+                lineItems.push({
+                    description: 'Housecall Fee',
+                    time: '',
+                    amount: invoice.housecallFee
+                });
+            }
+
+            const subtotal = lineItems.reduce((s, item) => s + item.amount, 0);
+
+            // Action buttons based on role and status
+            let actionButtons = '';
+            if (role === 'practice' && (invoice.status === 'pending' || invoice.status === 'overdue')) {
+                actionButtons = `
+                    <button class="btn btn-primary" onclick="handleMarkPaid()">Mark as Paid</button>
+                    <button class="btn btn-danger btn-ghost" onclick="handleDispute()">Dispute</button>
+                `;
+            }
+            if (role === 'practice' && invoice.status === 'revised') {
+                actionButtons = `
+                    <button class="btn btn-primary" onclick="handleApproveRevision()">Approve Revision</button>
+                    <button class="btn btn-danger btn-ghost" onclick="handleRejectRevision()">Reject Revision</button>
+                `;
+            }
+            if (role === 'locum' && (invoice.status === 'pending' || invoice.status === 'overdue')) {
+                actionButtons = `
+                    <button class="btn btn-warning" onclick="handleChasePayment()">Chase Payment</button>
+                `;
+            }
+            if (role === 'locum' && invoice.status === 'paid_pending') {
+                // Check if 14 days have passed since practice marked as paid
+                const daysSinceMarked = invoice.practiceMarkedPaidDate
+                    ? Math.floor((new Date() - new Date(invoice.practiceMarkedPaidDate)) / (1000 * 60 * 60 * 24))
+                    : 0;
+                const isOverdue = daysSinceMarked >= 14;
+                actionButtons = `
+                    <button class="btn btn-primary" onclick="handleConfirmPayment()">Confirm Payment Received</button>
+                    <a href="messages.html" class="btn btn-ghost">${getIcon('chat-circle')} Query with Practice</a>
+                `;
+            }
+            if (role === 'practice' && invoice.status === 'paid_pending') {
+                actionButtons = `
+                    <span style="color: var(--dark-600); font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">${getIcon('clock')} Awaiting locum confirmation</span>
+                `;
+            }
+            if (role === 'locum' && invoice.status === 'disputed') {
+                actionButtons = `
+                    <button class="btn btn-primary" onclick="handleReviseInvoice()">Revise Invoice</button>
+                    <a href="messages.html" class="btn btn-ghost">${getIcon('chat-circle')} Discuss in Messages</a>
+                `;
+            }
+
+            pageContent.innerHTML = `
+                <div class="no-print" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <a href="${role === 'locum' ? 'my-invoices.html' : 'billing.html'}" class="btn btn-ghost">
+                        ${getIcon('arrow-left')} Back
+                    </a>
+                    <div style="display: flex; gap: 8px;">
+                        ${actionButtons}
+                        <button class="btn btn-ghost" onclick="window.print()">
+                            ${getIcon('download')} Print Invoice
+                        </button>
+                    </div>
+                </div>
+
+                <div class="content-card invoice-page">
+                    <div class="content-card-body" style="padding: 40px;">
+                        <div class="invoice-header-row">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                    <span class="logo-icon" style="width: 44px; height: 44px; font-size: 1rem;">GP</span>
+                                    <span class="logo-text" style="font-size: 1.2rem;">RN</span>
+                                </div>
+                                <h1 class="invoice-title">INVOICE</h1>
+                            </div>
+                            <div class="invoice-meta">
+                                <p><strong>Invoice #:</strong> ${invoice.invoiceNumber}</p>
+                                <p><strong>Date:</strong> ${DateUtils.format(invoice.generatedDate, 'full')}</p>
+                                <p><strong>Due Date:</strong> ${DateUtils.format(invoice.dueDate, 'full')}</p>
+                                <p style="margin-top: 8px;">
+                                    <span class="badge ${getInvoiceStatusBadge(invoice.status)}" style="font-size: 0.85rem; padding: 4px 14px;">
+                                        ${statusLabel}
+                                    </span>
+                                </p>
+                                ${invoice.paidDate ? `<p style="margin-top: 4px;"><strong>Paid:</strong> ${DateUtils.format(invoice.paidDate, 'full')}</p>` : ''}
+                            </div>
+                        </div>
+
+                        <div class="invoice-parties">
+                            <div class="invoice-party">
+                                <h4>From</h4>
+                                <p><strong>${invoice.locumName}</strong></p>
+                                ${locum ? `
+                                    ${locum.gmcNumber ? `<p>GMC: ${locum.gmcNumber}</p>` : ''}
+                                    ${locum.email ? `<p>${locum.email}</p>` : ''}
+                                    ${locum.phone ? `<p>${locum.phone}</p>` : ''}
+                                ` : ''}
+                            </div>
+                            <div class="invoice-party">
+                                <h4>To</h4>
+                                <p><strong>${invoice.practiceName}</strong></p>
+                                ${practice ? `
+                                    ${practice.address ? `<p>${practice.address}</p>` : ''}
+                                    ${(practice.city || practice.postcode) ? `<p>${practice.city || ''} ${practice.postcode || ''}</p>` : ''}
+                                    ${practice.phone ? `<p>${practice.phone}</p>` : ''}
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <table class="data-table" style="margin-bottom: 24px;">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Time</th>
+                                    <th style="text-align: right;">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${lineItems.map(item => `
+                                    <tr>
+                                        <td>${item.description}</td>
+                                        <td>${item.time}</td>
+                                        <td style="text-align: right;"><strong>${formatCurrency(item.amount)}</strong></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+
+                        <div class="invoice-total-row">
+                            <div style="text-align: right;">
+                                <p style="color: var(--dark-600); margin-bottom: 4px;">Total Amount</p>
+                                <span class="invoice-total" style="color: var(--primary);">${formatCurrency(subtotal)}</span>
+                            </div>
+                        </div>
+
+                        ${invoice.status === 'revised' && invoice.revisedTotal ? `
+                            <div style="margin-top: 24px; padding: 16px; background: rgba(5,150,105,0.05); border-radius: 8px; border-left: 3px solid var(--primary);">
+                                <p style="font-weight: 600; color: var(--primary); margin-bottom: 8px;">Revised Amount Pending Approval</p>
+                                <div style="display: flex; gap: 24px; align-items: center;">
+                                    <div>
+                                        <p style="color: var(--dark-600); font-size: 0.85rem;">Original</p>
+                                        <p style="color: var(--dark-700); font-size: 1.1rem; text-decoration: line-through;">${formatCurrency(invoice.originalTotal || invoice.total)}</p>
+                                    </div>
+                                    <div style="color: var(--dark-600); font-size: 1.2rem;">→</div>
+                                    <div>
+                                        <p style="color: var(--dark-600); font-size: 0.85rem;">Revised</p>
+                                        <p style="color: var(--primary); font-size: 1.1rem; font-weight: 700;">${formatCurrency(invoice.revisedTotal)}</p>
+                                    </div>
+                                </div>
+                                ${role === 'practice' ? '<p style="margin-top: 8px; color: var(--dark-600); font-size: 0.85rem;">Please approve or reject this revised amount above.</p>' : '<p style="margin-top: 8px; color: var(--dark-600); font-size: 0.85rem;">Awaiting practice approval of the revised amount.</p>'}
+                            </div>
+                        ` : ''}
+
+                        ${invoice.status === 'paid_pending' ? (() => {
+                            const daysSinceMarked = invoice.practiceMarkedPaidDate
+                                ? Math.floor((new Date() - new Date(invoice.practiceMarkedPaidDate)) / (1000 * 60 * 60 * 24))
+                                : 0;
+                            const isOverdue = daysSinceMarked >= 14;
+                            const borderColor = isOverdue ? 'var(--danger)' : 'var(--info, #3b82f6)';
+                            const bgColor = isOverdue ? 'rgba(239,68,68,0.05)' : 'rgba(59,130,246,0.05)';
+                            const titleColor = isOverdue ? 'var(--danger)' : 'var(--info, #3b82f6)';
+                            return `<div style="margin-top: 24px; padding: 16px; background: ${bgColor}; border-radius: 8px; border-left: 3px solid ${borderColor};">
+                                <p style="font-weight: 600; color: ${titleColor}; margin-bottom: 8px;">${isOverdue ? '⚠ Payment Confirmation Overdue' : 'Awaiting Payment Confirmation'}</p>
+                                <p style="color: var(--dark-700); margin-bottom: 4px;">Practice marked as paid on <strong>${DateUtils.format(invoice.practiceMarkedPaidDate, 'full')}</strong></p>
+                                ${isOverdue
+                                    ? `<p style="color: var(--danger); font-weight: 600; margin-top: 8px;">It has been ${daysSinceMarked} days since the practice marked this as paid. If you have not received payment, follow up with the practice via messages.</p>`
+                                    : `<p style="color: var(--dark-600); font-size: 0.85rem; margin-top: 4px;">Please confirm receipt of payment. If not confirmed within 14 days, this will be flagged for follow-up.</p>`
+                                }
+                            </div>`;
+                        })() : ''}
+
+                        ${(invoice.status === 'disputed' || invoice.status === 'revised') && invoice.disputeReason ? `
+                            <div style="margin-top: 24px; padding: 16px; background: rgba(239,68,68,0.05); border-radius: 8px; border-left: 3px solid var(--danger);">
+                                <p style="font-weight: 600; color: var(--danger); margin-bottom: 4px;">Dispute Reason</p>
+                                <p style="color: var(--dark-700);">${sanitizeHTML(invoice.disputeReason)}</p>
+                            </div>
+                        ` : ''}
+
+                        <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--gray-100); text-align: center;">
+                            <p style="font-size: 0.8rem; color: var(--gray-400);">Generated by GPRN</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        render();
+    </script>
+</body>
+</html>

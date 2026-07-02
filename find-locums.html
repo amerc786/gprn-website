@@ -89,11 +89,11 @@
 </head>
 <body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
 
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-    <script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+    <script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
         Booking.expireOffers();
@@ -253,13 +253,33 @@
         let csFilter = '';
         let availFilter = ''; // '', 'available', 'not_indicated'
 
+        // Fetch once and cache — getApprovedLocums is a blocking network call, so it
+        // must not run on every keystroke / re-render. Refreshed on data-layer sync.
+        let _locumsCache = null;
+        function _normaliseLocum(l) {
+            return Object.assign({}, l, {
+                title: l.title || '',
+                firstName: l.firstName || '',
+                lastName: l.lastName || '',
+                healthBoards: l.healthBoards || [],
+                computerSystems: l.computerSystems || [],
+                bookingReliability: typeof l.bookingReliability === 'number' ? l.bookingReliability : 100,
+                totalShifts: typeof l.totalShifts === 'number' ? l.totalShifts : 0
+            });
+        }
         function _getLocumsList() {
+            if (Array.isArray(_locumsCache)) return _locumsCache;
+            var list;
             if (window.SupabaseClient && window.SupabaseClient.getApprovedLocums) {
                 var approved = window.SupabaseClient.getApprovedLocums();
-                return Array.isArray(approved) ? approved : [];
+                list = Array.isArray(approved) ? approved : [];
+            } else {
+                list = data.locums;
             }
-            return data.locums;
+            _locumsCache = list.map(_normaliseLocum);
+            return _locumsCache;
         }
+        window.addEventListener('gprn:data-refreshed', function() { _locumsCache = null; });
         function getHealthBoards() {
             return [...new Set(_getLocumsList().flatMap(l => (l.healthBoards || [])))].sort();
         }
@@ -280,13 +300,19 @@
             renderLocumsGrid();
         }
 
-        function barLocum(locumId, locumName) {
+        function _locumDisplayName(locumId) {
+            const loc = _getLocumsList().find(l => l.id === locumId) || (getMockData().locums || []).find(l => l.id === locumId);
+            return loc ? `${loc.title} ${loc.firstName} ${loc.lastName}`.trim() : 'this locum';
+        }
+
+        function barLocum(locumId) {
             openDropdown = null;
+            const locumName = _locumDisplayName(locumId);
             Modal.show({
                 title: 'Block Locum',
                 body: `
                     <p style="font-size: 0.92rem; color: var(--dark-600); margin-bottom: 16px;">
-                        Are you sure you want to block <strong>${locumName}</strong>? They will no longer appear in your search results.
+                        Are you sure you want to block <strong>${sanitizeHTML(locumName)}</strong>? They will no longer appear in your search results.
                     </p>
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">Reason for blocking</label>
@@ -333,6 +359,16 @@
             if (openDropdown) { openDropdown = null; renderLocumsGrid(); }
         });
 
+        // Header search mirrors the page-level name search
+        document.getElementById('headerSearch').value = nameSearch;
+        document.getElementById('headerSearch').addEventListener('input', function() {
+            nameSearch = this.value;
+            currentPage = 0;
+            const pageInput = document.getElementById('searchName');
+            if (pageInput && pageInput.value !== this.value) pageInput.value = this.value;
+            renderLocumsGrid();
+        });
+
         function renderLocumsGrid() {
             const grid = document.getElementById('locumsGrid');
             if (grid) grid.innerHTML = renderLocums();
@@ -372,13 +408,8 @@
             }
 
             // Use approved locums from Supabase profiles — never show mock data on live site
-            let locums;
-            if (window.SupabaseClient && window.SupabaseClient.getApprovedLocums) {
-                const approved = window.SupabaseClient.getApprovedLocums();
-                locums = Array.isArray(approved) ? approved : [];
-            } else {
-                locums = [...currentData.locums];
-            }
+            const allApproved = _getLocumsList();
+            let locums = [...allApproved];
 
             // Filter out blocked
             locums = locums.filter(l => !BarredList.isBarred(session.id, l.id));
@@ -404,10 +435,15 @@
                         !['declined', 'withdrawn', 'expired', 'cancelled'].includes(o.status)
                     );
                     l._canInvite = l._avail && !l._booked && !l._existingOffer;
+                    // Distinguish an explicit "unavailable" from no availability set at all
+                    const slot = Availability.getSlot(l.id, selectedNeed.date);
+                    l._explicitUnavail = selectedNeed.sessionType === 'AM' ? slot.am === 'unavailable'
+                        : selectedNeed.sessionType === 'PM' ? slot.pm === 'unavailable'
+                        : (slot.am === 'unavailable' || slot.pm === 'unavailable');
                 });
                 // Availability filter
                 if (availFilter === 'available') locums = locums.filter(l => l._canInvite);
-                if (availFilter === 'not_indicated') locums = locums.filter(l => !l._avail && !l._booked && !l._existingOffer);
+                if (availFilter === 'not_indicated') locums = locums.filter(l => !l._avail && !l._booked && !l._existingOffer && !l._explicitUnavail);
             }
 
             // Sort
@@ -431,14 +467,15 @@
                     case 'rate':
                         const effA = getEffectiveRates(a, session.id);
                         const effB = getEffectiveRates(b, session.id);
-                        const rateA = effA ? (effA.rates.fullDay || effA.rates.am || 0) : 0;
-                        const rateB = effB ? (effB.rates.fullDay || effB.rates.am || 0) : 0;
+                        // Locums without rates sort last (not as £0)
+                        const rateA = effA ? (effA.rates.fullDay || effA.rates.am || Infinity) : Infinity;
+                        const rateB = effB ? (effB.rates.fullDay || effB.rates.am || Infinity) : Infinity;
                         return rateA - rateB;
                     default: return 0;
                 }
             });
 
-            const totalCount = currentData.locums.length;
+            const totalCount = allApproved.length;
             const shownCount = locums.length;
 
             // Update result count
@@ -504,6 +541,8 @@
                         availBadge = `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[11px] font-bold px-2 py-0.5 rounded-full"><i class="ph ph-paper-plane-tilt"></i> Offer sent</span>`;
                     } else if (loc._booked) {
                         availBadge = `<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[11px] font-bold px-2 py-0.5 rounded-full">Booked</span>`;
+                    } else if (loc._explicitUnavail) {
+                        availBadge = `<span class="inline-flex items-center gap-1 bg-rose-50 text-rose-700 text-[11px] font-bold px-2 py-0.5 rounded-full"><i class="ph ph-x-circle"></i> Unavailable</span>`;
                     } else {
                         availBadge = `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-[11px] font-bold px-2 py-0.5 rounded-full">Not indicated</span>`;
                     }
@@ -514,7 +553,7 @@
                 if (selectedNeed && loc._existingOffer) {
                     actionBtn = `<button class="bg-slate-100 text-slate-400 px-3 py-1.5 rounded-full text-[12px] font-bold cursor-not-allowed" disabled><i class="ph ph-check"></i> Sent</button>`;
                 } else {
-                    actionBtn = `<button onclick="event.stopPropagation(); sendOfferToLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')" class="bg-navy text-white px-3 py-1.5 rounded-full text-[12px] font-bold hover:bg-slate-800 transition-colors">Send Offer</button>`;
+                    actionBtn = `<button onclick="event.stopPropagation(); sendOfferToLocum('${loc.id}')" class="bg-navy text-white px-3 py-1.5 rounded-full text-[12px] font-bold hover:bg-slate-800 transition-colors">Send Offer</button>`;
                 }
 
                 // Star rating
@@ -534,7 +573,7 @@
                             ? `<button onclick="removePreferred('${loc.id}')" class="block w-full text-left px-4 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50">Remove Preferred</button>`
                             : `<button onclick="markPreferred('${loc.id}')" class="block w-full text-left px-4 py-2.5 text-[13px] font-semibold text-emerald-600 hover:bg-emerald-50">Mark as Preferred</button>`
                         }
-                        <button onclick="barLocum('${loc.id}', '${locName.replace(/'/g, "\\'")}')" class="block w-full text-left px-4 py-2.5 text-[13px] font-semibold text-rose-600 hover:bg-rose-50 border-t border-slate-100">Block Locum</button>
+                        <button onclick="barLocum('${loc.id}')" class="block w-full text-left px-4 py-2.5 text-[13px] font-semibold text-rose-600 hover:bg-rose-50 border-t border-slate-100">Block Locum</button>
                     </div>` : '';
 
                 return `
@@ -547,7 +586,7 @@
                         <!-- Name & info -->
                         <div class="flex-1 min-w-[180px]">
                             <div class="flex items-center gap-2">
-                                <span class="text-[15px] font-extrabold text-navy">${locName}</span>
+                                <span class="text-[15px] font-extrabold text-navy">${sanitizeHTML(locName)}</span>
                                 ${isPreferred ? '<i class="ph-fill ph-star text-emerald-500 text-[12px]" title="Preferred"></i>' : ''}
                                 ${availBadge}
                             </div>
@@ -574,7 +613,11 @@
                             <div class="text-center">
                                 <div class="text-[14px] font-extrabold text-navy">${rateDisplay}</div>
                                 <div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">${rateLabel}</div>
-                            </div>` : ''}
+                            </div>` : `
+                            <div class="text-center">
+                                <div class="text-[12px] font-semibold text-slate-400">Rates not set</div>
+                                <div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Message to discuss</div>
+                            </div>`}
                         </div>
                         <!-- Actions -->
                         <div class="flex items-center gap-2 shrink-0" onclick="event.stopPropagation();">
@@ -613,8 +656,9 @@
         }
 
         // ===== OFFER MODAL =====
-        function sendOfferToLocum(locumId, locumName) {
+        function sendOfferToLocum(locumId) {
             const currentData = getMockData();
+            const locumName = _locumDisplayName(locumId);
             const openNeeds = getOpenSessionNeeds();
 
             if (openNeeds.length === 0) {
@@ -641,7 +685,7 @@
             const defaultRate = preNeed.sessionType === 'AM' ? locumRates.am : preNeed.sessionType === 'PM' ? locumRates.pm : locumRates.fullDay;
 
             Modal.show({
-                title: 'Send Offer to ' + locumName,
+                title: 'Send Offer to ' + sanitizeHTML(locumName),
                 size: 'medium',
                 body: `
                     <div class="form-group">
@@ -653,7 +697,7 @@
                     <div class="form-group">
                         <label class="form-label">Offered Rate (£)</label>
                         <input type="number" class="form-input" id="offerRate" min="1" step="1" value="${defaultRate || ''}" placeholder="Enter rate...">
-                        <span id="offerRateHint" style="font-size:0.8rem; color:var(--dark-400); margin-top:4px; display:block;">${defaultRate ? 'Locum\'s published rate: ' + formatCurrency(defaultRate) : 'No published rate available'}</span>
+                        <span id="offerRateHint" style="font-size:0.8rem; color:var(--gray-400); margin-top:4px; display:block;">${defaultRate ? 'Locum\'s published rate: ' + formatCurrency(defaultRate) : 'No published rate available'}</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Message (optional)</label>

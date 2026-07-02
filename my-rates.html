@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js?v=20260610a"></script>
-    <script src="app.js?v=20260610a"></script>
-    <script src="supabase-client.js?v=20260610a"></script>
-    <script src="supabase-tables.js?v=20260610a"></script>
-    <script src="components.js?v=20260610a"></script>
+    <script src="mock-data.js?v=20260702a"></script>
+    <script src="app.js?v=20260702a"></script>
+    <script src="supabase-client.js?v=20260702a"></script>
+    <script src="supabase-tables.js?v=20260702a"></script>
+    <script src="components.js?v=20260702a"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -68,7 +68,7 @@
                 </div>
 
                 <!-- Tab Navigation -->
-                <div style="display: flex; gap: 4px; margin-bottom: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 4px;">
+                <div style="display: flex; gap: 4px; margin-bottom: 24px; background: var(--white); border: 1px solid var(--gray-200); border-radius: 10px; padding: 4px;">
                     <button class="rate-tab ${activeTab === 'default' ? 'active' : ''}" onclick="activeTab='default'; renderRates();">
                         ${getIcon('currency-gbp')} Default Rates
                     </button>
@@ -218,7 +218,7 @@
                     <h2>${getIcon('map-pin')} Region Rates</h2>
                 </div>
                 <div class="content-card-body" style="padding: 0;">
-                    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                    <div style="padding: 16px 20px; border-bottom: 1px solid var(--gray-200);">
                         <p class="form-hint" style="margin: 0;">Set different rates for each Welsh health board region. If not set, your default rates apply.</p>
                     </div>
                     <div class="rate-region-list">
@@ -266,7 +266,7 @@
                     <button class="btn btn-small btn-secondary" onclick="openAddPracticeRate()">${getIcon('plus-circle')} Add Practice</button>
                 </div>
                 <div class="content-card-body" style="padding: 0;">
-                    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                    <div style="padding: 16px 20px; border-bottom: 1px solid var(--gray-200);">
                         <p class="form-hint" style="margin: 0;">Set custom rates for individual practices. These take highest priority over region and default rates.</p>
                     </div>
                     ${practiceKeys.length > 0 ? `
@@ -360,6 +360,10 @@
             const onCall = parseInt(document.getElementById('rrOnCall').value) || 0;
             const housecall = parseInt(document.getElementById('rrHousecall').value) || 0;
 
+            if (am < 0 || pm < 0 || fullDay < 0 || onCall < 0 || housecall < 0) {
+                Toast.show('Rates cannot be negative.', 'error');
+                return;
+            }
             if (am === 0 && pm === 0 && fullDay === 0) {
                 Toast.show('Please set at least one session rate.', 'warning');
                 return;
@@ -486,18 +490,27 @@
                 return;
             }
 
+            const am = parseInt(document.getElementById('prAm').value) || 0;
+            const pm = parseInt(document.getElementById('prPm').value) || 0;
+            const fullDay = parseInt(document.getElementById('prFullDay').value) || 0;
+            const onCall = parseInt(document.getElementById('prOnCall').value) || 0;
+            const housecall = parseInt(document.getElementById('prHousecall').value) || 0;
+
+            if (am < 0 || pm < 0 || fullDay < 0 || onCall < 0 || housecall < 0) {
+                Toast.show('Rates cannot be negative.', 'error');
+                return;
+            }
+            if (am === 0 && pm === 0 && fullDay === 0) {
+                Toast.show('Please set at least one session rate.', 'warning');
+                return;
+            }
+
             const data = getMockData();
             const session = Auth.getSession();
             const user = data.locums.find(l => l.id === session.id);
             if (!user.practiceRates) user.practiceRates = {};
 
-            user.practiceRates[practiceId] = {
-                am: parseInt(document.getElementById('prAm').value) || 0,
-                pm: parseInt(document.getElementById('prPm').value) || 0,
-                fullDay: parseInt(document.getElementById('prFullDay').value) || 0,
-                onCall: parseInt(document.getElementById('prOnCall').value) || 0,
-                housecall: parseInt(document.getElementById('prHousecall').value) || 0
-            };
+            user.practiceRates[practiceId] = { am, pm, fullDay, onCall, housecall };
 
             saveMockData(data);
             Modal.close();
@@ -535,7 +548,7 @@
             gap: 6px;
             transition: all 0.15s ease;
         }
-        .rate-tab:hover { background: var(--bg-main); }
+        .rate-tab:hover { background: var(--gray-50); }
         .rate-tab.active {
             background: var(--primary);
             color: white;
@@ -558,11 +571,11 @@
             align-items: center;
             gap: 16px;
             padding: 14px 20px;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--gray-200);
             transition: background 0.1s;
         }
         .rate-region-row:last-child { border-bottom: none; }
-        .rate-region-row:hover { background: var(--bg-main); }
+        .rate-region-row:hover { background: var(--gray-50); }
         .rate-region-unset { opacity: 0.7; }
         .rate-region-unset:hover { opacity: 1; }
         .rate-region-name { min-width: 180px; flex-shrink: 0; }
@@ -573,8 +586,8 @@
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            background: var(--bg-main);
-            border: 1px solid var(--border);
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
             border-radius: 6px;
             padding: 3px 10px;
             font-size: 0.78rem;
