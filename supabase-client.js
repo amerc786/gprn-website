@@ -257,11 +257,43 @@
         return { locums: [], practices: [], shifts: [], offers: [], availability: {}, messages: [], invoices: [], notifications: [], cpdEvents: [], feedback: [], jobs: [], cpdInterests: [], jobApplications: [] };
     };
 
+    // ---- Non-blocking, coalesced blob writes ----
+    // The UI updates instantly from _cache/localStorage; the network write runs
+    // in the background. Consecutive saves coalesce (last state wins), and a
+    // pagehide flush protects a write that's still pending when the user leaves.
+    var _writeInFlight = false;
+    var _writeDirty = false;
+
+    function _writeBlobCoalesced() {
+        if (_writeInFlight) { _writeDirty = true; return; }
+        _writeInFlight = true;
+        fetch(SUPABASE_URL + '/rest/v1/app_state?id=eq.1', {
+            method: 'PATCH',
+            headers: _authHeaders(),
+            body: JSON.stringify({ data: _cache })
+        }).then(function(resp) {
+            if (!resp.ok) return resp.text().then(function(t) { console.warn('[Supabase] blob write failed', resp.status, t); });
+        }).catch(function(e) {
+            console.warn('[Supabase] blob write error', e);
+        }).finally(function() {
+            _writeInFlight = false;
+            if (_writeDirty) { _writeDirty = false; _writeBlobCoalesced(); }
+        });
+    }
+
+    // If the user navigates away while a write is pending, flush synchronously
+    // (last resort — this is the only remaining blocking write path)
+    window.addEventListener('pagehide', function() {
+        if ((_writeInFlight || _writeDirty) && _getAccessToken() && _cache) {
+            try { _writeBlobSync(_cache); _writeDirty = false; } catch (e) {}
+        }
+    });
+
     window.saveMockData = function(data) {
         _cache = data;
         _lastFetchAt = Date.now();
         try { localStorage.setItem('gprn_data', JSON.stringify(data)); } catch(e) {}
-        if (_getAccessToken()) _writeBlobSync(data);
+        if (_getAccessToken()) _writeBlobCoalesced();
     };
 
     // Guaranteed-unique blob user id (registration ids can collide across browsers)
@@ -750,19 +782,28 @@
     // Returns array of locum objects (profile_data enriched with id/email)
     // Falls back to blob locums if profiles table is unavailable
     // ============================================================
+    var _approvedLocumsCache = null;
+    var _approvedLocumsCacheAt = 0;
     function _fetchApprovedLocums() {
         // If not authenticated, return empty — never show mock/fake locums
         if (!_getAccessToken()) return [];
+        // 60s cache: pages re-render this list on every filter change; one
+        // blocking fetch per minute instead of one per keystroke
+        if (_approvedLocumsCache && (Date.now() - _approvedLocumsCacheAt) < 60000) {
+            return _approvedLocumsCache;
+        }
         var res = _syncRequest('GET',
             '/rest/v1/profiles?role=eq.locum&approval_status=eq.approved&is_admin=eq.false&select=id,email,profile_data');
         if (res.status === 200 && Array.isArray(res.body)) {
-            return res.body.map(function(row) {
+            _approvedLocumsCache = res.body.map(function(row) {
                 var pd = row.profile_data || {};
                 delete pd.password; // legacy rows may carry one; never serve it to other users
                 pd.supabase_id = row.id;
                 if (!pd.email) pd.email = row.email;
                 return pd;
             });
+            _approvedLocumsCacheAt = Date.now();
+            return _approvedLocumsCache;
         }
         console.warn('[Supabase] fetch approved locums failed', res.status, res.body);
         return [];
@@ -795,23 +836,31 @@
     };
 
     // ============================================================
-    // Background refresh — pick up remote writes every 15s
+    // Background refresh — pick up remote writes every 30s, asynchronously
+    // (never blocks the UI; skipped while a local write is pending so a stale
+    // read can't clobber optimistic local state)
     // ============================================================
     setInterval(function() {
         if (!_getAccessToken()) return;
         if (document.hidden) return;
-        var fresh = _fetchBlobSync();
-        if (fresh) {
-            var serialized = JSON.stringify(fresh);
-            var cachedSerialized = _cache ? JSON.stringify(_cache) : '';
-            if (serialized !== cachedSerialized) {
-                _cache = fresh;
-                _lastFetchAt = Date.now();
-                try { localStorage.setItem('gprn_data', serialized); } catch(e) {}
-                window.dispatchEvent(new CustomEvent('gprn:data-refreshed'));
-            }
-        }
-    }, 15000);
+        if (_writeInFlight || _writeDirty) return;
+        fetch(SUPABASE_URL + '/rest/v1/app_state?id=eq.1&select=data', { headers: _authHeaders() })
+            .then(function(resp) { return resp.ok ? resp.json() : null; })
+            .then(function(rows) {
+                if (!rows || !Array.isArray(rows) || !rows.length) return;
+                if (_writeInFlight || _writeDirty) return; // a write started meanwhile
+                var fresh = rows[0].data;
+                var serialized = JSON.stringify(fresh);
+                var cachedSerialized = _cache ? JSON.stringify(_cache) : '';
+                if (serialized !== cachedSerialized) {
+                    _cache = fresh;
+                    _lastFetchAt = Date.now();
+                    try { localStorage.setItem('gprn_data', serialized); } catch(e) {}
+                    window.dispatchEvent(new CustomEvent('gprn:data-refreshed'));
+                }
+            })
+            .catch(function() { /* transient network issue — next tick retries */ });
+    }, 30000);
 
     // ============================================================
     // Periodic approval revalidation (every 60s on active tab)

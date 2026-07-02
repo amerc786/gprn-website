@@ -51,11 +51,13 @@
     // Synchronous REST helper (matches existing pattern in supabase-client.js)
     function _req(method, path, payload, extraHeaders) {
         if (method === 'GET') {
-            var cached = _getCache[path];
-            if (cached && (Date.now() - cached.at) < GET_CACHE_TTL) return cached.res;
-        } else {
-            _getCache = {}; // any write invalidates cached reads
+            // Performance: table reads are served blob-first (the shared app-state
+            // blob is authoritative, loaded at page start and refreshed in the
+            // background). Skipping per-call synchronous REST GETs removes dozens
+            // of UI-freezing round-trips per page and most of the fleet load.
+            return { status: 0, body: null, skipped: true };
         }
+        _getCache = {}; // any write invalidates cached reads
         var xhr = new XMLHttpRequest();
         xhr.open(method, SUPABASE_URL + path, false);
         var hdrs = _headers(extraHeaders);
@@ -74,14 +76,16 @@
         return result;
     }
 
-    // Async REST helper for writes (non-blocking)
+    // Async REST helper for writes (non-blocking; keepalive lets a write
+    // finish even if the user navigates away right after clicking)
     function _reqAsync(method, path, payload, extraHeaders) {
         _getCache = {}; // writes invalidate cached reads
         var hdrs = _headers(extraHeaders);
         fetch(SUPABASE_URL + path, {
             method: method,
             headers: hdrs,
-            body: payload != null ? JSON.stringify(payload) : undefined
+            body: payload != null ? JSON.stringify(payload) : undefined,
+            keepalive: true
         }).catch(function(e) {
             console.warn('[SupaTables] async ' + method + ' ' + path + ' failed:', e);
         });
@@ -218,7 +222,7 @@
             data.messages.push(msg);
             saveMockData(data);
             if (_hasAuth()) {
-                _req('POST', '/rest/v1/messages', _toSnake(msg), { 'Prefer': 'return=minimal' });
+                _reqAsync('POST', '/rest/v1/messages', _toSnake(msg), { 'Prefer': 'return=minimal' });
             }
         },
 
@@ -229,7 +233,7 @@
             });
             saveMockData(data);
             if (_hasAuth()) {
-                _req('PATCH', '/rest/v1/messages?thread_id=eq.' + encodeURIComponent(threadId) + '&to_id=eq.' + userId + '&read=eq.false',
+                _reqAsync('PATCH', '/rest/v1/messages?thread_id=eq.' + encodeURIComponent(threadId) + '&to_id=eq.' + userId + '&read=eq.false',
                     { read: true });
             }
         },
@@ -252,7 +256,7 @@
                     var del = m._deletedFor || [];
                     if (!del.includes(userId)) {
                         del.push(userId);
-                        _req('PATCH', '/rest/v1/messages?id=eq.' + encodeURIComponent(m.id), { deleted_for: del });
+                        _reqAsync('PATCH', '/rest/v1/messages?id=eq.' + encodeURIComponent(m.id), { deleted_for: del });
                     }
                 });
             }
@@ -352,7 +356,7 @@
             data.offers.push(offer);
             saveMockData(data);
             if (_hasAuth()) {
-                _req('POST', '/rest/v1/offers', _toSnake(offer), { 'Prefer': 'return=minimal' });
+                _reqAsync('POST', '/rest/v1/offers', _toSnake(offer), { 'Prefer': 'return=minimal' });
             }
         },
 
@@ -362,7 +366,7 @@
             if (o) Object.assign(o, fields);
             saveMockData(data);
             if (_hasAuth()) {
-                _req('PATCH', '/rest/v1/offers?id=eq.' + encodeURIComponent(offerId), _toSnake(fields));
+                _reqAsync('PATCH', '/rest/v1/offers?id=eq.' + encodeURIComponent(offerId), _toSnake(fields));
             }
         },
 
@@ -403,7 +407,7 @@
             data.sessionNeeds.push(need);
             saveMockData(data);
             if (_hasAuth()) {
-                _req('POST', '/rest/v1/session_needs', _toSnake(need), { 'Prefer': 'return=minimal' });
+                _reqAsync('POST', '/rest/v1/session_needs', _toSnake(need), { 'Prefer': 'return=minimal' });
             }
         },
 
@@ -413,7 +417,7 @@
             if (s) Object.assign(s, fields);
             saveMockData(data);
             if (_hasAuth()) {
-                _req('PATCH', '/rest/v1/session_needs?id=eq.' + encodeURIComponent(needId), _toSnake(fields));
+                _reqAsync('PATCH', '/rest/v1/session_needs?id=eq.' + encodeURIComponent(needId), _toSnake(fields));
             }
         },
 
@@ -422,7 +426,7 @@
             data.sessionNeeds = (data.sessionNeeds || data.shifts || []).filter(function(s) { return s.id !== needId; });
             saveMockData(data);
             if (_hasAuth()) {
-                _req('DELETE', '/rest/v1/session_needs?id=eq.' + encodeURIComponent(needId));
+                _reqAsync('DELETE', '/rest/v1/session_needs?id=eq.' + encodeURIComponent(needId));
             }
         }
     };
@@ -459,7 +463,7 @@
             data.invoices.push(invoice);
             saveMockData(data);
             if (_hasAuth()) {
-                _req('POST', '/rest/v1/invoices', _toSnake(invoice), { 'Prefer': 'return=minimal' });
+                _reqAsync('POST', '/rest/v1/invoices', _toSnake(invoice), { 'Prefer': 'return=minimal' });
             }
         },
 
@@ -469,7 +473,7 @@
             if (inv) Object.assign(inv, fields);
             saveMockData(data);
             if (_hasAuth()) {
-                _req('PATCH', '/rest/v1/invoices?id=eq.' + encodeURIComponent(invoiceId), _toSnake(fields));
+                _reqAsync('PATCH', '/rest/v1/invoices?id=eq.' + encodeURIComponent(invoiceId), _toSnake(fields));
             }
         }
     };
@@ -506,7 +510,7 @@
             data.feedback.push(fb);
             saveMockData(data);
             if (_hasAuth()) {
-                _req('POST', '/rest/v1/feedback', _toSnake(fb), { 'Prefer': 'return=minimal' });
+                _reqAsync('POST', '/rest/v1/feedback', _toSnake(fb), { 'Prefer': 'return=minimal' });
             }
         }
     };
@@ -536,17 +540,11 @@
             data.availability[locumId][date][session] = status;
             saveMockData(data);
             if (_hasAuth()) {
-                // Upsert: try to get existing row first
-                var existing = _req('GET', '/rest/v1/availability?locum_id=eq.' + locumId + '&date=eq.' + date);
-                if (existing.status === 200 && Array.isArray(existing.body) && existing.body.length) {
-                    var update = {};
-                    update[session] = status;
-                    _req('PATCH', '/rest/v1/availability?locum_id=eq.' + locumId + '&date=eq.' + date, update);
-                } else {
-                    var row = { locum_id: locumId, date: date, am: 'none', pm: 'none' };
-                    row[session] = status;
-                    _req('POST', '/rest/v1/availability', row, { 'Prefer': 'return=minimal' });
-                }
+                // Single async upsert (both slots from the blob's now-current state)
+                var slots = data.availability[locumId][date];
+                _reqAsync('POST', '/rest/v1/availability',
+                    { locum_id: locumId, date: date, am: slots.am, pm: slots.pm },
+                    { 'Prefer': 'resolution=merge-duplicates,return=minimal' });
             }
         },
 
@@ -596,7 +594,7 @@
             data.barredLists[practiceId].push({ locumId: locumId, reason: reason, date: new Date().toISOString().split('T')[0] });
             saveMockData(data);
             if (_hasAuth()) {
-                _req('POST', '/rest/v1/barred_locums', {
+                _reqAsync('POST', '/rest/v1/barred_locums', {
                     practice_id: practiceId, locum_id: locumId, reason: reason,
                     date: new Date().toISOString().split('T')[0]
                 }, { 'Prefer': 'return=minimal' });
@@ -610,7 +608,7 @@
             }
             saveMockData(data);
             if (_hasAuth()) {
-                _req('DELETE', '/rest/v1/barred_locums?practice_id=eq.' + practiceId + '&locum_id=eq.' + locumId);
+                _reqAsync('DELETE', '/rest/v1/barred_locums?practice_id=eq.' + practiceId + '&locum_id=eq.' + locumId);
             }
         },
 
@@ -639,7 +637,7 @@
             if (!data.preferredLists[practiceId].includes(locumId)) data.preferredLists[practiceId].push(locumId);
             saveMockData(data);
             if (_hasAuth()) {
-                _req('POST', '/rest/v1/preferred_locums', { practice_id: practiceId, locum_id: locumId }, { 'Prefer': 'return=minimal' });
+                _reqAsync('POST', '/rest/v1/preferred_locums', { practice_id: practiceId, locum_id: locumId }, { 'Prefer': 'return=minimal' });
             }
         },
 
@@ -650,7 +648,7 @@
             }
             saveMockData(data);
             if (_hasAuth()) {
-                _req('DELETE', '/rest/v1/preferred_locums?practice_id=eq.' + practiceId + '&locum_id=eq.' + locumId);
+                _reqAsync('DELETE', '/rest/v1/preferred_locums?practice_id=eq.' + practiceId + '&locum_id=eq.' + locumId);
             }
         }
     };
