@@ -542,6 +542,7 @@ function getStatusBadge(status) {
         disputed: 'badge-info',
         revised: 'badge-warning',
         paid_pending: 'badge-info',
+        void: 'badge-neutral',
         // Legacy
         rejected_by_locum: 'badge-danger'
     };
@@ -569,7 +570,8 @@ function getStatusLabel(status) {
         overdue: 'Overdue',
         disputed: 'Disputed',
         revised: 'Under Review',
-        paid_pending: 'Awaiting Confirmation'
+        paid_pending: 'Awaiting Confirmation',
+        void: 'Voided'
     };
     return labels[status] || status;
 }
@@ -622,6 +624,9 @@ const Booking = {
         const need = DB.SessionNeeds.getById(sessionNeedId);
         if (!need) return { error: 'need_not_found', message: 'Session need not found' };
         if (need.status !== 'open') return { error: 'need_filled', message: 'This session has already been filled' };
+        if (need.date && need.date < DateUtils.toISO(new Date())) {
+            return { error: 'past_session', message: 'This session date has already passed.' };
+        }
         // Duplicate offer check
         const needOffers = DB.Offers.getForSessionNeed(sessionNeedId);
         const existingOffer = needOffers.find(o =>
@@ -657,7 +662,11 @@ const Booking = {
             initiatedBy: 'practice',
             sentDate: DateUtils.toISO(new Date()),
             viewedDate: null,
-            expiresAt: DateUtils.toISO(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+            // Invitation window: 7 days, but never beyond the session date itself
+            expiresAt: (function() {
+                const week = DateUtils.toISO(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+                return (need.date && need.date < week) ? need.date : week;
+            })(),
             practiceMessage: message || '',
             negotiations: []
         };
@@ -686,8 +695,11 @@ const Booking = {
     respondToOffer(offerId, response, counterRate, message) {
         const offer = DB.Offers.getById(offerId);
         if (!offer) return { error: 'not_found', message: 'Offer not found' };
-        if (offer.expiresAt && new Date(offer.expiresAt) < new Date()) {
-            DB.Offers.update(offerId, { status: 'expired' });
+        const respDate = offer.sessionDate || offer.shiftDate;
+        // Expire stale offers cleanly (date passed, or invitation window closed)
+        if ((respDate && respDate < DateUtils.toISO(new Date())) ||
+            (offer.expiresAt && new Date(offer.expiresAt + 'T23:59:59') < new Date())) {
+            if (['sent', 'viewed', 'negotiating'].includes(offer.status)) this._expireOffer(offer);
             return { error: 'expired', message: 'This offer has expired and can no longer be acted on.' };
         }
         if (!['sent', 'viewed', 'negotiating'].includes(offer.status)) {
@@ -704,13 +716,17 @@ const Booking = {
             negotiations.push({ from: 'locum', accepted: true, rate: agreedRate, message: message || 'Accepted', date: new Date().toISOString() });
             DB.Offers.update(offerId, { agreedRate: agreedRate, status: 'accepted', acceptedDate: DateUtils.toISO(new Date()), negotiations: negotiations });
             DB.SessionNeeds.update(offer.sessionNeedId, { status: 'filled' });
-            // Auto-withdraw other offers for same session need
+            // Auto-withdraw other offers for same session need (notify + email each losing locum)
             const otherOffers = DB.Offers.getForSessionNeed(offer.sessionNeedId);
             otherOffers.filter(o => o.id !== offerId && ['sent', 'viewed', 'negotiating'].includes(o.status))
                 .forEach(o => {
                     DB.Offers.update(o.id, { status: 'withdrawn', autoWithdrawn: true, withdrawnDate: DateUtils.toISO(new Date()) });
+                    const needRef = DB.SessionNeeds.getById(o.sessionNeedId);
+                    if (needRef && needRef.offersCount > 0) DB.SessionNeeds.update(o.sessionNeedId, { offersCount: needRef.offersCount - 1 });
                     this.addNotification(o.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
                         `The invitation from ${offer.practiceName} for ${DateUtils.format(o.sessionDate, 'medium')} has been filled by another locum.`);
+                    EmailManager.send(o.locumId, 'Session Filled',
+                        `The ${o.sessionType} session at ${offer.practiceName} on ${DateUtils.format(o.sessionDate, 'medium')} has been filled by another locum. Keep an eye on your invitations for new sessions.`, 'offer_withdrawn');
                 });
             this.addNotification(offer.practiceId, 'offer_accepted', 'Invitation Accepted',
                 `A locum has accepted your invitation for ${DateUtils.format(offer.sessionDate, 'medium')} (${offer.sessionType}).`);
@@ -719,15 +735,18 @@ const Booking = {
             return { success: true, status: 'accepted' };
 
         } else if (response === 'decline') {
+            const declineReason = (message || '').trim().slice(0, 300);
             const negotiations = offer.negotiations || [];
-            negotiations.push({ from: 'locum', declined: true, message: message || 'Declined', date: new Date().toISOString() });
-            DB.Offers.update(offerId, { status: 'declined', declinedDate: DateUtils.toISO(new Date()), negotiations: negotiations });
+            negotiations.push({ from: 'locum', declined: true, message: declineReason || 'Declined', date: new Date().toISOString() });
+            DB.Offers.update(offerId, { status: 'declined', declinedDate: DateUtils.toISO(new Date()), declineReason: declineReason || null, negotiations: negotiations });
             const need = DB.SessionNeeds.getById(offer.sessionNeedId);
             if (need && need.offersCount > 0) DB.SessionNeeds.update(offer.sessionNeedId, { offersCount: need.offersCount - 1 });
+            const who = offer.locumName || 'A locum';
+            const reasonLine = declineReason ? ` Reason: "${declineReason}"` : '';
             this.addNotification(offer.practiceId, 'offer_declined', 'Invitation Declined',
-                `A locum has declined your invitation for ${DateUtils.format(offer.sessionDate, 'medium')}.`);
+                `${who} has declined your invitation for ${DateUtils.format(offer.sessionDate, 'medium')}.${reasonLine}`);
             EmailManager.send(offer.practiceId, 'Invitation Declined',
-                `A locum has declined your session invitation for ${DateUtils.format(offer.sessionDate, 'medium')}.`, 'offer_declined');
+                `${who} has declined your ${offer.sessionType} session invitation for ${DateUtils.format(offer.sessionDate, 'medium')}.${reasonLine} You can invite another locum from the Locum Network.`, 'offer_declined');
             return { success: true, status: 'declined' };
 
         } else if (response === 'counter') {
@@ -751,6 +770,14 @@ const Booking = {
     practiceRespondToNegotiation(offerId, response, counterRate, message) {
         const offer = DB.Offers.getById(offerId);
         if (!offer) return { error: 'not_found', message: 'Offer not found' };
+        // A stale negotiation cannot be acted on once the session date or the
+        // invitation window has passed
+        const negDate = offer.sessionDate || offer.shiftDate;
+        if ((negDate && negDate < DateUtils.toISO(new Date())) ||
+            (offer.expiresAt && new Date(offer.expiresAt + 'T23:59:59') < new Date())) {
+            if (['sent', 'viewed', 'negotiating'].includes(offer.status)) this._expireOffer(offer);
+            return { error: 'expired', message: 'This offer has expired and can no longer be acted on.' };
+        }
         if (offer.status !== 'negotiating') return { error: 'invalid_status', message: 'Offer is not in negotiation' };
 
         if (response === 'accept') {
@@ -763,8 +790,12 @@ const Booking = {
             otherOffers.filter(o => o.id !== offerId && ['sent', 'viewed', 'negotiating'].includes(o.status))
                 .forEach(o => {
                     DB.Offers.update(o.id, { status: 'withdrawn', autoWithdrawn: true, withdrawnDate: DateUtils.toISO(new Date()) });
+                    const needRef = DB.SessionNeeds.getById(o.sessionNeedId);
+                    if (needRef && needRef.offersCount > 0) DB.SessionNeeds.update(o.sessionNeedId, { offersCount: needRef.offersCount - 1 });
                     this.addNotification(o.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
                         `The invitation from ${offer.practiceName} for ${DateUtils.format(o.sessionDate, 'medium')} has been filled by another locum.`);
+                    EmailManager.send(o.locumId, 'Session Filled',
+                        `The ${o.sessionType} session at ${offer.practiceName} on ${DateUtils.format(o.sessionDate, 'medium')} has been filled by another locum. Keep an eye on your invitations for new sessions.`, 'offer_withdrawn');
                 });
             this.addNotification(offer.locumId, 'rate_agreed', 'Rate Agreed',
                 `${offer.practiceName} has accepted your proposed rate of ${formatCurrency(agreedRate)} for ${DateUtils.format(offer.sessionDate, 'medium')}.`);
@@ -792,17 +823,21 @@ const Booking = {
         return { error: 'invalid_response', message: 'Invalid response type' };
     },
 
-    withdrawOffer(offerId) {
+    withdrawOffer(offerId, reason) {
         const offer = DB.Offers.getById(offerId);
         if (!offer) return { error: 'not_found', message: 'Offer not found' };
         if (!['sent', 'viewed', 'negotiating'].includes(offer.status)) {
             return { error: 'cannot_withdraw', message: 'This offer can no longer be withdrawn' };
         }
-        DB.Offers.update(offerId, { status: 'withdrawn', withdrawnDate: DateUtils.toISO(new Date()) });
+        reason = (reason || '').trim().slice(0, 300);
+        DB.Offers.update(offerId, { status: 'withdrawn', withdrawnDate: DateUtils.toISO(new Date()), withdrawReason: reason || null });
         const need = DB.SessionNeeds.getById(offer.sessionNeedId);
         if (need && need.offersCount > 0) DB.SessionNeeds.update(offer.sessionNeedId, { offersCount: need.offersCount - 1 });
+        const reasonLine = reason ? ` Reason: "${reason}"` : '';
         this.addNotification(offer.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
-            `${offer.practiceName} has withdrawn the invitation for ${DateUtils.format(offer.sessionDate, 'medium')}.`);
+            `${offer.practiceName} has withdrawn the invitation for ${DateUtils.format(offer.sessionDate, 'medium')}.${reasonLine}`);
+        EmailManager.send(offer.locumId, 'Invitation Withdrawn',
+            `${offer.practiceName} has withdrawn the ${offer.sessionType} session invitation for ${DateUtils.format(offer.sessionDate, 'medium')}.${reasonLine}`, 'offer_withdrawn');
         return { success: true };
     },
 
@@ -822,8 +857,11 @@ const Booking = {
         const offer = DB.Offers.getById(offerId);
         if (!offer) return false;
         if (!['accepted', 'confirmed'].includes(offer.status)) return false;
-        // Backstop: a session cannot be marked complete before the end of its day
-        if (attended && new Date((offer.sessionDate || offer.shiftDate) + 'T23:59:59') > new Date()) return 'too_early';
+        // Backstop: a session cannot be completed before the end of its day,
+        // and a no-show cannot be recorded before the session day arrives
+        const sDate = offer.sessionDate || offer.shiftDate;
+        if (attended && new Date(sDate + 'T23:59:59') > new Date()) return 'too_early';
+        if (!attended && sDate > DateUtils.toISO(new Date())) return 'too_early';
         if (attended) {
             DB.Offers.update(offerId, { status: 'completed', completedDate: DateUtils.toISO(new Date()), completedBy: completedBy });
             InvoiceManager.generateFromOffer(offer);
@@ -835,46 +873,126 @@ const Booking = {
             DB.Offers.update(offerId, { status: 'no_show', noShowDate: DateUtils.toISO(new Date()) });
             this.applyReliabilityPenalty(offer.locumId, 10);
             this.addNotification(offer.locumId, 'no_show', 'No Show Recorded',
-                `A no show was recorded at ${offer.practiceName} on ${DateUtils.format(offer.sessionDate, 'full')}. Your reliability score has been reduced by 10 points.`);
+                `A no show was recorded at ${offer.practiceName} on ${DateUtils.format(offer.sessionDate, 'full')}. Your reliability score has been reduced by 10 points. If you believe this is a mistake, you can dispute it from My Bookings.`);
+            EmailManager.send(offer.locumId, 'No Show Recorded — ' + DateUtils.format(offer.sessionDate, 'medium'),
+                `${offer.practiceName} has recorded a no-show for your ${offer.sessionType} session on ${DateUtils.format(offer.sessionDate, 'full')}. Your reliability score has been reduced by 10 points. If you believe this is a mistake, please dispute it from My Bookings or contact the practice.`, 'no_show');
+            this.addNotification(offer.practiceId, 'no_show', 'No Show Recorded',
+                `The no-show for ${offer.locumName || 'the locum'} on ${DateUtils.format(offer.sessionDate, 'medium')} has been recorded. The session was not invoiced.`);
         }
         return true;
     },
 
-    cancelBooking(offerId, cancelledBy) {
+    cancelBooking(offerId, cancelledBy, reason) {
         const offer = DB.Offers.getById(offerId);
         if (!offer) return false;
         if (['cancelled', 'declined', 'withdrawn', 'expired'].includes(offer.status)) {
             return { error: 'already_cancelled', message: 'This booking has already been cancelled.' };
         }
         if (!['accepted', 'confirmed'].includes(offer.status)) return false;
-        // Late cancellation = within 48 hours of the session day (matches all UI copy)
-        const lateCancellation = (new Date(offer.sessionDate + 'T00:00:00') - new Date()) < 48 * 3600 * 1000;
-        DB.Offers.update(offerId, { status: 'cancelled', cancelledBy: cancelledBy, cancelledDate: DateUtils.toISO(new Date()), lateCancellation: lateCancellation });
-        DB.SessionNeeds.update(offer.sessionNeedId, { status: 'open' });
-        if (cancelledBy === 'locum' && lateCancellation) {
+        // A session whose date has passed can no longer be "cancelled" — it must be
+        // resolved as completed or reported as a no-show instead.
+        if (new Date(offer.sessionDate + 'T23:59:59') < new Date()) {
+            return { error: 'past_session', message: 'This session date has passed. Mark it complete or report a no-show instead.' };
+        }
+        reason = (reason || '').trim().slice(0, 300);
+        // Late cancellation = within 48 hours of the session day (only meaningful for locum cancels)
+        const within48h = (new Date(offer.sessionDate + 'T00:00:00') - new Date()) < 48 * 3600 * 1000;
+        const lateCancellation = cancelledBy === 'locum' && within48h;
+        DB.Offers.update(offerId, {
+            status: 'cancelled', cancelledBy: cancelledBy,
+            cancelledDate: DateUtils.toISO(new Date()),
+            lateCancellation: lateCancellation,
+            cancellationReason: reason || null
+        });
+
+        // Session need cascade:
+        //  - Locum cancelled a future session -> reopen so the practice can refill it
+        //  - Practice cancelled its own booking -> the need is theirs to relist; mark cancelled
+        if (cancelledBy === 'locum') {
+            DB.SessionNeeds.update(offer.sessionNeedId, { status: 'open' });
+        } else {
+            DB.SessionNeeds.update(offer.sessionNeedId, { status: 'cancelled' });
+        }
+
+        if (lateCancellation) {
             this.applyReliabilityPenalty(offer.locumId, 5);
             this.addNotification(offer.locumId, 'late_cancellation', 'Late Cancellation Penalty',
                 `Your cancellation at ${offer.practiceName} on ${DateUtils.format(offer.sessionDate, 'full')} was within 48 hours. Your reliability score has been reduced by 5 points.`);
         }
+
+        // Alert the counterparty on every channel: notification + email + chat message
+        const cancellerName = cancelledBy === 'locum' ? (offer.locumName || 'The locum') : offer.practiceName;
         const notifyId = cancelledBy === 'locum' ? offer.practiceId : offer.locumId;
+        const reasonLine = reason ? ` Reason: "${reason}"` : '';
+        const detail = `${cancellerName} has cancelled the ${offer.sessionType} session on ${DateUtils.format(offer.sessionDate, 'full')}.${reasonLine}`;
         this.addNotification(notifyId, 'cancellation', 'Booking Cancelled',
-            `The booking on ${DateUtils.format(offer.sessionDate, 'medium')} at ${offer.practiceName} has been cancelled.`);
+            detail + (cancelledBy === 'locum' ? ' The session has been reopened so you can invite another locum.' : ''));
+        EmailManager.send(notifyId, 'Booking Cancelled — ' + DateUtils.format(offer.sessionDate, 'medium'),
+            detail + ' Please log in to GPRN to review.', 'cancellation');
+        const fromId = cancelledBy === 'locum' ? offer.locumId : offer.practiceId;
+        const threadId = MessageManager._findActiveThread(fromId, notifyId) || MessageManager._findActiveThread(notifyId, fromId) || ('thread-' + Date.now() + Math.random().toString(36).substr(2, 5));
+        DB.Messages.insert({
+            id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
+            threadId, fromId: fromId, toId: notifyId, subject: '',
+            body: '⚠️ Booking Cancelled — ' + detail,
+            shiftId: null, timestamp: new Date().toISOString(), read: false, _deletedFor: [], _system: true
+        });
         return true;
+    },
+
+    // Shared expiry: status + date + offersCount + alerts to both parties.
+    // Used by the sweep and by inline expiry when someone acts on a stale offer.
+    _expireOffer(offer, reasonText) {
+        DB.Offers.update(offer.id, { status: 'expired', expiredDate: DateUtils.toISO(new Date()) });
+        const need = DB.SessionNeeds.getById(offer.sessionNeedId);
+        if (need && need.offersCount > 0) DB.SessionNeeds.update(offer.sessionNeedId, { offersCount: need.offersCount - 1 });
+        const detail = reasonText || `Your invitation to ${offer.locumName || 'a locum'} for ${DateUtils.format(offer.sessionDate, 'medium')} has expired without a response.`;
+        this.addNotification(offer.practiceId, 'offer_expired', 'Invitation Expired', detail);
+        EmailManager.send(offer.practiceId, 'Invitation Expired — ' + DateUtils.format(offer.sessionDate, 'medium'),
+            detail + ' You can send a new invitation from the Locum Network.', 'offer_expired');
+        this.addNotification(offer.locumId, 'offer_expired', 'Invitation Expired',
+            `The invitation from ${offer.practiceName} for ${DateUtils.format(offer.sessionDate, 'medium')} has expired.`);
     },
 
     expireOffers() {
         const allOffers = DB.Offers.getAll();
         const now = new Date();
+        const todayISO = DateUtils.toISO(now);
         let expired = 0;
-        allOffers.filter(o => ['sent', 'viewed'].includes(o.status) && o.expiresAt && new Date(o.expiresAt) < now)
+
+        // 1. Open invitations (sent/viewed/negotiating) expire when their expiry
+        //    window closes OR the session date itself has passed
+        allOffers.filter(o => ['sent', 'viewed', 'negotiating'].includes(o.status) &&
+                ((o.expiresAt && new Date(o.expiresAt) < now) || (o.sessionDate && o.sessionDate < todayISO)))
             .forEach(o => {
-                DB.Offers.update(o.id, { status: 'expired', expiredDate: DateUtils.toISO(now) });
-                const need = DB.SessionNeeds.getById(o.sessionNeedId);
-                if (need && need.offersCount > 0) DB.SessionNeeds.update(o.sessionNeedId, { offersCount: need.offersCount - 1 });
-                this.addNotification(o.practiceId, 'offer_expired', 'Invitation Expired',
-                    `Your invitation for ${DateUtils.format(o.sessionDate, 'medium')} has expired without a response.`);
+                const pastDate = o.sessionDate && o.sessionDate < todayISO;
+                this._expireOffer(o, pastDate
+                    ? `Your invitation for ${DateUtils.format(o.sessionDate, 'medium')} was not answered before the session date.`
+                    : null);
                 expired++;
             });
+
+        // 2. Accepted-but-never-confirmed bookings whose date has passed can no
+        //    longer proceed — close them out and tell both parties
+        allOffers.filter(o => o.status === 'accepted' && o.sessionDate && o.sessionDate < todayISO)
+            .forEach(o => {
+                DB.Offers.update(o.id, { status: 'expired', expiredDate: todayISO, expiredUnconfirmed: true });
+                this.addNotification(o.practiceId, 'offer_expired', 'Booking Lapsed',
+                    `The accepted booking with ${o.locumName || 'a locum'} for ${DateUtils.format(o.sessionDate, 'medium')} was never confirmed and the date has passed.`);
+                this.addNotification(o.locumId, 'offer_expired', 'Booking Lapsed',
+                    `Your accepted session at ${o.practiceName} on ${DateUtils.format(o.sessionDate, 'medium')} was never confirmed by the practice and has lapsed. No penalty applies.`);
+                expired++;
+            });
+
+        // 3. Open session needs whose date has passed went unfilled — close them
+        //    and tell the practice
+        (DB.SessionNeeds.getAll ? DB.SessionNeeds.getAll() : []).filter(n => n.status === 'open' && n.date && n.date < todayISO)
+            .forEach(n => {
+                DB.SessionNeeds.update(n.id, { status: 'expired' });
+                this.addNotification(n.practiceId, 'session_expired', 'Session Went Unfilled',
+                    `Your ${n.sessionType} session on ${DateUtils.format(n.date, 'full')} was not filled before the date passed.`);
+            });
+
         return expired;
     },
 
@@ -893,17 +1011,35 @@ const Booking = {
         });
     },
 
-    deleteSessionNeed(needId) {
+    deleteSessionNeed(needId, reason) {
         const need = DB.SessionNeeds.getById(needId);
         if (!need) return { error: 'not_found', message: 'Session need not found' };
-        const dateStr = DateUtils.format(need.date, 'full');
+        // Only the practice that owns this session may cancel it
+        const session = Auth.getSession();
+        if (!session || session.role !== 'practice' || need.practiceId !== session.id) {
+            return { error: 'not_authorized', message: 'Only the practice that posted this session can cancel it.' };
+        }
         const needOffers = DB.Offers.getForSessionNeed(needId);
-        // Cancel accepted/confirmed bookings
+        // A session with a completed/no-show booking is history \u2014 it cannot be cancelled
+        if (needOffers.some(o => ['completed', 'no_show'].includes(o.status))) {
+            return { error: 'already_completed', message: 'This session has already been worked and cannot be cancelled.' };
+        }
+        // A past-dated session can no longer be cancelled \u2014 bookings on it must be
+        // resolved as completed or no-show instead
+        if (need.date && need.date < DateUtils.toISO(new Date())) {
+            return { error: 'past_session', message: 'This session date has passed. Resolve the booking as completed or a no-show instead.' };
+        }
+        reason = (reason || '').trim().slice(0, 300);
+        const reasonLine = reason ? ` Reason: "${reason}"` : '';
+        const dateStr = DateUtils.format(need.date, 'full');
+        // Cancel accepted/confirmed bookings \u2014 notify + email + chat message per locum
         needOffers.filter(o => ['accepted', 'confirmed'].includes(o.status))
             .forEach(o => {
-                DB.Offers.update(o.id, { status: 'cancelled', cancelledBy: 'practice', cancelledDate: DateUtils.toISO(new Date()) });
+                DB.Offers.update(o.id, { status: 'cancelled', cancelledBy: 'practice', cancelledDate: DateUtils.toISO(new Date()), cancellationReason: reason || null });
                 this.addNotification(o.locumId, 'cancellation', 'Shift Cancelled',
-                    `${need.practiceName} has cancelled the ${need.sessionType} session on ${dateStr}. We apologise for the inconvenience.`);
+                    `${need.practiceName} has cancelled the ${need.sessionType} session on ${dateStr}.${reasonLine} We apologise for the inconvenience.`);
+                EmailManager.send(o.locumId, 'Shift Cancelled \u2014 ' + DateUtils.format(need.date, 'medium'),
+                    `${need.practiceName} has cancelled the ${need.sessionType} session on ${dateStr} that you were booked for.${reasonLine} Please log in to GPRN to review your bookings.`, 'cancellation');
                 const threadId = MessageManager._findActiveThread(need.practiceId, o.locumId) || ('thread-' + Date.now() + Math.random().toString(36).substr(2, 5));
                 DB.Messages.insert({
                     id: 'msg-' + Date.now() + Math.random().toString(36).substr(2, 5),
@@ -911,7 +1047,7 @@ const Booking = {
                     fromId: need.practiceId,
                     toId: o.locumId,
                     subject: '',
-                    body: `\u26A0\uFE0F Shift Cancelled \u2014 The ${need.sessionType} session on ${dateStr} has been cancelled by ${need.practiceName}.`,
+                    body: `\u26A0\uFE0F Shift Cancelled \u2014 The ${need.sessionType} session on ${dateStr} has been cancelled by ${need.practiceName}.${reasonLine}`,
                     shiftId: null,
                     timestamp: new Date().toISOString(),
                     read: false,
@@ -919,14 +1055,16 @@ const Booking = {
                     _system: true
                 });
             });
-        // Withdraw pending offers
+        // Withdraw pending offers \u2014 notify + email each invited locum
         needOffers.filter(o => ['sent', 'viewed', 'negotiating'].includes(o.status))
             .forEach(o => {
-                DB.Offers.update(o.id, { status: 'withdrawn', autoWithdrawn: true, withdrawnDate: DateUtils.toISO(new Date()) });
+                DB.Offers.update(o.id, { status: 'withdrawn', autoWithdrawn: true, withdrawnDate: DateUtils.toISO(new Date()), withdrawReason: reason || null });
                 this.addNotification(o.locumId, 'offer_withdrawn', 'Invitation Withdrawn',
-                    `The session at ${need.practiceName} on ${dateStr} has been cancelled.`);
+                    `The session at ${need.practiceName} on ${dateStr} has been cancelled.${reasonLine}`);
+                EmailManager.send(o.locumId, 'Session Cancelled',
+                    `The ${need.sessionType} session at ${need.practiceName} on ${dateStr} you were invited to has been cancelled.${reasonLine}`, 'session_cancelled');
             });
-        DB.SessionNeeds.update(needId, { status: 'cancelled' });
+        DB.SessionNeeds.update(needId, { status: 'cancelled', cancellationReason: reason || null });
         return { success: true };
     },
 
@@ -944,13 +1082,20 @@ const Booking = {
         return DB.Offers.getForSessionNeed(needId);
     },
 
+    // Notification types that must ALWAYS be delivered regardless of user
+    // preferences — a cancellation or no-show can never be silently muted.
+    _alwaysImportant(type) {
+        return ['cancellation', 'no_show', 'no_show_disputed', 'late_cancellation', 'session_cancelled', 'session_expired', 'offer_expired'].includes(type);
+    },
+
     // Map notification types to the push-preference toggles saved in My Settings.
     // Unmapped types (and unset preferences) always send.
     _pushPrefFor(type) {
+        if (this._alwaysImportant(type)) return null;
         if (['new_offer', 'new_invitation'].includes(type)) return 'pushShifts';
         if (['offer_accepted', 'offer_declined', 'offer_viewed', 'offer_withdrawn', 'counter_offer', 'rate_agreed', 'booking_confirmed'].includes(type)) return 'pushOffers';
         if (['payment_reminder', 'leave_feedback'].includes(type)) return 'pushReminders';
-        if (['cancellation', 'no_show', 'late_cancellation', 'invoice_overdue', 'invoice_disputed'].includes(type)) return 'pushUrgent';
+        if (['invoice_overdue', 'invoice_disputed'].includes(type)) return 'pushUrgent';
         return null;
     },
 
@@ -1181,10 +1326,12 @@ const EmailManager = {
     // Unmapped types (account/security emails) and unset preferences always send.
     _emailPrefFor(type) {
         if (!type) return null;
+        // Cancellation-class events must always reach the recipient
+        if (Booking._alwaysImportant(type)) return null;
         if (type.indexOf('cpd') === 0) return 'emailCpd';
         if (type === 'newsletter') return 'emailNewsletter';
         if (type === 'new_invitation' || type.indexOf('shift') === 0) return 'emailShiftAlerts';
-        if (/^(offer|booking|payment|invoice|rate|revision|counter|job)/.test(type) || ['cancellation', 'no_show', 'late_cancellation'].includes(type)) return 'emailOfferUpdates';
+        if (/^(offer|booking|payment|invoice|rate|revision|counter|job)/.test(type)) return 'emailOfferUpdates';
         return null;
     },
 
@@ -1419,6 +1566,19 @@ const InvoiceManager = {
         return true;
     },
 
+    // Void an invoice (e.g. the session was reversed to a no-show). Void
+    // invoices are excluded from overdue sweeps and both parties are told.
+    voidInvoice(invoiceId, reason) {
+        const inv = DB.Invoices.getById(invoiceId);
+        if (!inv) return false;
+        if (['paid', 'void'].includes(inv.status)) return false;
+        DB.Invoices.update(invoiceId, { status: 'void', voidedDate: DateUtils.toISO(new Date()), voidReason: reason || null });
+        const detail = `Invoice ${inv.invoiceNumber} for ${formatCurrency(inv.total)} has been voided.` + (reason ? ` ${reason}.` : '');
+        Booking.addNotification(inv.locumId, 'invoice_void', 'Invoice Voided', detail);
+        Booking.addNotification(inv.practiceId, 'invoice_void', 'Invoice Voided', detail);
+        return true;
+    },
+
     confirmPayment(invoiceId) {
         const inv = DB.Invoices.getById(invoiceId);
         if (!inv || inv.status !== 'paid_pending') return false;
@@ -1566,10 +1726,19 @@ const FeedbackManager = {
             ratings: {}, comment: '', fromRole: 'practice',
             type: issueType, timestamp: new Date().toISOString()
         });
+        // A reported no-show reverses the completion: the session was not worked,
+        // so the offer becomes no_show and its auto-generated invoice is voided.
+        if (issueType === 'no_show') {
+            DB.Offers.update(offerId, { status: 'no_show', noShowDate: DateUtils.toISO(new Date()) });
+            const linkedInvoice = (getMockData().invoices || []).find(i => i.offerId === offerId && !['paid', 'void'].includes(i.status));
+            if (linkedInvoice) InvoiceManager.voidInvoice(linkedInvoice.id, 'Voided — no-show reported for this session');
+        }
         const issueLabel = issueType === 'no_show' ? 'No-Show' : 'Late Cancellation';
         const penaltyPts = issueType === 'no_show' ? 10 : 5;
-        Booking.addNotification(locumId, issueType, issueLabel + ' Reported',
-            `${offer.practiceName} has reported a ${issueLabel.toLowerCase()} for your shift on ${DateUtils.format(offer.sessionDate, 'medium')}. Your reliability score has been reduced by ${penaltyPts} points.`);
+        const issueDetail = `${offer.practiceName} has reported a ${issueLabel.toLowerCase()} for your shift on ${DateUtils.format(offer.sessionDate, 'medium')}. Your reliability score has been reduced by ${penaltyPts} points.`;
+        Booking.addNotification(locumId, issueType, issueLabel + ' Reported', issueDetail);
+        EmailManager.send(locumId, issueLabel + ' Reported — ' + DateUtils.format(offer.sessionDate, 'medium'),
+            issueDetail + ' If you believe this is a mistake, please contact the practice or GPRN support.', issueType);
         return true;
     },
 

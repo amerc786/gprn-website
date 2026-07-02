@@ -377,6 +377,10 @@
 
     // ---- SESSION NEEDS ----
     var SessionNeeds = {
+        getAll: function() {
+            return _blobData().sessionNeeds || _blobData().shifts || [];
+        },
+
         getForPractice: function(practiceId) {
             var blobResult = (_blobData().sessionNeeds || _blobData().shifts || []).filter(function(s) { return s.practiceId === practiceId; });
             if (!_hasAuth()) return blobResult;

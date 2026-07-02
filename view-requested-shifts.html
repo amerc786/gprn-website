@@ -91,11 +91,11 @@
 </head>
 <body class="pm-dashboard bg-surface text-slate-800 h-screen w-screen overflow-hidden flex selection:bg-brand-green selection:text-white">
 
-    <script src="mock-data.js?v=20260702a"></script>
-    <script src="app.js?v=20260702a"></script>
-    <script src="supabase-client.js?v=20260702a"></script>
-    <script src="supabase-tables.js?v=20260702a"></script>
-    <script src="components.js?v=20260702a"></script>
+    <script src="mock-data.js?v=20260702b"></script>
+    <script src="app.js?v=20260702b"></script>
+    <script src="supabase-client.js?v=20260702b"></script>
+    <script src="supabase-tables.js?v=20260702b"></script>
+    <script src="components.js?v=20260702b"></script>
     <script>
         if (!initPage('practice')) throw new Error('Auth required');
         Booking.expireOffers();
@@ -478,6 +478,19 @@
                     if (acceptedOffer.status === 'accepted') {
                         info += '<div style="margin-top: 8px;"><button class="btn btn-primary btn-small" onclick="Modal.close(this.closest(\'.modal-overlay\')); confirmOfferBooking(\'' + acceptedOffer.id + '\')">Confirm Booking</button></div>';
                     }
+                    var todayISO = DateUtils.toISO(new Date());
+                    var bookingPast = acceptedOffer.sessionDate < todayISO;
+                    if (['accepted', 'confirmed'].includes(acceptedOffer.status) && !bookingPast) {
+                        info += '<div style="margin-top: 8px;"><button class="btn btn-danger btn-ghost btn-small" onclick="Modal.close(this.closest(\'.modal-overlay\')); cancelBookingFromModal(\'' + acceptedOffer.id + '\')">Cancel Booking</button>'
+                            + '<span style="font-size: 0.75rem; color: var(--dark-600); margin-left: 8px;">The locum will be notified immediately.</span></div>';
+                    }
+                    // Session date has passed: the booking must be resolved, not cancelled
+                    if (['accepted', 'confirmed'].includes(acceptedOffer.status) && bookingPast) {
+                        info += '<div style="margin-top: 8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">'
+                            + '<button class="btn btn-primary btn-small" onclick="Modal.close(this.closest(\'.modal-overlay\')); resolvePastBooking(\'' + acceptedOffer.id + '\', true)">Mark Completed</button>'
+                            + '<button class="btn btn-danger btn-ghost btn-small" onclick="Modal.close(this.closest(\'.modal-overlay\')); resolvePastBooking(\'' + acceptedOffer.id + '\', false)">Report No-Show</button>'
+                            + '<span style="font-size: 0.75rem; color: var(--dark-600);">This session date has passed — please confirm what happened.</span></div>';
+                    }
                     if (acceptedOffer.status === 'completed') {
                         var hasReported = FeedbackManager.hasReviewed(session.id, acceptedOffer.id);
                         if (hasReported) {
@@ -535,11 +548,34 @@
                 info += '</div>';
             }
 
+            // Past offers on this session (declined / withdrawn / expired) — the paper trail
+            var pastOffers = allOffers.filter(function(o) { return ['declined', 'withdrawn', 'expired'].includes(o.status); });
+            if (pastOffers.length > 0) {
+                info += '<div style="border-top: 1px solid var(--gray-100); padding-top: 12px; margin-top: 4px;">'
+                    + '<h4 style="font-size: 0.82rem; font-weight: 600; color: var(--dark-600); margin-bottom: 8px;">Past Offers (' + pastOffers.length + ')</h4>';
+                pastOffers.forEach(function(o) {
+                    var ploc = locums.find(function(l) { return l.id === o.locumId; });
+                    var pname = ploc ? (ploc.title + ' ' + ploc.firstName + ' ' + ploc.lastName) : (o.locumName || 'Locum');
+                    var pExplain = '';
+                    if (o.status === 'withdrawn') pExplain = o.autoWithdrawn ? 'Position filled / session cancelled' : 'Withdrawn by you';
+                    if (o.status === 'declined' && o.declineReason) pExplain = 'Reason: ' + o.declineReason;
+                    if (o.status === 'withdrawn' && o.withdrawReason) pExplain += ' — ' + o.withdrawReason;
+                    info += '<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; background: var(--gray-50); border-radius: 8px; margin-bottom: 6px; flex-wrap:wrap;">'
+                        + '<span style="font-size: 0.82rem; font-weight: 600; color: var(--dark-700);">' + escapeHtml(pname) + '</span>'
+                        + '<span style="display:flex; align-items:center; gap:8px;"><span class="badge ' + getStatusBadge(o.status) + '" style="font-size: 0.7rem;">' + getStatusLabel(o.status) + '</span>'
+                        + (pExplain ? '<span style="font-size: 0.75rem; color: var(--dark-600);">' + sanitizeHTML(pExplain) + '</span>' : '') + '</span>'
+                        + '</div>';
+                });
+                info += '</div>';
+            }
+
             var footerBtns = '';
-            if (need.status === 'open') {
+            var hasResolvedBooking = allOffers.some(function(o) { return ['completed', 'no_show'].includes(o.status); });
+            var needDatePassed = need.date < DateUtils.toISO(new Date());
+            if (need.status === 'open' && !needDatePassed) {
                 footerBtns = '<button class="btn btn-small" style="background:var(--danger);color:white;border-color:var(--danger);margin-right:auto;" id="cancelNeedBtn">Cancel Session</button>'
                     + '<a href="find-locums.html?needId=' + need.id + '" class="btn btn-primary btn-small">Find Locum</a>';
-            } else if (need.status === 'filled') {
+            } else if (need.status === 'filled' && !hasResolvedBooking && !needDatePassed) {
                 footerBtns = '<button class="btn btn-small" style="background:var(--danger);color:white;border-color:var(--danger);margin-right:auto;" id="cancelNeedBtn">Cancel Shift</button>';
             }
             footerBtns += '<button class="btn btn-ghost" data-modal-close>Close</button>';
@@ -570,13 +606,92 @@
                 Toast.show('This offer has already been withdrawn.', 'info');
                 return;
             }
-            var result = Booking.withdrawOffer(offerId);
-            if (result.success) {
-                Toast.show('Offer withdrawn.', 'info');
-            } else {
-                Toast.show(result.message || 'Failed to withdraw offer.', 'error');
-            }
-            setTimeout(function() { renderTable(); }, 300);
+            var wLoc = offer ? currentData.locums.find(function(l) { return l.id === offer.locumId; }) : null;
+            var wName = wLoc ? escapeHtml(wLoc.title + ' ' + wLoc.firstName + ' ' + wLoc.lastName) : 'The locum';
+            Modal.show({
+                title: 'Withdraw Invitation',
+                size: 'small',
+                body: '<p style="color: var(--dark-600); line-height: 1.6;">Withdraw this invitation? ' + wName + ' will be notified by email.</p>'
+                    + '<div class="form-group" style="margin-top: 12px;"><label class="form-label">Reason (optional)</label>'
+                    + '<textarea id="withdrawReasonInput" class="form-textarea" rows="2" placeholder="e.g. Session no longer needed"></textarea></div>',
+                footer: '<button class="btn btn-ghost" data-modal-close>Keep Invitation</button><button class="btn btn-danger" id="confirmWithdrawBtn">Withdraw</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#confirmWithdrawBtn').addEventListener('click', function() {
+                        var reason = overlay.querySelector('#withdrawReasonInput').value.trim();
+                        var result = Booking.withdrawOffer(offerId, reason);
+                        Modal.close(overlay);
+                        if (result.success) {
+                            Toast.show('Invitation withdrawn. The locum has been notified.', 'info');
+                        } else {
+                            Toast.show(result.message || 'Failed to withdraw offer.', 'error');
+                        }
+                        setTimeout(function() { renderTable(); }, 300);
+                    });
+                }
+            });
+        }
+
+        // Cancel an accepted/confirmed booking (keeps the session need, notifies the locum)
+        function cancelBookingFromModal(offerId) {
+            var currentData = getMockData();
+            var offer = currentData.offers.find(function(o) { return o.id === offerId; });
+            if (!offer) return;
+            var cLoc = currentData.locums.find(function(l) { return l.id === offer.locumId; });
+            var cName = cLoc ? escapeHtml(cLoc.title + ' ' + cLoc.firstName + ' ' + cLoc.lastName) : 'the locum';
+            Modal.show({
+                title: 'Cancel Booking',
+                size: 'small',
+                body: '<p style="color: var(--dark-600); line-height: 1.6;">Cancel the booking with <strong>' + cName + '</strong> on <strong>' + DateUtils.format(offer.sessionDate, 'full') + '</strong>? They will be notified by email immediately.</p>'
+                    + '<div class="form-group" style="margin-top: 12px;"><label class="form-label">Reason (optional)</label>'
+                    + '<textarea id="cancelBookingReason" class="form-textarea" rows="2" placeholder="e.g. Cover no longer required"></textarea></div>',
+                footer: '<button class="btn btn-ghost" data-modal-close>Keep Booking</button><button class="btn btn-danger" id="confirmCancelBookingBtn">Cancel Booking</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#confirmCancelBookingBtn').addEventListener('click', function() {
+                        var reason = overlay.querySelector('#cancelBookingReason').value.trim();
+                        var result = Booking.cancelBooking(offerId, 'practice', reason);
+                        Modal.close(overlay);
+                        if (result === true) {
+                            Toast.show('Booking cancelled. The locum has been notified.', 'info');
+                        } else {
+                            Toast.show((result && result.message) || 'Failed to cancel this booking.', 'error');
+                        }
+                        setTimeout(function() { renderTable(); }, 300);
+                    });
+                }
+            });
+        }
+
+        // Resolve a past-dated booking: completed (invoices) or no-show (penalty, no invoice)
+        function resolvePastBooking(offerId, attended) {
+            var currentData = getMockData();
+            var offer = currentData.offers.find(function(o) { return o.id === offerId; });
+            if (!offer) return;
+            var rLoc = currentData.locums.find(function(l) { return l.id === offer.locumId; });
+            var rName = rLoc ? escapeHtml(rLoc.title + ' ' + rLoc.firstName + ' ' + rLoc.lastName) : 'the locum';
+            var title = attended ? 'Mark Session Completed' : 'Report No-Show';
+            var bodyMsg = attended
+                ? '<p style="color: var(--dark-600); line-height: 1.6;">Confirm that <strong>' + rName + '</strong> worked the session on <strong>' + DateUtils.format(offer.sessionDate, 'full') + '</strong>? An invoice will be generated.</p>'
+                : '<p style="color: var(--dark-600); line-height: 1.6;">Report that <strong>' + rName + '</strong> did not attend the session on <strong>' + DateUtils.format(offer.sessionDate, 'full') + '</strong>?</p><p style="font-size: 0.85rem; color: var(--danger); margin-top: 8px;">Their reliability score will be reduced by 10 points and they will be notified. No invoice will be generated.</p>';
+            Modal.show({
+                title: title,
+                size: 'small',
+                body: bodyMsg,
+                footer: '<button class="btn btn-ghost" data-modal-close>Back</button><button class="btn ' + (attended ? 'btn-primary' : 'btn-danger') + '" id="confirmResolveBtn">' + title + '</button>',
+                onOpen: function(overlay) {
+                    overlay.querySelector('#confirmResolveBtn').addEventListener('click', function() {
+                        var result = Booking.markComplete(offerId, attended, 'practice');
+                        Modal.close(overlay);
+                        if (result === true) {
+                            Toast.show(attended ? 'Session marked complete. An invoice has been generated.' : 'No-show recorded. The locum has been notified.', attended ? 'success' : 'info');
+                        } else if (result === 'too_early') {
+                            Toast.show('This session has not happened yet.', 'warning');
+                        } else {
+                            Toast.show('Unable to update this booking. Please refresh and try again.', 'error');
+                        }
+                        setTimeout(function() { renderTable(); }, 300);
+                    });
+                }
+            });
         }
 
         function acceptLocumCounter(offerId) {
@@ -649,15 +764,18 @@
                 bookedLocumName = loc ? escapeHtml(loc.title + ' ' + loc.firstName + ' ' + loc.lastName) : 'the booked locum';
             }
             var bodyMsg = hasBooking
-                ? '<div style="padding:8px 0;"><p style="font-size:0.95rem;color:var(--dark-600);margin-bottom:12px;">This shift is currently booked with <strong>' + bookedLocumName + '</strong>. Are you sure you want to cancel?</p><p style="font-size:0.88rem;color:var(--danger);">The locum will be notified via notifications and messages that this shift has been cancelled.</p></div>'
-                : '<div style="padding:8px 0;"><p style="font-size:0.95rem;color:var(--dark-600);margin-bottom:12px;">Are you sure you want to cancel this session?</p><p style="font-size:0.88rem;color:var(--danger);">All pending offers will be withdrawn and locums notified.</p></div>';
+                ? '<div style="padding:8px 0;"><p style="font-size:0.95rem;color:var(--dark-600);margin-bottom:12px;">This shift is currently booked with <strong>' + bookedLocumName + '</strong>. Are you sure you want to cancel?</p><p style="font-size:0.88rem;color:var(--danger);">The locum will be notified by email and message that this shift has been cancelled.</p></div>'
+                : '<div style="padding:8px 0;"><p style="font-size:0.95rem;color:var(--dark-600);margin-bottom:12px;">Are you sure you want to cancel this session?</p><p style="font-size:0.88rem;color:var(--danger);">All pending offers will be withdrawn and locums notified by email.</p></div>';
+            bodyMsg += '<div class="form-group" style="margin-top: 4px;"><label class="form-label">Reason (optional — shared with the locum' + (hasBooking ? '' : 's') + ')</label>'
+                + '<textarea id="cancelNeedReason" class="form-textarea" rows="2" placeholder="e.g. Cover arranged internally"></textarea></div>';
             Modal.show({
                 title: hasBooking ? 'Cancel Booked Shift' : 'Cancel Session',
                 body: bodyMsg,
                 footer: '<button class="btn btn-ghost" data-modal-close>Keep ' + (hasBooking ? 'Shift' : 'Session') + '</button><button class="btn btn-small" style="background:var(--danger);color:white;border-color:var(--danger);" id="confirmCancelBtn">Cancel ' + (hasBooking ? 'Shift' : 'Session') + '</button>',
                 onOpen: function(overlay) {
                     overlay.querySelector('#confirmCancelBtn').addEventListener('click', function() {
-                        var result = Booking.deleteSessionNeed(needId);
+                        var reason = overlay.querySelector('#cancelNeedReason').value.trim();
+                        var result = Booking.deleteSessionNeed(needId, reason);
                         Modal.close(overlay);
                         if (result.error) {
                             Toast.show(result.message || 'Unable to cancel this session.', 'error');

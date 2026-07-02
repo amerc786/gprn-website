@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-layout">
-    <script src="mock-data.js?v=20260702a"></script>
-    <script src="app.js?v=20260702a"></script>
-<script src="supabase-client.js?v=20260702a"></script>
-    <script src="supabase-tables.js?v=20260702a"></script>
-    <script src="components.js?v=20260702a"></script>
+    <script src="mock-data.js?v=20260702b"></script>
+    <script src="app.js?v=20260702b"></script>
+<script src="supabase-client.js?v=20260702b"></script>
+    <script src="supabase-tables.js?v=20260702b"></script>
+    <script src="components.js?v=20260702b"></script>
     <script>
         if (!initPage('locum')) throw new Error('Auth required');
 
@@ -189,12 +189,15 @@
         window.declineOffer = function(offerId) {
             Modal.show({
                 title: 'Decline Invitation',
-                body: '<p style="font-size: 0.9rem; color: var(--dark-600); padding: 8px 0;">Are you sure you want to decline this invitation? The practice will be notified.</p>',
+                body: '<p style="font-size: 0.9rem; color: var(--dark-600); padding: 8px 0;">Are you sure you want to decline this invitation? The practice will be notified.</p>'
+                    + '<div class="form-group"><label class="form-label">Reason (optional — shared with the practice)</label>'
+                    + '<textarea id="declineReasonInput" class="form-textarea" rows="2" placeholder="e.g. Already booked that day"></textarea></div>',
                 footer: '<button class="btn btn-ghost" data-modal-close>Cancel</button><button class="btn btn-primary" style="background: var(--danger); border-color: var(--danger);" id="confirmDeclineBtn">Decline</button>',
                 onOpen: function(overlay) {
                     overlay.querySelector('#confirmDeclineBtn').addEventListener('click', function() {
+                        const reason = overlay.querySelector('#declineReasonInput').value.trim();
                         Modal.close(overlay);
-                        const result = Booking.respondToOffer(offerId, 'decline');
+                        const result = Booking.respondToOffer(offerId, 'decline', null, reason);
                         if (result && !result.error) {
                             Toast.show('Invitation declined.', 'info');
                         } else {
